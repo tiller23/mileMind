@@ -19,10 +19,18 @@ contribution decays as e^(-t/τ) over time.
 """
 
 import math
+from typing import Literal
 
 # Default time constants from exercise science literature
 DEFAULT_FITNESS_TAU = 42  # days — chronic training load decay
 DEFAULT_FATIGUE_TAU = 7   # days — acute training load decay
+
+# TSB classification thresholds (Coggan/Allen Performance Manager)
+_TSB_FRESH_THRESHOLD = 10.0
+_TSB_FATIGUED_THRESHOLD = -10.0
+_TSB_VERY_FATIGUED_THRESHOLD = -20.0
+
+RecoveryStatus = Literal["fresh", "neutral", "fatigued", "very_fatigued"]
 
 
 def compute_ctl(
@@ -195,6 +203,30 @@ def _compute_ema(
     for load in daily_loads:
         ema = ema * decay + load * alpha
     return ema
+
+
+def classify_recovery_status(tsb: float) -> RecoveryStatus:
+    """Classify a TSB value into a recovery status category.
+
+    Thresholds follow the Coggan/Allen Performance Manager framework:
+        - fresh:          TSB > 10
+        - neutral:        -10 <= TSB <= 10
+        - fatigued:       -20 <= TSB < -10
+        - very_fatigued:  TSB < -20
+
+    Args:
+        tsb: Training Stress Balance (CTL - ATL).
+
+    Returns:
+        One of "fresh", "neutral", "fatigued", or "very_fatigued".
+    """
+    if tsb > _TSB_FRESH_THRESHOLD:
+        return "fresh"
+    if tsb >= _TSB_FATIGUED_THRESHOLD:
+        return "neutral"
+    if tsb >= _TSB_VERY_FATIGUED_THRESHOLD:
+        return "fatigued"
+    return "very_fatigued"
 
 
 def _validate_inputs(daily_loads: list[float], tau: int) -> None:

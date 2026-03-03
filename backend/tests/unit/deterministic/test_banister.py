@@ -17,6 +17,7 @@ import pytest
 from src.deterministic.banister import (
     DEFAULT_FATIGUE_TAU,
     DEFAULT_FITNESS_TAU,
+    classify_recovery_status,
     compute_atl,
     compute_ctl,
     compute_ema_series,
@@ -313,3 +314,31 @@ class TestEdgeCases:
         """All-zero loads from initial 0 should stay at 0."""
         result = compute_ctl([0.0] * 30, tau=42)
         assert result == pytest.approx(0.0, abs=1e-15)
+
+
+class TestClassifyRecoveryStatus:
+    """Tests for TSB-based recovery classification."""
+
+    @pytest.mark.parametrize("tsb,expected", [
+        (25.0, "fresh"),
+        (11.0, "fresh"),
+        (10.01, "fresh"),
+        (10.0, "neutral"),      # boundary: exactly 10 is neutral, not fresh
+        (0.0, "neutral"),
+        (-10.0, "neutral"),     # boundary: exactly -10 is neutral
+        (-10.01, "fatigued"),
+        (-15.0, "fatigued"),
+        (-20.0, "fatigued"),    # boundary: exactly -20 is fatigued
+        (-20.01, "very_fatigued"),
+        (-30.0, "very_fatigued"),
+        (-100.0, "very_fatigued"),
+    ])
+    def test_classification_boundaries(self, tsb: float, expected: str) -> None:
+        """Each TSB value maps to the correct recovery status."""
+        assert classify_recovery_status(tsb) == expected
+
+    def test_return_type_is_literal(self) -> None:
+        """Return value should be one of the four valid statuses."""
+        valid = {"fresh", "neutral", "fatigued", "very_fatigued"}
+        for tsb in [50.0, 5.0, -15.0, -50.0]:
+            assert classify_recovery_status(tsb) in valid
