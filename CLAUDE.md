@@ -52,8 +52,20 @@ generates physiological numbers directly.
 - Commit messages: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`
 - Merge to main only after all phase gates pass
 
-## Current Focus
-- Frontend: web only (Next.js). Mobile is planned but deferred.
+## Session Startup
+- On new sessions, run `git log --oneline -20` to understand recent work
+- Check the Phase Progress section below for what's complete and what's next
+
+## Phase Progress
+
+### Completed
+- **Phase 1: Deterministic Engine** — 5 models (banister, daniels, acwr, taper, monte_carlo) + training_stress. 286 unit tests, 100% coverage.
+- **Phase 2: Tool Wrappers + Single Agent** — 5 tool wrappers, ToolRegistry, PlannerAgent, CLI, domain models. 929 tests total. Two code review rounds enforced deterministic boundary (all physiology math in src/deterministic/).
+
+### Next Up
+- **Phase 3: Multi-Agent Loop** — Reviewer agent, planner-reviewer orchestration, retry loop with convergence tracking, decision logging.
+- **Phase 4: Evaluation Harness** — Synthetic athlete profiles, automated benchmarking, metrics collection, constraint violation rates.
+- **Phase 5: Consumer Frontend + Real Data** — Next.js web dashboard, Strava integration, auth, PostgreSQL, cloud deployment.
 
 ## When Compacting
 Always preserve: list of modified files, current phase, test results, and any failing test details.
