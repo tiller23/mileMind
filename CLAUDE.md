@@ -1,0 +1,59 @@
+# MileMind
+
+## What
+AI-powered running training optimizer. Multi-agent architecture (Planner + Reviewer)
+with a deterministic Python domain layer that computes all physiological metrics.
+Claude handles planning/review/negotiation; Python handles math. The LLM never
+generates physiological numbers directly.
+
+## Stack
+- Backend: Python 3.12, FastAPI, PostgreSQL (JSONB), raw Anthropic API
+- Frontend: Next.js (web dashboard), React Native/Expo (mobile)
+- AI: Claude Sonnet (planner, cost-optimized), Claude Opus (reviewer, safety-critical)
+- Testing: pytest (backend), vitest + React Testing Library (frontend)
+
+## Project Structure
+- `backend/src/deterministic/` — Pure Python physiological models (NO AI)
+- `backend/src/tools/` — JSON-schema tool wrappers for Claude
+- `backend/src/agents/` — Planner/Reviewer orchestration with retry loop
+- `backend/src/evaluation/` — Synthetic athlete test harness
+- `backend/src/api/` — FastAPI routes
+- `frontend/web/` — Next.js dashboard
+- `frontend/mobile/` — React Native app
+- See `docs/prd.md` for full product requirements
+
+## Commands
+- `cd backend && pytest` — Run all backend tests
+- `cd backend && pytest tests/unit/` — Unit tests only
+- `cd backend && pytest tests/unit/deterministic/` — Deterministic engine tests
+- `cd backend && pytest tests/integration/` — Integration tests
+- `cd frontend/web && npm test` — Frontend tests
+- `cd backend && uvicorn src.api.main:app --reload` — Dev server
+
+## Constraints
+- MUST: All physiological metrics computed by deterministic Python functions
+- MUST: Tool functions have JSON schemas; validate inputs/outputs
+- MUST: Every public function has docstring with params, returns, raises
+- MUST: Tests before committing. No PR without passing tests
+- MUST NOT: LLM generating TSS, CTL, ATL, TSB, ACWR, VO2max, or pace values
+- MUST NOT: `any` types in TypeScript frontend code
+- NEVER: Modify migration files directly
+- NEVER: Commit API keys or secrets
+
+## Testing Rules
+- Unit tests: 100% coverage on deterministic models (Phase 1 gate)
+- Unit tests: Every tool wrapper validates schema compliance
+- Integration tests: Agent loop produces valid plans for all 5 synthetic personas
+- E2E: Full plan generation -> negotiation -> adaptation cycle
+- Test files mirror source: `src/deterministic/banister.py` -> `tests/unit/deterministic/test_banister.py`
+
+## Git Workflow
+- Branch per feature: `feature/phase-{N}-{description}`
+- Commit messages: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`
+- Merge to main only after all phase gates pass
+
+## Current Focus
+- Frontend: web only (Next.js). Mobile is planned but deferred.
+
+## When Compacting
+Always preserve: list of modified files, current phase, test results, and any failing test details.
