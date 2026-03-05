@@ -16,43 +16,20 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.tools.registry import ToolRegistry
 
 import anthropic
 
 from src.agents.prompts import REVIEWER_SYSTEM_PROMPT
+from src.agents.shared import build_registry, extract_text
+from src.agents.transport import AnthropicTransport, MessageTransport
 from src.models.athlete import AthleteProfile
-from src.models.decision_log import ReviewerScores
-from src.tools.registry import ToolRegistry
+from src.models.decision_log import REVIEW_PASS_THRESHOLD, ReviewerScores
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Tool registration (same registry as planner)
-# ---------------------------------------------------------------------------
-
-def _build_registry() -> ToolRegistry:
-    """Create a ToolRegistry with all five MileMind tools.
-
-    Returns:
-        A fully populated ToolRegistry.
-    """
-    registry = ToolRegistry()
-
-    from src.tools import compute_training_stress
-    from src.tools import evaluate_fatigue_state
-    from src.tools import validate_progression_constraints
-    from src.tools import simulate_race_outcomes
-    from src.tools import reallocate_week_load
-
-    compute_training_stress.register(registry)
-    evaluate_fatigue_state.register(registry)
-    validate_progression_constraints.register(registry)
-    simulate_race_outcomes.register(registry)
-    reallocate_week_load.register(registry)
-
-    return registry
 
 
 # ---------------------------------------------------------------------------
@@ -98,27 +75,39 @@ class ReviewerAgent:
 
     Args:
         api_key: Anthropic API key. Falls back to ANTHROPIC_API_KEY env var.
-        model: Claude model identifier. Defaults to claude-sonnet-4-20250514.
-        max_iterations: Maximum API round-trips. Defaults to 15.
+            Ignored if transport is given.
+        model: Claude model identifier. Defaults to claude-opus-4-20250514.
+        max_iterations: Maximum API round-trips. Defaults to 10.
+        transport: Optional MessageTransport for API calls. If not provided,
+            creates an AnthropicTransport from the resolved API key.
     """
 
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "claude-sonnet-4-20250514",
-        max_iterations: int = 15,
+        model: str = "claude-opus-4-20250514",
+        max_iterations: int = 10,
+        transport: MessageTransport | None = None,
     ) -> None:
-        resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key or set the ANTHROPIC_API_KEY "
-                "environment variable."
-            )
+        if transport is not None:
+            self._transport = transport
+        else:
+            resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+            if not resolved_key:
+                raise ValueError(
+                    "No API key provided. Pass api_key, set the ANTHROPIC_API_KEY "
+                    "environment variable, or provide a transport."
+                )
+            self._transport = AnthropicTransport(api_key=resolved_key)
 
-        self._client = anthropic.AsyncAnthropic(api_key=resolved_key)
         self._model = model
         self._max_iterations = max_iterations
-        self._registry = _build_registry()
+        self._registry = build_registry()
+
+    @property
+    def model(self) -> str:
+        """The Claude model identifier used by this agent."""
+        return self._model
 
     @property
     def registry(self) -> ToolRegistry:
@@ -187,7 +176,7 @@ class ReviewerAgent:
                 iteration, self._max_iterations, len(messages),
             )
 
-            response = await self._client.messages.create(
+            response = await self._transport.create_message(
                 model=self._model,
                 max_tokens=4096,
                 system=REVIEWER_SYSTEM_PROMPT,
@@ -207,7 +196,7 @@ class ReviewerAgent:
             )
 
             if response.stop_reason == "end_turn":
-                verdict_text = self._extract_text(response.content)
+                verdict_text = extract_text(response.content)
                 result = self._parse_review_verdict(verdict_text)
                 result.tool_calls = tool_call_log
                 result.iterations = iterations
@@ -250,7 +239,7 @@ class ReviewerAgent:
 
                 messages.append({"role": "user", "content": tool_result_blocks})
             else:
-                verdict_text = self._extract_text(response.content)
+                verdict_text = extract_text(response.content)
                 result = self._parse_review_verdict(verdict_text)
                 result.tool_calls = tool_call_log
                 result.iterations = iterations
@@ -279,22 +268,6 @@ class ReviewerAgent:
         )
 
     @staticmethod
-    def _extract_text(content_blocks: list[Any]) -> str:
-        """Extract concatenated text from Claude's response content blocks.
-
-        Args:
-            content_blocks: The content list from a Claude API response.
-
-        Returns:
-            Concatenated text from all text blocks.
-        """
-        text_parts: list[str] = []
-        for block in content_blocks:
-            if hasattr(block, "type") and block.type == "text":
-                text_parts.append(block.text)
-        return "\n".join(text_parts)
-
-    @staticmethod
     def _parse_review_verdict(text: str) -> ReviewerResult:
         """Extract the JSON verdict from the reviewer's text response.
 
@@ -315,7 +288,7 @@ class ReviewerAgent:
         else:
             # Fallback: find a JSON object containing "approved" by scanning
             # for balanced braces starting from the first '{' before "approved".
-            idx = text.find('"approved"')
+            idx = text.rfind('"approved"')
             if idx == -1:
                 return ReviewerResult(
                     approved=False,
@@ -361,13 +334,21 @@ class ReviewerAgent:
         # Parse scores
         scores = None
         raw_scores = verdict.get("scores")
+        required_keys = {"safety", "progression", "specificity", "feasibility"}
         if isinstance(raw_scores, dict):
+            missing = required_keys - raw_scores.keys()
+            if missing:
+                return ReviewerResult(
+                    approved=False,
+                    critique=verdict.get("critique", ""),
+                    error=f"Missing score keys in reviewer verdict: {sorted(missing)}",
+                )
             try:
                 scores = ReviewerScores(
-                    safety=int(raw_scores.get("safety", 0)),
-                    progression=int(raw_scores.get("progression", 0)),
-                    specificity=int(raw_scores.get("specificity", 0)),
-                    feasibility=int(raw_scores.get("feasibility", 0)),
+                    safety=int(raw_scores["safety"]),
+                    progression=int(raw_scores["progression"]),
+                    specificity=int(raw_scores["specificity"]),
+                    feasibility=int(raw_scores["feasibility"]),
                 )
             except (ValueError, TypeError) as e:
                 return ReviewerResult(
@@ -376,11 +357,18 @@ class ReviewerAgent:
                     error=f"Invalid scores in reviewer verdict: {e}",
                 )
 
+        raw_approved = verdict.get("approved")
+        if raw_approved is not True and raw_approved is not False:
+            logger.warning(
+                "Reviewer returned non-boolean 'approved' value: %r (treating as rejected)",
+                raw_approved,
+            )
+
         return ReviewerResult(
-            approved=bool(verdict.get("approved", False)),
+            approved=raw_approved is True,
             scores=scores,
             critique=str(verdict.get("critique", "")),
-            issues=list(verdict.get("issues", [])),
+            issues=[str(i) for i in verdict.get("issues", []) if i is not None],
         )
 
     @staticmethod
@@ -425,6 +413,6 @@ class ReviewerAgent:
             f"- Spot-check 2-3 key claims by calling tools independently.\n"
             f"- Score each dimension (safety, progression, specificity, feasibility) "
             f"from 0-100.\n"
-            f"- Reject if any score is below 70.\n"
+            f"- Reject if any score is below {REVIEW_PASS_THRESHOLD}.\n"
             f"- Return your verdict as a ```json block.\n"
         )

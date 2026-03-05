@@ -10,9 +10,12 @@ from src.agents.orchestrator import Orchestrator, OrchestrationResult
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT
 from src.agents.reviewer import ReviewerAgent, ReviewerResult
+from src.agents.transport import AnthropicTransport, MessageTransport
 from src.agents.validation import ValidationResult, validate_plan_output
 
 __all__ = [
+    "AnthropicTransport",
+    "MessageTransport",
     "OrchestrationResult",
     "Orchestrator",
     "PLANNER_SYSTEM_PROMPT",

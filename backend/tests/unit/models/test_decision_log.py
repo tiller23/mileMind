@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.models.decision_log import (
+    REVIEW_PASS_THRESHOLD,
     DecisionLogEntry,
     ReviewDimension,
     ReviewerScores,
@@ -16,6 +17,18 @@ from src.models.decision_log import (
 # ---------------------------------------------------------------------------
 # ReviewDimension
 # ---------------------------------------------------------------------------
+
+class TestReviewPassThreshold:
+    """Guard tests for the REVIEW_PASS_THRESHOLD constant."""
+
+    def test_threshold_value(self) -> None:
+        """Tripwire: changing this requires updating REVIEWER_SYSTEM_PROMPT."""
+        assert REVIEW_PASS_THRESHOLD == 70
+
+    def test_importable_from_package(self) -> None:
+        from src.models import REVIEW_PASS_THRESHOLD as imported
+        assert imported == 70
+
 
 class TestReviewDimension:
     """Tests for the ReviewDimension enum."""

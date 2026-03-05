@@ -12,6 +12,14 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+REVIEW_PASS_THRESHOLD: int = 70
+"""Minimum score (0-100) required for each review dimension to pass.
+
+Also referenced in REVIEWER_SYSTEM_PROMPT (src/agents/prompts.py) and
+ReviewerAgent._build_review_message — keep in sync.
+"""
+
+
 class ReviewDimension(str, Enum):
     """Dimensions evaluated by the reviewer agent."""
 
@@ -56,7 +64,7 @@ class ReviewerScores(BaseModel):
             True if all four scores are >= 70.
         """
         return all(
-            score >= 70
+            score >= REVIEW_PASS_THRESHOLD
             for score in (self.safety, self.progression, self.specificity, self.feasibility)
         )
 

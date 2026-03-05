@@ -1,5 +1,6 @@
 """Athlete profile domain models."""
 
+import hashlib
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -76,3 +77,19 @@ class AthleteProfile(BaseModel):
         default=0.30, ge=0.15, le=0.50,
         description="Max fraction of weekly mileage in a single long run",
     )
+
+    def cache_key(self, *, salt: str = "") -> str:
+        """Deterministic SHA-256 hash for same-profile deduplication.
+
+        Returns a unique key for this exact profile. Any field difference
+        (even a single character in injury_history) produces a different key.
+        This is NOT a similarity match — only identical profiles share a key.
+
+        Args:
+            salt: Extra context to include (e.g., model versions, change_type).
+
+        Returns:
+            64-character lowercase hex SHA-256 digest.
+        """
+        payload = salt + self.model_dump_json()
+        return hashlib.sha256(payload.encode()).hexdigest()

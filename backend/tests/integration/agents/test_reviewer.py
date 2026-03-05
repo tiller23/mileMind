@@ -195,6 +195,46 @@ class TestVerdictParsing:
         assert result.approved is False
         assert result.error is not None
 
+    def test_string_approved_treated_as_rejected(self) -> None:
+        """'approved': 'true' (string) must NOT approve — only boolean True passes."""
+        text = '```json\n{"approved": "true", "scores": {"safety": 90, "progression": 85, "specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n```'
+        result = ReviewerAgent._parse_review_verdict(text)
+        assert result.approved is False
+
+    def test_int_approved_treated_as_rejected(self) -> None:
+        """'approved': 1 (int) must NOT approve."""
+        text = '```json\n{"approved": 1, "scores": {"safety": 90, "progression": 85, "specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n```'
+        result = ReviewerAgent._parse_review_verdict(text)
+        assert result.approved is False
+
+    def test_partial_score_keys_returns_error(self) -> None:
+        """Only 3 of 4 required score keys → error result."""
+        text = '```json\n{"approved": true, "scores": {"safety": 90, "progression": 85, "specificity": 80}, "critique": "Good.", "issues": []}\n```'
+        result = ReviewerAgent._parse_review_verdict(text)
+        assert result.approved is False
+        assert result.error is not None
+        assert "Missing score keys" in result.error
+        assert "feasibility" in result.error
+
+    def test_rfind_selects_last_approved_occurrence(self) -> None:
+        """When text contains multiple 'approved' keywords, the last one (verdict) is used."""
+        # Simulate reviewer quoting the plan's approved field before giving own verdict
+        text = (
+            'The plan states {"approved": true, "foo": "bar"} but I disagree. '
+            'My verdict: {"approved": false, "scores": {"safety": 50, "progression": 60, '
+            '"specificity": 70, "feasibility": 60}, "critique": "Unsafe.", "issues": ["Bad"]}'
+        )
+        result = ReviewerAgent._parse_review_verdict(text)
+        assert result.approved is False
+        assert result.scores is not None
+        assert result.scores.safety == 50
+
+    def test_issues_coerced_to_strings(self) -> None:
+        """Non-string issue values are coerced to strings, None values are filtered."""
+        text = '```json\n{"approved": false, "scores": {"safety": 50, "progression": 50, "specificity": 50, "feasibility": 50}, "critique": "Bad.", "issues": [1, "real issue", null]}\n```'
+        result = ReviewerAgent._parse_review_verdict(text)
+        assert result.issues == ["1", "real issue"]
+
 
 # ---------------------------------------------------------------------------
 # Tests: Review message building
@@ -250,7 +290,7 @@ class TestReviewerAgentLoop:
             approved=True,
             scores={"safety": 90, "progression": 85, "specificity": 80, "feasibility": 75},
         )
-        mock_reviewer._client.messages.create = AsyncMock(return_value=response)
+        mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
         result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
 
@@ -271,7 +311,7 @@ class TestReviewerAgentLoop:
             critique="Safety concerns: no rest days in week 3.",
             issues=["Week 3 has no rest day", "ACWR exceeds 1.3 in week 5"],
         )
-        mock_reviewer._client.messages.create = AsyncMock(return_value=response)
+        mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
         result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
 
@@ -300,7 +340,7 @@ class TestReviewerAgentLoop:
             scores={"safety": 88, "progression": 82, "specificity": 85, "feasibility": 80},
         )
 
-        mock_reviewer._client.messages.create = AsyncMock(
+        mock_reviewer._transport.create_message = AsyncMock(
             side_effect=[tool_response, verdict_response]
         )
 
@@ -328,7 +368,7 @@ class TestReviewerAgentLoop:
             scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 80},
         )
 
-        mock_reviewer._client.messages.create = AsyncMock(
+        mock_reviewer._transport.create_message = AsyncMock(
             side_effect=[tool_response, verdict_response]
         )
 
@@ -344,7 +384,7 @@ class TestReviewerAgentLoop:
     ) -> None:
         """Malformed verdict text returns a rejected result with error."""
         response = make_end_turn_response("I don't know how to format JSON.")
-        mock_reviewer._client.messages.create = AsyncMock(return_value=response)
+        mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
         result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
 
@@ -362,7 +402,7 @@ class TestReviewerAgentLoop:
             "input": {"workout_type": "easy", "duration_minutes": 30.0, "intensity": 0.5},
         }])
 
-        mock_reviewer._client.messages.create = AsyncMock(return_value=infinite_tool_response)
+        mock_reviewer._transport.create_message = AsyncMock(return_value=infinite_tool_response)
         mock_reviewer._max_iterations = 3
 
         result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
@@ -380,7 +420,7 @@ class TestReviewerAgentLoop:
         from unittest.mock import MagicMock
         import anthropic
 
-        mock_reviewer._client.messages.create = AsyncMock(
+        mock_reviewer._transport.create_message = AsyncMock(
             side_effect=anthropic.APIError(
                 message="Rate limited",
                 request=MagicMock(),

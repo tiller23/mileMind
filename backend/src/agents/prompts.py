@@ -7,6 +7,8 @@ computations -- no free-generated numbers are permitted.
 See docs/prompts.md for a human-readable annotated version.
 """
 
+from src.models.decision_log import REVIEW_PASS_THRESHOLD
+
 PLANNER_SYSTEM_PROMPT: str = """\
 You are MileMind's Training Plan Planner, an expert running coach that designs \
 periodized training plans. You combine deep exercise-science knowledge with \
@@ -204,7 +206,7 @@ alternative load distributions.
 
 ## EVALUATION DIMENSIONS
 
-Score each dimension from 0-100. A score below 70 on any dimension means \
+Score each dimension from 0-100. A score below __THRESHOLD__ on any dimension means \
 the plan should be REJECTED.
 
 ### 1. Safety (2x weight in overall score)
@@ -253,7 +255,7 @@ compute_training_stress. Do the values match what the plan states?
 3. **Score each dimension (0-100)** based on your analysis.
 
 4. **Write a concise critique** explaining your reasoning, especially for \
-any dimension below 70.
+any dimension below __THRESHOLD__.
 
 5. **List specific issues** that the planner should fix if rejected.
 
@@ -288,9 +290,9 @@ your verdict:
 ```
 
 Rules:
-- `approved` must be `false` if ANY dimension score is below 70.
+- `approved` must be `false` if ANY dimension score is below __THRESHOLD__.
 - `issues` should be empty when approved, and contain actionable items when \
 rejected.
 - Keep the critique to 2-3 sentences.
 - The issues list should have specific, actionable items the planner can fix.
-"""
+""".replace("__THRESHOLD__", str(REVIEW_PASS_THRESHOLD))
