@@ -16,6 +16,7 @@ from src.agents.reviewer import ReviewerAgent
 from src.evaluation.personas import ALL_PERSONAS, BEGINNER_RUNNER, get_persona
 from src.evaluation.results import PersonaResult
 from src.evaluation.runner import HarnessRunner
+from src.models.plan_change import PlanChangeType
 from src.models.decision_log import (
     DecisionLogEntry,
     ReviewerScores,
@@ -261,6 +262,114 @@ class TestHarnessRunnerComparison:
 
         assert "claude-opus-4-20250514" in comparison
         assert "claude-sonnet-4-20250514" in comparison
+
+
+class TestHarnessRunnerBatched:
+    """Tests for run_all_batched."""
+
+    @pytest.mark.asyncio
+    async def test_run_all_batched_requires_api_key(self) -> None:
+        """run_all_batched raises if no api_key is set."""
+        runner = HarnessRunner(api_key=None, transport=MagicMock())
+
+        with pytest.raises(ValueError, match="api_key is required"):
+            await runner.run_all_batched(persona_ids=["beginner_runner"])
+
+    @pytest.mark.asyncio
+    async def test_run_all_batched_uses_build_orchestrator_with_transports(self) -> None:
+        """run_all_batched creates batch transports and runs personas."""
+        runner = HarnessRunner(api_key="test-key")
+        orch_result = _make_orch_result()
+
+        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
+             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+
+            # Set up mock coordinator
+            mock_coord = MockCoordinator.return_value
+            mock_coord.start = AsyncMock()
+            mock_coord.stop = AsyncMock()
+
+            # register_transport returns mock transports
+            mock_coord.register_transport = MagicMock(return_value=MagicMock())
+            mock_coord.deregister_transport = MagicMock()
+
+            # Set up mock orchestrator
+            mock_orch = AsyncMock()
+            mock_orch.generate_plan = AsyncMock(return_value=orch_result)
+            mock_build.return_value = mock_orch
+
+            results = await runner.run_all_batched(
+                persona_ids=["beginner_runner"],
+            )
+
+        assert len(results) == 1
+        assert results[0].persona_id == "beginner_runner"
+        assert results[0].approved is True
+        mock_coord.start.assert_called_once()
+        mock_coord.stop.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_all_batched_deregisters_on_success(self) -> None:
+        """Transports are deregistered after persona completes."""
+        runner = HarnessRunner(api_key="test-key")
+        orch_result = _make_orch_result()
+
+        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
+             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+
+            mock_coord = MockCoordinator.return_value
+            mock_coord.start = AsyncMock()
+            mock_coord.stop = AsyncMock()
+            mock_coord.register_transport = MagicMock(return_value=MagicMock())
+            mock_coord.deregister_transport = MagicMock()
+
+            mock_orch = AsyncMock()
+            mock_orch.generate_plan = AsyncMock(return_value=orch_result)
+            mock_build.return_value = mock_orch
+
+            await runner.run_all_batched(persona_ids=["beginner_runner"])
+
+        # Should deregister both planner and reviewer transports
+        assert mock_coord.deregister_transport.call_count == 2
+        deregistered_ids = {call.args[0] for call in mock_coord.deregister_transport.call_args_list}
+        assert "beginner_runner:planner" in deregistered_ids
+        assert "beginner_runner:reviewer" in deregistered_ids
+
+    @pytest.mark.asyncio
+    async def test_run_all_batched_rejects_tweak_mode(self) -> None:
+        """run_all_batched raises if change_type is TWEAK."""
+        runner = HarnessRunner(
+            api_key="test-key",
+            change_type=PlanChangeType.TWEAK,
+        )
+
+        with pytest.raises(ValueError, match="TWEAK"):
+            await runner.run_all_batched(persona_ids=["beginner_runner"])
+
+    @pytest.mark.asyncio
+    async def test_run_all_batched_handles_exception(self) -> None:
+        """Exceptions during batched persona runs are captured."""
+        runner = HarnessRunner(api_key="test-key")
+
+        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
+             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+
+            mock_coord = MockCoordinator.return_value
+            mock_coord.start = AsyncMock()
+            mock_coord.stop = AsyncMock()
+            mock_coord.register_transport = MagicMock(return_value=MagicMock())
+            mock_coord.deregister_transport = MagicMock()
+
+            mock_orch = AsyncMock()
+            mock_orch.generate_plan = AsyncMock(side_effect=RuntimeError("Batch failed"))
+            mock_build.return_value = mock_orch
+
+            results = await runner.run_all_batched(persona_ids=["beginner_runner"])
+
+        assert len(results) == 1
+        assert results[0].error is not None
+        assert "RuntimeError" in results[0].error
+        assert results[0].approved is False
 
 
 class TestHarnessRunnerMetrics:
