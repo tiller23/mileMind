@@ -62,10 +62,10 @@ generates physiological numbers directly.
 ### Completed
 - **Phase 1: Deterministic Engine** — 5 models (banister, daniels, acwr, taper, monte_carlo) + training_stress. 286 unit tests, 100% coverage.
 - **Phase 2: Tool Wrappers + Single Agent** — 5 tool wrappers, ToolRegistry, PlannerAgent, CLI, domain models. 929 tests total. Two code review rounds enforced deterministic boundary (all physiology math in src/deterministic/).
+- **Phase 3: Multi-Agent Loop** — ReviewerAgent, Orchestrator, PlanChangeType routing (FULL/ADAPTATION/TWEAK), MessageTransport Protocol, AthleteProfile.cache_key(), decision logging, cost optimization patterns. 1046 tests total. Two code review rounds + cost analysis.
 
 ### Next Up
-- **Phase 3: Multi-Agent Loop** — Reviewer agent, planner-reviewer orchestration, retry loop with convergence tracking, decision logging.
-- **Phase 4: Evaluation Harness** — Synthetic athlete profiles, automated benchmarking, metrics collection, constraint violation rates.
+- **Phase 4: Evaluation Harness** — Synthetic athlete profiles, automated benchmarking, metrics collection, constraint violation rates. Validate Sonnet-as-reviewer. Batch API transport.
 - **Phase 5: Consumer Frontend + Real Data** — Next.js web dashboard, Strava integration, auth, PostgreSQL, cloud deployment.
 
 ## When Compacting
