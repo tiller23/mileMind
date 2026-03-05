@@ -3,7 +3,7 @@
 import hashlib
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RiskTolerance(str, Enum):
@@ -40,6 +40,8 @@ class AthleteProfile(BaseModel):
         training_days_per_week: Number of available training days (3-7).
         long_run_cap_pct: Max fraction of weekly mileage in a single run.
     """
+
+    model_config = ConfigDict(frozen=True)
 
     name: str = Field(min_length=1, max_length=100, description="Athlete display name")
     age: int = Field(ge=10, le=100, description="Age in years")

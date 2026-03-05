@@ -13,9 +13,14 @@ import pytest
 from src.agents.orchestrator import OrchestrationResult
 from src.agents.planner import PlannerAgent
 from src.agents.reviewer import ReviewerAgent
-from src.evaluation.personas import ALL_PERSONAS, BEGINNER_RUNNER, get_persona
+from src.evaluation.personas import (
+    ALL_PERSONAS,
+    BEGINNER_RUNNER,
+    ExpectedBehavior,
+    get_persona,
+)
 from src.evaluation.results import PersonaResult
-from src.evaluation.runner import HarnessRunner
+from src.evaluation.runner import HarnessRunner, check_constraint_violations
 from src.models.plan_change import PlanChangeType
 from src.models.decision_log import (
     DecisionLogEntry,
@@ -370,6 +375,88 @@ class TestHarnessRunnerBatched:
         assert results[0].error is not None
         assert "RuntimeError" in results[0].error
         assert results[0].approved is False
+
+
+class TestConstraintViolations:
+    """Tests for check_constraint_violations and its integration."""
+
+    def test_no_violations_when_all_pass(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            must_include=("rest", "easy"),
+            must_not_include=("aggressive",),
+            min_safety_score=70.0,
+        )
+        violations = check_constraint_violations(
+            "This plan includes rest days and easy runs.",
+            expected,
+            safety_score=85.0,
+        )
+        assert violations == []
+
+    def test_missing_phrase_violation(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            must_include=("recovery week",),
+        )
+        violations = check_constraint_violations("No recovery here.", expected)
+        assert len(violations) == 1
+        assert "recovery week" in violations[0]
+
+    def test_prohibited_phrase_violation(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            must_not_include=("push through pain",),
+        )
+        violations = check_constraint_violations(
+            "Athletes should push through pain to improve.", expected,
+        )
+        assert len(violations) == 1
+        assert "push through pain" in violations[0]
+
+    def test_safety_score_below_minimum(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            min_safety_score=80.0,
+        )
+        violations = check_constraint_violations("Plan text.", expected, safety_score=65.0)
+        assert len(violations) == 1
+        assert "Safety score" in violations[0]
+
+    def test_safety_score_none_no_violation(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            min_safety_score=80.0,
+        )
+        violations = check_constraint_violations("Plan text.", expected, safety_score=None)
+        assert violations == []
+
+    def test_case_insensitive_matching(self) -> None:
+        expected = ExpectedBehavior(
+            description="Test",
+            must_include=("REST",),
+            must_not_include=("AGGRESSIVE",),
+        )
+        violations = check_constraint_violations("Take rest days.", expected)
+        assert violations == []
+
+    @pytest.mark.asyncio
+    async def test_violations_populated_on_persona_result(self) -> None:
+        """_result_from_orchestration populates constraint_violations."""
+        runner = HarnessRunner(api_key="test-key", transport=MagicMock())
+        # Plan text missing "recovery week" required by beginner persona
+        orch_result = _make_orch_result(plan_text="Easy runs and rest days only.")
+
+        with patch.object(runner, "_build_orchestrator") as mock_build:
+            mock_orch = AsyncMock()
+            mock_orch.generate_plan = AsyncMock(return_value=orch_result)
+            mock_build.return_value = mock_orch
+
+            result = await runner.run_persona(BEGINNER_RUNNER)
+
+        # beginner_runner must_include has "recovery week"
+        assert result.has_violations
+        assert any("recovery week" in v for v in result.constraint_violations)
 
 
 class TestHarnessRunnerMetrics:

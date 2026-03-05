@@ -421,6 +421,73 @@ class TestOrchestratorValidation:
         assert "1 attempts" in result.warning
 
 
+class TestOrchestratorScoreThresholdGuard:
+    """Tests for the server-side score threshold override."""
+
+    @pytest.mark.asyncio
+    async def test_override_approval_when_scores_fail(self, sample_athlete: AthleteProfile) -> None:
+        """Reviewer says approved=True but safety score fails threshold → overridden to rejected."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Revised"))
+
+        # Reviewer says approved but safety=50 (below 70 threshold) → all_pass is False
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(side_effect=[
+            _make_reviewer_result(
+                approved=True,
+                scores={"safety": 50, "progression": 80, "specificity": 80, "feasibility": 75},
+            ),
+            _make_reviewer_result(approved=True),  # second attempt passes
+        ])
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
+        result = await orch.generate_plan(sample_athlete)
+
+        # First attempt: overridden to REJECTED because safety=50 fails threshold
+        assert result.decision_log[0].outcome == ReviewOutcome.REJECTED
+        # Second attempt: approved normally
+        assert result.approved is True
+        assert len(result.decision_log) == 2
+
+    @pytest.mark.asyncio
+    async def test_no_override_when_scores_pass(self, sample_athlete: AthleteProfile) -> None:
+        """Reviewer says approved=True and all scores pass → stays approved."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
+            approved=True,
+            scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 75},
+        ))
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer)
+        result = await orch.generate_plan(sample_athlete)
+
+        assert result.approved is True
+        assert result.decision_log[0].outcome == ReviewOutcome.APPROVED
+
+    @pytest.mark.asyncio
+    async def test_override_exhausts_retries(self, sample_athlete: AthleteProfile) -> None:
+        """Score override on every attempt exhausts retries with warning."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        planner.revise_plan = AsyncMock(return_value=_make_planner_result())
+
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
+            approved=True,
+            scores={"safety": 40, "progression": 80, "specificity": 80, "feasibility": 75},
+        ))
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=2)
+        result = await orch.generate_plan(sample_athlete)
+
+        assert result.approved is False
+        assert result.warning is not None
+        assert all(e.outcome == ReviewOutcome.REJECTED for e in result.decision_log)
+
+
 class TestOrchestratorExceptionHandling:
     """Tests for exception handling in the orchestration loop."""
 

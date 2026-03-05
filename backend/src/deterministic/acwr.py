@@ -241,7 +241,7 @@ def check_safety(
             f"{tolerance_ceiling:.1f}"
         )
 
-    # --- Weekly mileage increase check ---
+    # --- Weekly mileage increase + spike detection (single pass) ---
     capped_pct = min(max_weekly_increase_pct, MAX_ALLOWED_WEEKLY_INCREASE_PCT)
     for i in range(1, len(weekly_loads)):
         prev = weekly_loads[i - 1]
@@ -253,13 +253,6 @@ def check_safety(
                     f"Week {i + 1} increase {increase:.0%} exceeds "
                     f"limit {capped_pct:.0%} (from {prev:.1f} to {curr:.1f})"
                 )
-
-    # --- Spike detection (40% single-week increase per PRD) ---
-    for i in range(1, len(weekly_loads)):
-        prev = weekly_loads[i - 1]
-        curr = weekly_loads[i]
-        if prev > 0:
-            increase = (curr - prev) / prev
             if increase >= SPIKE_THRESHOLD_PCT:
                 violations.append(
                     f"Load spike in week {i + 1}: {increase:.0%} increase "
