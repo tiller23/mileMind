@@ -6,6 +6,7 @@ reviewer agent independently evaluates plan safety across 4 dimensions.
 The orchestrator drives the planner-reviewer retry loop until convergence.
 """
 
+from src.agents.batch import BatchCoordinator, BatchTransport
 from src.agents.orchestrator import Orchestrator, OrchestrationResult
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT
@@ -15,6 +16,8 @@ from src.agents.validation import ValidationResult, validate_plan_output
 
 __all__ = [
     "AnthropicTransport",
+    "BatchCoordinator",
+    "BatchTransport",
     "MessageTransport",
     "OrchestrationResult",
     "Orchestrator",

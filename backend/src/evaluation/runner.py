@@ -11,11 +11,13 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any
 
-from src.agents.orchestrator import Orchestrator
+from src.agents.batch import BatchCoordinator
+from src.agents.orchestrator import Orchestrator, OrchestrationResult
 from src.agents.planner import PlannerAgent
 from src.agents.reviewer import ReviewerAgent
 from src.agents.transport import MessageTransport
@@ -24,6 +26,9 @@ from src.evaluation.results import HarnessMetrics, PersonaResult
 from src.models.plan_change import PlanChangeType
 
 logger = logging.getLogger(__name__)
+
+# Timeout for the entire batched run (2 hours default)
+_BATCH_TIMEOUT_SECONDS = 7200.0
 
 
 class HarnessRunner:
@@ -56,6 +61,90 @@ class HarnessRunner:
         self._max_retries = max_retries
         self._max_total_tokens = max_total_tokens
         self._transport = transport
+
+    def _result_from_orchestration(
+        self,
+        persona_id: str,
+        orch_result: OrchestrationResult,
+        elapsed: float,
+    ) -> PersonaResult:
+        """Build a PersonaResult from an OrchestrationResult.
+
+        Args:
+            persona_id: The persona that was evaluated.
+            orch_result: Result from the orchestrator.
+            elapsed: Wall-clock seconds for this persona.
+
+        Returns:
+            Populated PersonaResult.
+        """
+        return PersonaResult(
+            persona_id=persona_id,
+            plan_text=orch_result.plan_text,
+            approved=orch_result.approved,
+            retry_count=len(orch_result.decision_log),  # review cycles (includes initial)
+            total_iterations=orch_result.total_iterations,
+            final_scores=orch_result.final_scores,
+            decision_log=orch_result.decision_log,
+            planner_input_tokens=orch_result.total_planner_input_tokens,
+            planner_output_tokens=orch_result.total_planner_output_tokens,
+            reviewer_input_tokens=orch_result.total_reviewer_input_tokens,
+            reviewer_output_tokens=orch_result.total_reviewer_output_tokens,
+            elapsed_seconds=elapsed,
+            athlete_cache_key=orch_result.athlete_cache_key,
+            warning=orch_result.warning,
+            error=orch_result.error,
+            planner_model=self._planner_model,
+            reviewer_model=self._reviewer_model,
+        )
+
+    def _error_result(
+        self,
+        persona_id: str,
+        error: Exception,
+        elapsed: float,
+    ) -> PersonaResult:
+        """Build an error PersonaResult.
+
+        Args:
+            persona_id: The persona that failed.
+            error: The exception that occurred.
+            elapsed: Wall-clock seconds before failure.
+
+        Returns:
+            PersonaResult with error details.
+        """
+        return PersonaResult(
+            persona_id=persona_id,
+            error=f"{type(error).__name__}: {error}",
+            elapsed_seconds=elapsed,
+            planner_model=self._planner_model,
+            reviewer_model=self._reviewer_model,
+        )
+
+    def _build_orchestrator_with_transports(
+        self,
+        planner_transport: MessageTransport,
+        reviewer_transport: MessageTransport,
+    ) -> Orchestrator:
+        """Construct an Orchestrator with explicit transports.
+
+        Args:
+            planner_transport: Transport for the planner agent.
+            reviewer_transport: Transport for the reviewer agent.
+
+        Returns:
+            Configured Orchestrator instance.
+        """
+        planner = PlannerAgent(model=self._planner_model, transport=planner_transport)
+        reviewer = ReviewerAgent(model=self._reviewer_model, transport=reviewer_transport)
+
+        return Orchestrator(
+            planner=planner,
+            reviewer=reviewer,
+            max_retries=self._max_retries,
+            max_total_tokens=self._max_total_tokens,
+        )
 
     def _build_orchestrator(self) -> Orchestrator:
         """Construct an Orchestrator with the configured models and transport.
@@ -106,35 +195,10 @@ class HarnessRunner:
             logger.error(
                 "Persona %s failed: %s", persona.persona_id, e, exc_info=True,
             )
-            return PersonaResult(
-                persona_id=persona.persona_id,
-                error=f"{type(e).__name__}: {e}",
-                elapsed_seconds=elapsed,
-                planner_model=self._planner_model,
-                reviewer_model=self._reviewer_model,
-            )
+            return self._error_result(persona.persona_id, e, elapsed)
 
         elapsed = time.monotonic() - start
-
-        return PersonaResult(
-            persona_id=persona.persona_id,
-            plan_text=orch_result.plan_text,
-            approved=orch_result.approved,
-            retry_count=len(orch_result.decision_log),  # review cycles (includes initial)
-            total_iterations=orch_result.total_iterations,
-            final_scores=orch_result.final_scores,
-            decision_log=orch_result.decision_log,
-            planner_input_tokens=orch_result.total_planner_input_tokens,
-            planner_output_tokens=orch_result.total_planner_output_tokens,
-            reviewer_input_tokens=orch_result.total_reviewer_input_tokens,
-            reviewer_output_tokens=orch_result.total_reviewer_output_tokens,
-            elapsed_seconds=elapsed,
-            athlete_cache_key=orch_result.athlete_cache_key,
-            warning=orch_result.warning,
-            error=orch_result.error,
-            planner_model=self._planner_model,
-            reviewer_model=self._reviewer_model,
-        )
+        return self._result_from_orchestration(persona.persona_id, orch_result, elapsed)
 
     async def run_all(
         self,
@@ -157,17 +221,94 @@ class HarnessRunner:
         for persona in personas:
             result = await self.run_persona(persona)
             results.append(result)
-            logger.info(
-                "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, time=%.1fs",
-                result.persona_id,
-                result.approved,
-                result.retry_count,
-                result.total_tokens,
-                result.estimated_cost_usd,
-                result.elapsed_seconds,
-            )
+            self._log_result(result)
 
         return results
+
+    async def run_all_batched(
+        self,
+        persona_ids: list[str] | None = None,
+        poll_interval: float = 5.0,
+    ) -> list[PersonaResult]:
+        """Run all personas concurrently using batch API for 50% cost savings.
+
+        Creates a ``BatchCoordinator`` that collects API calls from all persona
+        runs and submits them as batch requests. All personas run concurrently
+        via ``asyncio.gather``, with each round of API calls batched together.
+
+        Note: Batch mode requires ``change_type`` to be FULL or ADAPTATION.
+        TWEAK mode skips the reviewer, which would deadlock the batch barrier.
+
+        Args:
+            persona_ids: Optional list of persona IDs to run. If None, runs all 5.
+            poll_interval: Seconds between batch status polls.
+
+        Returns:
+            List of PersonaResult, one per persona (order matches input).
+
+        Raises:
+            ValueError: If api_key is not set or change_type is TWEAK.
+        """
+        if not self._api_key:
+            raise ValueError("api_key is required for batch mode (no mock transport)")
+
+        if self._change_type == PlanChangeType.TWEAK:
+            raise ValueError(
+                "Batch mode is incompatible with TWEAK change_type "
+                "(reviewer transport would never enqueue, causing deadlock)"
+            )
+
+        if persona_ids:
+            personas = [get_persona(pid) for pid in persona_ids]
+        else:
+            personas = list(ALL_PERSONAS)
+
+        coordinator = BatchCoordinator(
+            api_key=self._api_key,
+            poll_interval_seconds=poll_interval,
+        )
+
+        async def _run_persona_batched(
+            persona: EvaluationPersona,
+        ) -> PersonaResult:
+            """Run a single persona with batch transports."""
+            pid = persona.persona_id
+            planner_t = coordinator.register_transport(f"{pid}:planner")
+            reviewer_t = coordinator.register_transport(f"{pid}:reviewer")
+            orchestrator = self._build_orchestrator_with_transports(planner_t, reviewer_t)
+
+            start = time.monotonic()
+            try:
+                orch_result = await orchestrator.generate_plan(
+                    persona.profile,
+                    change_type=self._change_type,
+                )
+            except Exception as e:
+                elapsed = time.monotonic() - start
+                logger.error("Persona %s failed: %s", pid, e, exc_info=True)
+                return self._error_result(pid, e, elapsed)
+            finally:
+                coordinator.deregister_transport(f"{pid}:planner")
+                coordinator.deregister_transport(f"{pid}:reviewer")
+
+            elapsed = time.monotonic() - start
+            return self._result_from_orchestration(pid, orch_result, elapsed)
+
+        # Start coordinator and run all personas concurrently with timeout
+        await coordinator.start()
+        try:
+            tasks = [_run_persona_batched(p) for p in personas]
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks),
+                timeout=_BATCH_TIMEOUT_SECONDS,
+            )
+        finally:
+            await coordinator.stop()
+
+        for result in results:
+            self._log_result(result)
+
+        return list(results)
 
     async def run_comparison(
         self,
@@ -230,4 +371,21 @@ class HarnessRunner:
             planner_model=self._planner_model,
             reviewer_model=self._reviewer_model,
             total_elapsed_seconds=total_elapsed_seconds,
+        )
+
+    @staticmethod
+    def _log_result(result: PersonaResult) -> None:
+        """Log a persona result summary.
+
+        Args:
+            result: The PersonaResult to log.
+        """
+        logger.info(
+            "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, time=%.1fs",
+            result.persona_id,
+            result.approved,
+            result.retry_count,
+            result.total_tokens,
+            result.estimated_cost_usd,
+            result.elapsed_seconds,
         )

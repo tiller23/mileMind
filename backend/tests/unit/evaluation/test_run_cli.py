@@ -110,3 +110,16 @@ class TestEvaluationCLI:
         )
         assert result.returncode == 0
         assert "Compare mode: True" in result.stdout
+
+    def test_batch_and_compare_mutually_exclusive(self) -> None:
+        """--batch and --compare together exits with error."""
+        result = subprocess.run(
+            [sys.executable, "-m", "src.evaluation.run",
+             "--batch", "--compare", "--dry-run"],
+            capture_output=True,
+            text=True,
+            cwd=_BACKEND_DIR,
+            timeout=30,
+        )
+        assert result.returncode != 0
+        assert "mutually exclusive" in result.stderr

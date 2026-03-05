@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.agents.batch import BatchTransport
 from src.agents.transport import AnthropicTransport, MessageTransport
 
 
@@ -26,6 +27,11 @@ class TestMessageTransportProtocol:
                 return {}
 
         assert isinstance(CustomTransport(), MessageTransport)
+
+    def test_batch_transport_satisfies_protocol(self) -> None:
+        """BatchTransport satisfies MessageTransport."""
+        transport = BatchTransport("test", MagicMock())
+        assert isinstance(transport, MessageTransport)
 
     def test_non_transport_does_not_satisfy(self) -> None:
         """A class without create_message does not satisfy the protocol."""

@@ -67,6 +67,11 @@ def parse_args() -> argparse.Namespace:
         help="Run Sonnet-vs-Opus reviewer comparison",
     )
     parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="Use Batch API for 50%% cost savings (slower, async processing)",
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default="evaluation_reports",
@@ -100,6 +105,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--compare and --reviewer-model are mutually exclusive. "
                       "--compare runs both Opus and Sonnet automatically.")
 
+    if parsed.batch and parsed.compare:
+        parser.error("--batch and --compare are mutually exclusive. "
+                      "Batch mode runs a single reviewer model concurrently.")
+
     return parsed
 
 
@@ -132,7 +141,10 @@ async def run_single(args: argparse.Namespace) -> None:
     )
 
     start = time.monotonic()
-    results = await runner.run_all(persona_ids=args.persona)
+    if args.batch:
+        results = await runner.run_all_batched(persona_ids=args.persona)
+    else:
+        results = await runner.run_all(persona_ids=args.persona)
     total_elapsed = time.monotonic() - start
 
     metrics = runner.compute_metrics(results, total_elapsed_seconds=total_elapsed)
@@ -214,6 +226,7 @@ def main() -> None:
         print(f"Planner model: {args.planner_model}")
         print(f"Reviewer model: {args.reviewer_model}")
         print(f"Compare mode: {args.compare}")
+        print(f"Batch mode: {args.batch}")
         print(f"Max retries: {args.max_retries}")
         print(f"Token budget: {args.max_tokens:,}")
         print(f"Output dir: {args.output_dir}")
