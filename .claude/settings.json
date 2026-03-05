@@ -27,6 +27,15 @@
   },
   "permissions": {
     "allow": [
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Bash(conda run *)",
+      "Bash(wc *)",
       "Bash(cd backend && pytest*)",
       "Bash(cd frontend/* && npm test*)",
       "Bash(cd backend && ruff*)",
@@ -34,10 +43,7 @@
       "Bash(cd frontend/* && npm run lint*)",
       "Bash(git *)",
       "Bash(pip install*)",
-      "Bash(npm install*)",
-      "Read",
-      "Glob",
-      "Grep"
+      "Bash(npm install*)"
     ]
   }
 }
