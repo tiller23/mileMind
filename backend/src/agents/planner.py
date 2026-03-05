@@ -99,14 +99,14 @@ class PlannerAgent:
             environment variable if not provided.
         model: Claude model identifier. Defaults to claude-sonnet-4-20250514.
         max_iterations: Maximum number of API round-trips before forcing a
-            stop. Prevents infinite tool-use loops. Defaults to 25.
+            stop. Prevents infinite tool-use loops. Defaults to 30.
     """
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
-        max_iterations: int = 25,
+        max_iterations: int = 30,
     ) -> None:
         resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not resolved_key:

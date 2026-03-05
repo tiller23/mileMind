@@ -10,7 +10,13 @@ Usage:
     # With debug output (shows tool calls):
     python -m src.cli --example intermediate --debug
 
-Requires ANTHROPIC_API_KEY environment variable to be set.
+    # Dry run (inspect what would be sent without calling API):
+    python -m src.cli --example beginner --dry-run
+
+    # Skip confirmation prompt:
+    python -m src.cli --example beginner -y
+
+Requires ANTHROPIC_API_KEY in backend/.env or environment.
 """
 
 from __future__ import annotations
@@ -22,9 +28,16 @@ import sys
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from src.agents.planner import PlannerAgent, PlannerResult
+from src.agents.prompts import PLANNER_SYSTEM_PROMPT
 from src.agents.validation import ValidationResult
 from src.models.athlete import AthleteProfile, RiskTolerance
+from src.tools.registry import ToolRegistry
+
+# Load .env from backend/ directory (where CLI is run from)
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Built-in example profiles for quick testing
@@ -119,10 +132,20 @@ def parse_args() -> argparse.Namespace:
         help="Show detailed tool call trace",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the system prompt, tools, and athlete profile without calling the API",
+    )
+    parser.add_argument(
+        "-y", "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt before making API calls",
+    )
+    parser.add_argument(
         "--max-iterations",
         type=int,
-        default=25,
-        help="Maximum agent loop iterations (default: 25)",
+        default=30,
+        help="Maximum agent loop iterations (default: 30)",
     )
     return parser.parse_args()
 
@@ -211,6 +234,59 @@ def print_result(
     print()
 
 
+def print_dry_run(athlete: AthleteProfile, model: str, max_iterations: int) -> None:
+    """Print what would be sent to the API without making any calls.
+
+    Args:
+        athlete: The athlete profile to serialize.
+        model: The Claude model identifier.
+        max_iterations: The iteration cap.
+    """
+    from src.agents.planner import PlannerAgent
+
+    print("\n" + "=" * 70)
+    print("DRY RUN — no API calls will be made")
+    print("=" * 70)
+
+    print(f"\n  Model:          {model}")
+    print(f"  Max iterations: {max_iterations}")
+
+    print("\n" + "-" * 70)
+    print("SYSTEM PROMPT")
+    print("-" * 70)
+    print(PLANNER_SYSTEM_PROMPT)
+
+    print("\n" + "-" * 70)
+    print("TOOL DEFINITIONS")
+    print("-" * 70)
+    registry = ToolRegistry()
+    from src.tools import compute_training_stress
+    from src.tools import evaluate_fatigue_state
+    from src.tools import validate_progression_constraints
+    from src.tools import simulate_race_outcomes
+    from src.tools import reallocate_week_load
+    compute_training_stress.register(registry)
+    evaluate_fatigue_state.register(registry)
+    validate_progression_constraints.register(registry)
+    simulate_race_outcomes.register(registry)
+    reallocate_week_load.register(registry)
+
+    for tool in registry.get_anthropic_tools():
+        print(f"\n  {tool['name']}")
+        schema = tool.get("input_schema", {})
+        props = schema.get("properties", {})
+        for prop_name, prop_def in props.items():
+            req = " (required)" if prop_name in schema.get("required", []) else ""
+            print(f"    - {prop_name}: {prop_def.get('type', '?')}{req}")
+
+    print("\n" + "-" * 70)
+    print("USER MESSAGE (athlete profile)")
+    print("-" * 70)
+    user_msg = PlannerAgent._build_user_message(athlete)
+    print(user_msg)
+    print()
+
+
 async def main() -> None:
     """Main CLI entry point."""
     args = parse_args()
@@ -226,6 +302,21 @@ async def main() -> None:
     print(f"  Base mileage: {athlete.weekly_mileage_base} km/week")
     print(f"  Risk tolerance: {athlete.risk_tolerance.value}")
     print(f"  Model: {args.model}")
+
+    # Dry run: show what would be sent and exit
+    if args.dry_run:
+        print_dry_run(athlete, args.model, args.max_iterations)
+        return
+
+    # Confirmation prompt before spending API tokens
+    if not args.yes:
+        print(f"\n  Max iterations: {args.max_iterations}")
+        print(f"  Estimated cost: ~$0.30-0.50 (Sonnet)")
+        response = input("\nProceed with API call? [y/N] ").strip().lower()
+        if response not in ("y", "yes"):
+            print("Aborted.")
+            return
+
     print(f"\nStarting planner agent...")
 
     start_time = time.monotonic()
@@ -244,8 +335,6 @@ async def main() -> None:
     # generate_plan() already runs validate_plan_output() — reuse its result.
     validation = result.validation
     if validation is None:
-        # Error-path results (API errors, etc.) have validation=None.
-        # Create a minimal failed validation for display.
         validation = ValidationResult(
             passed=False,
             issues=[result.error or "Unknown error — validation not performed"],
