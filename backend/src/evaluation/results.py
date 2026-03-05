@@ -161,6 +161,7 @@ class HarnessMetrics:
         violation_rate: Fraction of plans with violations (0.0-1.0).
         avg_retry_count: Mean retries across all personas.
         avg_safety_score: Mean safety score (from reviewed plans only).
+        min_safety_score: Lowest safety score across all reviewed plans.
         avg_overall_score: Mean weighted overall score (from reviewed plans only).
         avg_tokens: Mean total tokens per persona.
         avg_cost_usd: Mean estimated cost per persona.
@@ -179,6 +180,7 @@ class HarnessMetrics:
     violation_rate: float = 0.0
     avg_retry_count: float = 0.0
     avg_safety_score: float = 0.0
+    min_safety_score: float = 0.0
     avg_overall_score: float = 0.0
     avg_tokens: float = 0.0
     avg_cost_usd: float = 0.0
@@ -228,6 +230,11 @@ class HarnessMetrics:
             if scored
             else 0.0
         )
+        min_safety = (
+            min(r.final_scores.safety for r in scored if r.final_scores is not None)
+            if scored
+            else 0.0
+        )
         avg_overall = (
             sum(r.final_scores.overall for r in scored if r.final_scores is not None)
             / len(scored)
@@ -244,6 +251,7 @@ class HarnessMetrics:
             violation_rate=with_violations / n,
             avg_retry_count=sum(r.retry_count for r in results) / n,
             avg_safety_score=avg_safety,
+            min_safety_score=min_safety,
             avg_overall_score=avg_overall,
             avg_tokens=sum(r.total_tokens for r in results) / n,
             avg_cost_usd=total_cost / n,
@@ -271,6 +279,7 @@ class HarnessMetrics:
             f"Violation rate: {self.violation_rate:.1%}",
             f"Avg retries: {self.avg_retry_count:.1f}",
             f"Avg safety score: {self.avg_safety_score:.1f}",
+            f"Min safety score: {self.min_safety_score:.0f}",
             f"Avg overall score: {self.avg_overall_score:.1f}",
             f"Avg tokens/persona: {self.avg_tokens:,.0f}",
             f"Avg cost/persona: ${self.avg_cost_usd:.4f}",
