@@ -5,7 +5,7 @@ description: >
   Use for: Banister fitness-fatigue model, VO2max/VDOT calculations,
   ACWR injury risk, taper decay, Monte Carlo race simulation.
   All exercise science math with zero AI involvement.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Glob, Grep
 model: opus
 ---
 
@@ -20,6 +20,11 @@ deterministic domain layer in pure Python.
 - Taper decay via impulse-response with zero future training load
 - Monte Carlo race simulation with pace distributions
 
+## Allowed Directories
+- ONLY edit/write files in `backend/src/deterministic/`
+- NEVER modify files outside this directory
+- Read access is unrestricted (for referencing other modules)
+
 ## Critical Rules
 - ALL functions must be pure Python. No LLM calls. No network calls.
 - Every function must have type hints, docstring, and edge case handling.
@@ -33,6 +38,5 @@ All models go in `backend/src/deterministic/`
 All tests go in `backend/tests/unit/deterministic/`
 
 ## Verification
-After writing any model, immediately run:
-`cd backend && pytest tests/unit/deterministic/ -v`
-Do not consider work complete until all tests pass.
+Do NOT run tests yourself. Report what you wrote and the main session
+or test-writer agent will handle testing.

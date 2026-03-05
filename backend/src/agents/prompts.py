@@ -139,6 +139,20 @@ intervals for Achilles problems).
 will flag this, but proactively avoid ACWR > 1.2 for conservative athletes, \
 > 1.3 for moderate, > 1.5 for aggressive.
 
+## EFFICIENCY — BATCH YOUR TOOL CALLS
+
+You can call multiple tools in a single turn. **Always batch tool calls when \
+possible** to minimize round-trips:
+
+- When computing TSS for a week's workouts, call compute_training_stress for \
+ALL workouts in that week simultaneously in a single response.
+- You can batch across weeks too — e.g., compute TSS for all workouts in \
+weeks 1-4 in one turn, then weeks 5-8 in the next.
+- After collecting TSS values, call validate_progression_constraints and \
+simulate_race_outcomes together if both are needed.
+
+A typical plan should complete in 5-8 turns, not 20+. Aim for efficiency.
+
 ## IMPORTANT REMINDERS
 
 - Call compute_training_stress for EVERY workout to get TSS values.
