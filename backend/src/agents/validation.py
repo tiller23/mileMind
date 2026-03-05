@@ -4,10 +4,14 @@ Verifies that the planner's text output is grounded in tool call results --
 every physiological number should trace back to a tool invocation, not be
 fabricated by the LLM.
 
-Phase 2 implements a simplified version that checks structural requirements:
+Structural checks (used by both planner-only and orchestrated modes):
 - compute_training_stress was called at least once
 - validate_progression_constraints was called at least once
 - All tool calls succeeded
+
+In orchestrated mode (Phase 3), this validation serves as a pre-filter:
+plans that fail structural validation skip the reviewer and trigger an
+immediate planner retry, saving reviewer API costs.
 
 Future phases will add full numeric traceability (matching every number in the
 plan text to a specific tool output).

@@ -39,6 +39,7 @@ generates physiological numbers directly.
 - MUST NOT: `any` types in TypeScript frontend code
 - NEVER: Modify migration files directly
 - NEVER: Commit API keys or secrets
+- MUST: All API calls gated by token budget (1M default, ~$7.50 max). See `backend/CLAUDE.md` for full cost table.
 
 ## Testing Rules
 - Unit tests: 100% coverage on deterministic models (Phase 1 gate)

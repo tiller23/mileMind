@@ -21,7 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.planner import PlannerAgent, PlannerResult, _build_registry
+from src.agents.planner import PlannerAgent, PlannerResult
+from src.agents.shared import build_registry
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
 from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile, RiskTolerance
@@ -50,7 +51,7 @@ def sample_athlete() -> AthleteProfile:
 @pytest.fixture
 def registry() -> ToolRegistry:
     """A fully populated tool registry."""
-    return _build_registry()
+    return build_registry()
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ def make_end_turn_response(text: str) -> MockResponse:
 # ---------------------------------------------------------------------------
 
 class TestBuildRegistry:
-    """Verify _build_registry() creates a valid registry with all 5 tools."""
+    """Verify build_registry() creates a valid registry with all 5 tools."""
 
     def test_registry_has_five_tools(self, registry: ToolRegistry) -> None:
         assert len(registry.tool_names) == 5
@@ -181,7 +182,7 @@ class TestPlannerAgentLoop:
         validate_progression_constraints are mandatory).
         """
         mock_response = make_end_turn_response("Here is a plan with no tool calls.")
-        mock_agent._client.messages.create = AsyncMock(return_value=mock_response)
+        mock_agent._transport.create_message = AsyncMock(return_value=mock_response)
 
         result = await mock_agent.generate_plan(sample_athlete)
 
@@ -214,7 +215,7 @@ class TestPlannerAgentLoop:
             "# Training Plan\nWeek 1: Easy run, TSS=27.0"
         )
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
         )
 
@@ -259,7 +260,7 @@ class TestPlannerAgentLoop:
 
         final_response = make_end_turn_response("Plan with two workouts computed.")
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
         )
 
@@ -295,7 +296,7 @@ class TestPlannerAgentLoop:
         # Turn 3: final plan
         final_response = make_end_turn_response("Plan validated and ready.")
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[stress_response, validate_response, final_response]
         )
 
@@ -321,7 +322,7 @@ class TestPlannerAgentLoop:
             },
         }])
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             return_value=infinite_tool_response
         )
         mock_agent._max_iterations = 3
@@ -344,7 +345,7 @@ class TestPlannerAgentLoop:
 
         final_response = make_end_turn_response("Plan despite tool error.")
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
         )
 
@@ -369,7 +370,7 @@ class TestPlannerAgentLoop:
         }])
         final_response = make_end_turn_response("Done.")
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
         )
 
@@ -400,15 +401,15 @@ class TestPlannerAgentLoop:
         }])
         final_response = make_end_turn_response("Done.")
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
         )
 
         await mock_agent.generate_plan(sample_athlete)
 
         # The second call should include tool results from the first
-        assert mock_agent._client.messages.create.call_count == 2
-        second_call_args = mock_agent._client.messages.create.call_args_list[1]
+        assert mock_agent._transport.create_message.call_count == 2
+        second_call_args = mock_agent._transport.create_message.call_args_list[1]
         messages = second_call_args.kwargs["messages"]
 
         # Messages: [user, assistant (tool_use), user (tool_results)]
@@ -439,7 +440,7 @@ class TestPlannerAgentLoop:
         """Error-path PlannerResults should have validation != None."""
         import anthropic
 
-        mock_agent._client.messages.create = AsyncMock(
+        mock_agent._transport.create_message = AsyncMock(
             side_effect=anthropic.APIError(
                 message="Test error",
                 request=MagicMock(),
@@ -464,7 +465,7 @@ class TestPlannerAgentLoop:
             usage=MockUsage(),
         )
 
-        mock_agent._client.messages.create = AsyncMock(return_value=response)
+        mock_agent._transport.create_message = AsyncMock(return_value=response)
 
         result = await mock_agent.generate_plan(sample_athlete)
 
@@ -609,6 +610,103 @@ class TestUserMessageBuilding:
 # ---------------------------------------------------------------------------
 # Tests: CLI example profiles
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Tests: Plan revision
+# ---------------------------------------------------------------------------
+
+class TestPlanRevision:
+    """Test revise_plan() and _build_revision_message()."""
+
+    @pytest.fixture
+    def mock_agent(self) -> PlannerAgent:
+        """Create a PlannerAgent with a mocked API client."""
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            agent = PlannerAgent(api_key="test-key", max_iterations=10)
+        return agent
+
+    def test_revision_message_contains_critique(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete,
+            "Old plan text here.",
+            "Safety score too low.",
+            ["No rest days in week 3", "ACWR exceeds 1.3"],
+        )
+        assert "REJECTED" in msg
+        assert "Safety score too low." in msg
+        assert "No rest days in week 3" in msg
+        assert "ACWR exceeds 1.3" in msg
+
+    def test_revision_message_contains_athlete_profile(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", ["issue"],
+        )
+        assert sample_athlete.name in msg
+        assert "```json" in msg
+
+    def test_revision_message_contains_prior_plan(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "UNIQUE_PLAN_CONTENT_XYZ", "critique", [],
+        )
+        assert "UNIQUE_PLAN_CONTENT_XYZ" in msg
+
+    def test_revision_message_empty_issues(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", [],
+        )
+        assert "(no specific issues listed)" in msg
+
+    @pytest.mark.asyncio
+    async def test_revise_plan_runs_agent_loop(
+        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+    ) -> None:
+        """revise_plan() goes through the same agent loop as generate_plan()."""
+        # Turn 1: tool call
+        tool_response = make_tool_use_response([{
+            "name": "compute_training_stress",
+            "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
+        }])
+        # Turn 2: validation + final
+        validate_response = make_tool_use_response([{
+            "name": "validate_progression_constraints",
+            "input": {"weekly_loads": [100, 105, 108, 112], "risk_tolerance": "moderate"},
+        }])
+        final_response = make_end_turn_response("Revised plan with fixes.")
+
+        mock_agent._transport.create_message = AsyncMock(
+            side_effect=[tool_response, validate_response, final_response]
+        )
+
+        result = await mock_agent.revise_plan(
+            sample_athlete,
+            "Old plan",
+            "Needs more rest days.",
+            ["Add rest day to week 3"],
+        )
+
+        assert result.iterations == 3
+        assert result.plan_text == "Revised plan with fixes."
+        tool_names = [tc["name"] for tc in result.tool_calls]
+        assert "compute_training_stress" in tool_names
+        assert "validate_progression_constraints" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_revise_plan_validates_output(
+        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+    ) -> None:
+        """revise_plan() runs validation on the revised output."""
+        # No tool calls -> validation will fail
+        final_response = make_end_turn_response("Revised plan without tools.")
+        mock_agent._transport.create_message = AsyncMock(return_value=final_response)
+
+        result = await mock_agent.revise_plan(
+            sample_athlete, "Old plan", "Critique.", ["Issue"],
+        )
+
+        assert result.validation is not None
+        assert not result.validation.passed
+        assert result.error is not None
+
 
 class TestCLIExampleProfiles:
     """Verify built-in CLI example profiles are valid AthleteProfiles."""

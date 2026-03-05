@@ -16,6 +16,12 @@ Usage:
     # Skip confirmation prompt:
     python -m src.cli --example beginner -y
 
+    # Tweak mode (planner only, no reviewer):
+    python -m src.cli --example beginner --change-type tweak -y
+
+    # Adaptation mode (lightweight review, 1 retry):
+    python -m src.cli --example beginner --change-type adaptation -y
+
 Requires ANTHROPIC_API_KEY in backend/.env or environment.
 """
 
@@ -27,14 +33,18 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
+from src.agents.orchestrator import Orchestrator, OrchestrationResult
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
+from src.agents.shared import build_registry
 from src.agents.validation import ValidationResult
 from src.models.athlete import AthleteProfile, RiskTolerance
-from src.tools.registry import ToolRegistry
+from src.models.decision_log import ReviewOutcome
+from src.models.plan_change import PlanChangeType
 
 # Load .env from backend/ directory (where CLI is run from)
 load_dotenv()
@@ -43,7 +53,7 @@ load_dotenv()
 # Built-in example profiles for quick testing
 # ---------------------------------------------------------------------------
 
-EXAMPLE_PROFILES: dict[str, dict] = {
+EXAMPLE_PROFILES: dict[str, dict[str, Any]] = {
     "beginner": {
         "name": "Sarah Chen",
         "age": 32,
@@ -124,7 +134,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=str,
         default="claude-sonnet-4-20250514",
-        help="Claude model to use (default: claude-sonnet-4-20250514)",
+        help="Claude model to use for planner (default: claude-sonnet-4-20250514)",
     )
     parser.add_argument(
         "--debug",
@@ -144,8 +154,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-iterations",
         type=int,
-        default=30,
-        help="Maximum agent loop iterations (default: 30)",
+        default=15,
+        help="Maximum agent loop iterations per planner/reviewer call (default: 15)",
+    )
+    # Phase 3: reviewer flags
+    parser.add_argument(
+        "--change-type",
+        type=str,
+        choices=["full", "adaptation", "tweak"],
+        default="full",
+        help="Plan change scope: full (new plan + full review), "
+             "adaptation (mid-cycle + 1 retry), tweak (no review). Default: full.",
+    )
+    parser.add_argument(
+        "--no-review",
+        action="store_true",
+        help="(Deprecated) Equivalent to --change-type tweak",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum planner-reviewer retry cycles (default: 3)",
+    )
+    parser.add_argument(
+        "--reviewer-model",
+        type=str,
+        default=None,
+        help="Claude model for reviewer (default: claude-opus-4-20250514)",
     )
     return parser.parse_args()
 
@@ -182,7 +218,7 @@ def load_athlete(args: argparse.Namespace) -> AthleteProfile:
 def print_result(
     result: PlannerResult, validation: ValidationResult, debug: bool = False,
 ) -> None:
-    """Pretty-print the planner result.
+    """Pretty-print the planner result (Phase 2 planner-only mode).
 
     Args:
         result: The planner's output.
@@ -234,22 +270,129 @@ def print_result(
     print()
 
 
-def print_dry_run(athlete: AthleteProfile, model: str, max_iterations: int) -> None:
+def print_orchestration_result(result: OrchestrationResult, debug: bool = False) -> None:
+    """Pretty-print the orchestration result (Phase 3 multi-agent mode).
+
+    Shows the plan, decision log with per-iteration scores, and convergence
+    statistics.
+
+    Args:
+        result: The orchestration output.
+        debug: Whether to show detailed per-iteration data.
+    """
+    print("\n" + "=" * 70)
+    print("MILEMIND TRAINING PLAN (Multi-Agent)")
+    print("=" * 70)
+
+    if result.error:
+        print(f"\n[ERROR] {result.error}")
+    if result.warning:
+        print(f"\n[WARNING] {result.warning}")
+
+    if result.plan_text:
+        print(f"\n{result.plan_text}")
+
+    # --- Decision Log ---
+    print("\n" + "-" * 70)
+    print("DECISION LOG")
+    print("-" * 70)
+    for entry in result.decision_log:
+        icon = {
+            ReviewOutcome.APPROVED: "PASS",
+            ReviewOutcome.REJECTED: "FAIL",
+            ReviewOutcome.ERROR: "ERR ",
+        }.get(entry.outcome, "????")
+        print(f"\n  [{icon}] Attempt {entry.iteration}")
+
+        if entry.scores:
+            s = entry.scores
+            print(
+                f"         Scores: safety={s.safety} progression={s.progression} "
+                f"specificity={s.specificity} feasibility={s.feasibility} "
+                f"(overall={s.overall:.1f})"
+            )
+        if entry.critique:
+            critique_display = entry.critique[:120]
+            if len(entry.critique) > 120:
+                critique_display += "..."
+            print(f"         Critique: {critique_display}")
+        if entry.issues:
+            for issue in entry.issues[:3]:
+                print(f"           - {issue}")
+            if len(entry.issues) > 3:
+                print(f"           ... and {len(entry.issues) - 3} more")
+
+    # --- Final Scores ---
+    if result.final_scores:
+        print("\n" + "-" * 70)
+        print("FINAL SCORES")
+        print("-" * 70)
+        s = result.final_scores
+        print(f"  Safety:      {s.safety}/100 (2x weight)")
+        print(f"  Progression: {s.progression}/100")
+        print(f"  Specificity: {s.specificity}/100")
+        print(f"  Feasibility: {s.feasibility}/100")
+        print(f"  Overall:     {s.overall:.1f}/100")
+        print(f"  All pass:    {'YES' if s.all_pass else 'NO'}")
+
+    # --- Stats ---
+    print("\n" + "-" * 70)
+    print("STATS")
+    print("-" * 70)
+    print(f"  Approved:          {'YES' if result.approved else 'NO'}")
+    print(f"  Attempts:          {len(result.decision_log)}")
+    print(f"  Total iterations:  {result.total_iterations}")
+    p_in = result.total_planner_input_tokens
+    p_out = result.total_planner_output_tokens
+    r_in = result.total_reviewer_input_tokens
+    r_out = result.total_reviewer_output_tokens
+    print(f"  Planner tokens:    {p_in + p_out:,} (in={p_in:,}, out={p_out:,})")
+    print(f"  Reviewer tokens:   {r_in + r_out:,} (in={r_in:,}, out={r_out:,})")
+    total_tokens = p_in + p_out + r_in + r_out
+    print(f"  Total tokens:      {total_tokens:,}")
+    print(f"  Elapsed:           {result.total_elapsed_seconds:.1f}s")
+
+    # Cost estimate: Sonnet ($3/M in, $15/M out), Opus ($15/M in, $75/M out)
+    planner_cost = (p_in * 3 + p_out * 15) / 1_000_000
+    reviewer_cost = (r_in * 15 + r_out * 75) / 1_000_000
+    print(f"  Est. cost:         ~${planner_cost + reviewer_cost:.2f}")
+
+    print()
+
+
+def print_dry_run(
+    athlete: AthleteProfile,
+    model: str,
+    max_iterations: int,
+    review: bool = True,
+    reviewer_model: str | None = None,
+    max_retries: int = 3,
+) -> None:
     """Print what would be sent to the API without making any calls.
 
     Args:
         athlete: The athlete profile to serialize.
         model: The Claude model identifier.
         max_iterations: The iteration cap.
+        review: Whether reviewer is enabled.
+        reviewer_model: The reviewer model (or None for same as planner).
+        max_retries: Max planner-reviewer cycles.
     """
-    from src.agents.planner import PlannerAgent
-
     print("\n" + "=" * 70)
     print("DRY RUN — no API calls will be made")
     print("=" * 70)
 
-    print(f"\n  Model:          {model}")
+    print(f"\n  Planner model:  {model}")
+    if review:
+        print(f"  Reviewer model: {reviewer_model or model}")
+        print(f"  Max retries:    {max_retries}")
+    else:
+        print(f"  Reviewer:       DISABLED (planner-only mode)")
     print(f"  Max iterations: {max_iterations}")
+    if review:
+        print(f"  Estimated cost: ~$0.50-1.50 (with reviewer)")
+    else:
+        print(f"  Estimated cost: ~$0.30-0.50 (planner only)")
 
     print("\n" + "-" * 70)
     print("SYSTEM PROMPT")
@@ -259,17 +402,7 @@ def print_dry_run(athlete: AthleteProfile, model: str, max_iterations: int) -> N
     print("\n" + "-" * 70)
     print("TOOL DEFINITIONS")
     print("-" * 70)
-    registry = ToolRegistry()
-    from src.tools import compute_training_stress
-    from src.tools import evaluate_fatigue_state
-    from src.tools import validate_progression_constraints
-    from src.tools import simulate_race_outcomes
-    from src.tools import reallocate_week_load
-    compute_training_stress.register(registry)
-    evaluate_fatigue_state.register(registry)
-    validate_progression_constraints.register(registry)
-    simulate_race_outcomes.register(registry)
-    reallocate_week_load.register(registry)
+    registry = build_registry()
 
     for tool in registry.get_anthropic_tools():
         print(f"\n  {tool['name']}")
@@ -293,6 +426,28 @@ async def main() -> None:
 
     # Load athlete profile
     athlete = load_athlete(args)
+
+    # Resolve change type (--no-review is deprecated alias for --change-type tweak)
+    if args.no_review:
+        if args.change_type != "full":
+            print(
+                "Warning: --no-review and --change-type are mutually exclusive. "
+                "Using --change-type tweak (from --no-review).",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "Warning: --no-review is deprecated. Use --change-type tweak instead.",
+                file=sys.stderr,
+            )
+        change_type = PlanChangeType.TWEAK
+    else:
+        change_type = PlanChangeType(args.change_type)
+
+    # Let None pass through so Orchestrator applies its Opus default
+    reviewer_model = args.reviewer_model
+    effective_reviewer_model = reviewer_model or "claude-opus-4-20250514"
+
     print(f"Generating plan for: {athlete.name}")
     print(f"  Goal: {athlete.goal_distance}", end="")
     if athlete.goal_time_minutes:
@@ -301,48 +456,55 @@ async def main() -> None:
         print()
     print(f"  Base mileage: {athlete.weekly_mileage_base} km/week")
     print(f"  Risk tolerance: {athlete.risk_tolerance.value}")
-    print(f"  Model: {args.model}")
+    print(f"  Planner model: {args.model}")
+    print(f"  Change type: {change_type.value}")
+    if change_type != PlanChangeType.TWEAK:
+        print(f"  Reviewer model: {effective_reviewer_model}")
+        print(f"  Max retries: {args.max_retries}")
+    else:
+        print(f"  Reviewer: SKIPPED (tweak mode)")
 
     # Dry run: show what would be sent and exit
     if args.dry_run:
-        print_dry_run(athlete, args.model, args.max_iterations)
+        print_dry_run(
+            athlete, args.model, args.max_iterations,
+            review=change_type != PlanChangeType.TWEAK,
+            reviewer_model=effective_reviewer_model,
+            max_retries=args.max_retries,
+        )
         return
 
     # Confirmation prompt before spending API tokens
     if not args.yes:
         print(f"\n  Max iterations: {args.max_iterations}")
-        print(f"  Estimated cost: ~$0.30-0.50 (Sonnet)")
+        if change_type == PlanChangeType.TWEAK:
+            print(f"  Estimated cost: ~$0.17 (planner only)")
+        elif change_type == PlanChangeType.ADAPTATION:
+            print(f"  Estimated cost: ~$0.52 (1 review cycle)")
+        else:
+            print(f"  Estimated cost: ~$0.52-1.56 (full review)")
         response = input("\nProceed with API call? [y/N] ").strip().lower()
         if response not in ("y", "yes"):
             print("Aborted.")
             return
 
-    print(f"\nStarting planner agent...")
-
-    start_time = time.monotonic()
+    print(f"\nStarting orchestration (change_type={change_type.value})...")
 
     try:
-        planner = PlannerAgent(model=args.model, max_iterations=args.max_iterations)
+        orchestrator = Orchestrator(
+            planner_model=args.model,
+            reviewer_model=reviewer_model,
+            max_retries=args.max_retries,
+            max_iterations=args.max_iterations,
+        )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    result = await planner.generate_plan(athlete)
+    result = await orchestrator.generate_plan(athlete, change_type=change_type)
+    print_orchestration_result(result, debug=args.debug)
 
-    elapsed = time.monotonic() - start_time
-    print(f"Completed in {elapsed:.1f}s")
-
-    # generate_plan() already runs validate_plan_output() — reuse its result.
-    validation = result.validation
-    if validation is None:
-        validation = ValidationResult(
-            passed=False,
-            issues=[result.error or "Unknown error — validation not performed"],
-        )
-
-    print_result(result, validation, debug=args.debug)
-
-    if not validation.passed or result.error:
+    if not result.approved or result.error:
         sys.exit(1)
 
 

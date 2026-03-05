@@ -16,44 +16,20 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.tools.registry import ToolRegistry
 
 import anthropic
 
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
+from src.agents.shared import build_registry, extract_text
+from src.agents.transport import AnthropicTransport, MessageTransport
 from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile
-from src.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Tool registration
-# ---------------------------------------------------------------------------
-
-def _build_registry() -> ToolRegistry:
-    """Create a ToolRegistry and register all five MileMind tools.
-
-    Returns:
-        A fully populated ToolRegistry ready for the agent loop.
-    """
-    registry = ToolRegistry()
-
-    # Import and register each tool module's register() function.
-    from src.tools import compute_training_stress
-    from src.tools import evaluate_fatigue_state
-    from src.tools import validate_progression_constraints
-    from src.tools import simulate_race_outcomes
-    from src.tools import reallocate_week_load
-
-    compute_training_stress.register(registry)
-    evaluate_fatigue_state.register(registry)
-    validate_progression_constraints.register(registry)
-    simulate_race_outcomes.register(registry)
-    reallocate_week_load.register(registry)
-
-    return registry
 
 
 # ---------------------------------------------------------------------------
@@ -96,29 +72,40 @@ class PlannerAgent:
 
     Args:
         api_key: Anthropic API key. Falls back to the ANTHROPIC_API_KEY
-            environment variable if not provided.
+            environment variable if not provided. Ignored if transport is given.
         model: Claude model identifier. Defaults to claude-sonnet-4-20250514.
         max_iterations: Maximum number of API round-trips before forcing a
-            stop. Prevents infinite tool-use loops. Defaults to 30.
+            stop. Prevents infinite tool-use loops. Defaults to 15.
+        transport: Optional MessageTransport for API calls. If not provided,
+            creates an AnthropicTransport from the resolved API key.
     """
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
-        max_iterations: int = 30,
+        max_iterations: int = 15,
+        transport: MessageTransport | None = None,
     ) -> None:
-        resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key or set the ANTHROPIC_API_KEY "
-                "environment variable."
-            )
+        if transport is not None:
+            self._transport = transport
+        else:
+            resolved_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+            if not resolved_key:
+                raise ValueError(
+                    "No API key provided. Pass api_key, set the ANTHROPIC_API_KEY "
+                    "environment variable, or provide a transport."
+                )
+            self._transport = AnthropicTransport(api_key=resolved_key)
 
-        self._client = anthropic.AsyncAnthropic(api_key=resolved_key)
         self._model = model
         self._max_iterations = max_iterations
-        self._registry = _build_registry()
+        self._registry = build_registry()
+
+    @property
+    def model(self) -> str:
+        """The Claude model identifier used by this agent."""
+        return self._model
 
     @property
     def registry(self) -> ToolRegistry:
@@ -140,6 +127,48 @@ class PlannerAgent:
             PlannerResult with the plan text, tool call log, and token usage.
         """
         user_message = self._build_user_message(athlete)
+        return await self._generate_with_message(user_message)
+
+    async def revise_plan(
+        self,
+        athlete: AthleteProfile,
+        prior_plan_text: str,
+        reviewer_critique: str,
+        reviewer_issues: list[str],
+    ) -> PlannerResult:
+        """Revise a previously generated plan based on reviewer feedback.
+
+        Builds a revision message containing the original athlete profile,
+        the prior plan, and the reviewer's critique with specific issues.
+        Reuses the same tool-use agent loop as generate_plan().
+
+        Args:
+            athlete: The athlete profile the plan was built for.
+            prior_plan_text: The plan text that was rejected.
+            reviewer_critique: The reviewer's textual critique.
+            reviewer_issues: Specific issues the reviewer identified.
+
+        Returns:
+            PlannerResult with the revised plan text, tool call log, and
+            token usage.
+        """
+        user_message = self._build_revision_message(
+            athlete, prior_plan_text, reviewer_critique, reviewer_issues,
+        )
+        return await self._generate_with_message(user_message)
+
+    async def _generate_with_message(self, user_message: str) -> PlannerResult:
+        """Run the agent loop with a user message, validate, and handle errors.
+
+        Does not raise; all exceptions (including anthropic.APIError) are
+        captured into PlannerResult.error with a failed ValidationResult.
+
+        Args:
+            user_message: The user message to start the conversation with.
+
+        Returns:
+            PlannerResult with validation applied.
+        """
         messages: list[dict[str, Any]] = [
             {"role": "user", "content": user_message},
         ]
@@ -154,7 +183,7 @@ class PlannerAgent:
                 )
             return result
         except anthropic.APIError as e:
-            logger.error("Anthropic API error during plan generation: %s", e)
+            logger.error("Anthropic API error: %s", e)
             return PlannerResult(
                 plan_text="",
                 error=f"Anthropic API error: {e}",
@@ -164,7 +193,7 @@ class PlannerAgent:
                 ),
             )
         except Exception as e:
-            logger.error("Unexpected error during plan generation: %s", e, exc_info=True)
+            logger.error("Unexpected error: %s", e, exc_info=True)
             return PlannerResult(
                 plan_text="",
                 error=f"Unexpected error: {type(e).__name__}: {e}",
@@ -205,7 +234,7 @@ class PlannerAgent:
                 iteration, self._max_iterations, len(messages),
             )
 
-            response = await self._client.messages.create(
+            response = await self._transport.create_message(
                 model=self._model,
                 max_tokens=8192,
                 system=PLANNER_SYSTEM_PROMPT,
@@ -227,7 +256,7 @@ class PlannerAgent:
 
             # If Claude is done (no more tool calls), extract final text
             if response.stop_reason == "end_turn":
-                plan_text = self._extract_text(response.content)
+                plan_text = extract_text(response.content)
                 return PlannerResult(
                     plan_text=plan_text,
                     tool_calls=tool_call_log,
@@ -276,7 +305,7 @@ class PlannerAgent:
                 messages.append({"role": "user", "content": tool_result_blocks})
             else:
                 # Unexpected stop reason (e.g., max_tokens hit)
-                plan_text = self._extract_text(response.content)
+                plan_text = extract_text(response.content)
                 return PlannerResult(
                     plan_text=plan_text,
                     tool_calls=tool_call_log,
@@ -305,23 +334,6 @@ class PlannerAgent:
                 "Plan generation was capped to prevent infinite loops."
             ),
         )
-
-    @staticmethod
-    def _extract_text(content_blocks: list[Any]) -> str:
-        """Extract concatenated text from Claude's response content blocks.
-
-        Args:
-            content_blocks: The content list from a Claude API response. May
-                contain text blocks, tool_use blocks, or other types.
-
-        Returns:
-            Concatenated text from all text blocks, separated by newlines.
-        """
-        text_parts: list[str] = []
-        for block in content_blocks:
-            if hasattr(block, "type") and block.type == "text":
-                text_parts.append(block.text)
-        return "\n".join(text_parts)
 
     @staticmethod
     def _build_user_message(athlete: AthleteProfile) -> str:
@@ -375,4 +387,52 @@ class PlannerAgent:
                 f"and simulate_race_outcomes if VDOT data is available. "
                 f"Return the complete plan as a JSON block."
             )
+        )
+
+    @staticmethod
+    def _build_revision_message(
+        athlete: AthleteProfile,
+        prior_plan_text: str,
+        reviewer_critique: str,
+        reviewer_issues: list[str],
+    ) -> str:
+        """Build a revision request message from reviewer feedback.
+
+        Includes the original athlete profile, the rejected plan, and the
+        reviewer's critique with specific issues to address.
+
+        Args:
+            athlete: The athlete profile the plan was built for.
+            prior_plan_text: The plan that was rejected.
+            reviewer_critique: The reviewer's textual assessment.
+            reviewer_issues: Specific actionable issues to fix.
+
+        Returns:
+            A formatted revision request message.
+        """
+        profile_data = athlete.model_dump(exclude_none=True)
+        profile_json = json.dumps(profile_data, indent=2)
+
+        issues_text = "\n".join(f"  - {issue}" for issue in reviewer_issues)
+        if not issues_text:
+            issues_text = "  (no specific issues listed)"
+
+        return (
+            f"Your previous training plan was REJECTED by the reviewer. "
+            f"Please revise it to address the issues below.\n\n"
+            f"## Athlete Profile\n"
+            f"```json\n{profile_json}\n```\n\n"
+            f"## Previous Plan (REJECTED)\n"
+            f"{prior_plan_text}\n\n"
+            f"## Reviewer Critique\n"
+            f"{reviewer_critique}\n\n"
+            f"## Specific Issues to Fix\n"
+            f"{issues_text}\n\n"
+            f"## Revision Instructions\n"
+            f"- Address EVERY issue listed above.\n"
+            f"- Re-run compute_training_stress for any workouts you modify.\n"
+            f"- Re-run validate_progression_constraints on the revised weekly "
+            f"load sequence.\n"
+            f"- Return the complete revised plan as a ```json block.\n"
+            f"- Do NOT just patch the old plan — regenerate with corrections.\n"
         )
