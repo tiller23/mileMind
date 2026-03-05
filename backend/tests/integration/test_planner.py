@@ -610,6 +610,103 @@ class TestUserMessageBuilding:
 # Tests: CLI example profiles
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Tests: Plan revision
+# ---------------------------------------------------------------------------
+
+class TestPlanRevision:
+    """Test revise_plan() and _build_revision_message()."""
+
+    @pytest.fixture
+    def mock_agent(self) -> PlannerAgent:
+        """Create a PlannerAgent with a mocked API client."""
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            agent = PlannerAgent(api_key="test-key", max_iterations=10)
+        return agent
+
+    def test_revision_message_contains_critique(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete,
+            "Old plan text here.",
+            "Safety score too low.",
+            ["No rest days in week 3", "ACWR exceeds 1.3"],
+        )
+        assert "REJECTED" in msg
+        assert "Safety score too low." in msg
+        assert "No rest days in week 3" in msg
+        assert "ACWR exceeds 1.3" in msg
+
+    def test_revision_message_contains_athlete_profile(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", ["issue"],
+        )
+        assert sample_athlete.name in msg
+        assert "```json" in msg
+
+    def test_revision_message_contains_prior_plan(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "UNIQUE_PLAN_CONTENT_XYZ", "critique", [],
+        )
+        assert "UNIQUE_PLAN_CONTENT_XYZ" in msg
+
+    def test_revision_message_empty_issues(self, sample_athlete: AthleteProfile) -> None:
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", [],
+        )
+        assert "(no specific issues listed)" in msg
+
+    @pytest.mark.asyncio
+    async def test_revise_plan_runs_agent_loop(
+        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+    ) -> None:
+        """revise_plan() goes through the same agent loop as generate_plan()."""
+        # Turn 1: tool call
+        tool_response = make_tool_use_response([{
+            "name": "compute_training_stress",
+            "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
+        }])
+        # Turn 2: validation + final
+        validate_response = make_tool_use_response([{
+            "name": "validate_progression_constraints",
+            "input": {"weekly_loads": [100, 105, 108, 112], "risk_tolerance": "moderate"},
+        }])
+        final_response = make_end_turn_response("Revised plan with fixes.")
+
+        mock_agent._client.messages.create = AsyncMock(
+            side_effect=[tool_response, validate_response, final_response]
+        )
+
+        result = await mock_agent.revise_plan(
+            sample_athlete,
+            "Old plan",
+            "Needs more rest days.",
+            ["Add rest day to week 3"],
+        )
+
+        assert result.iterations == 3
+        assert result.plan_text == "Revised plan with fixes."
+        tool_names = [tc["name"] for tc in result.tool_calls]
+        assert "compute_training_stress" in tool_names
+        assert "validate_progression_constraints" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_revise_plan_validates_output(
+        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+    ) -> None:
+        """revise_plan() runs validation on the revised output."""
+        # No tool calls -> validation will fail
+        final_response = make_end_turn_response("Revised plan without tools.")
+        mock_agent._client.messages.create = AsyncMock(return_value=final_response)
+
+        result = await mock_agent.revise_plan(
+            sample_athlete, "Old plan", "Critique.", ["Issue"],
+        )
+
+        assert result.validation is not None
+        assert not result.validation.passed
+        assert result.error is not None
+
+
 class TestCLIExampleProfiles:
     """Verify built-in CLI example profiles are valid AthleteProfiles."""
 

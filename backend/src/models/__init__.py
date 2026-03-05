@@ -6,13 +6,23 @@ by the deterministic engine — these models only describe the shapes.
 """
 
 from src.models.athlete import AthleteProfile, RiskTolerance
+from src.models.decision_log import (
+    DecisionLogEntry,
+    ReviewDimension,
+    ReviewerScores,
+    ReviewOutcome,
+)
 from src.models.plan import PlanWeek, TrainingPlan, TrainingPhase
 from src.models.workout import PaceZone, Workout, WorkoutLog, WorkoutType
 
 __all__ = [
     "AthleteProfile",
+    "DecisionLogEntry",
     "PaceZone",
     "PlanWeek",
+    "ReviewDimension",
+    "ReviewerScores",
+    "ReviewOutcome",
     "RiskTolerance",
     "TrainingPlan",
     "TrainingPhase",

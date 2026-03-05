@@ -174,6 +174,66 @@ class PlannerAgent:
                 ),
             )
 
+    async def revise_plan(
+        self,
+        athlete: AthleteProfile,
+        prior_plan_text: str,
+        reviewer_critique: str,
+        reviewer_issues: list[str],
+    ) -> PlannerResult:
+        """Revise a previously generated plan based on reviewer feedback.
+
+        Builds a revision message containing the original athlete profile,
+        the prior plan, and the reviewer's critique with specific issues.
+        Reuses the same tool-use agent loop as generate_plan().
+
+        Args:
+            athlete: The athlete profile the plan was built for.
+            prior_plan_text: The plan text that was rejected.
+            reviewer_critique: The reviewer's textual critique.
+            reviewer_issues: Specific issues the reviewer identified.
+
+        Returns:
+            PlannerResult with the revised plan text, tool call log, and
+            token usage.
+        """
+        user_message = self._build_revision_message(
+            athlete, prior_plan_text, reviewer_critique, reviewer_issues,
+        )
+        messages: list[dict[str, Any]] = [
+            {"role": "user", "content": user_message},
+        ]
+
+        try:
+            result = await self._run_agent_loop(messages)
+            result.validation = validate_plan_output(result.plan_text, result.tool_calls)
+            if not result.validation.passed and result.error is None:
+                result.error = (
+                    "Output validation failed: "
+                    + "; ".join(result.validation.issues)
+                )
+            return result
+        except anthropic.APIError as e:
+            logger.error("Anthropic API error during plan revision: %s", e)
+            return PlannerResult(
+                plan_text="",
+                error=f"Anthropic API error: {e}",
+                validation=ValidationResult(
+                    passed=False,
+                    issues=[f"Anthropic API error: {e}"],
+                ),
+            )
+        except Exception as e:
+            logger.error("Unexpected error during plan revision: %s", e, exc_info=True)
+            return PlannerResult(
+                plan_text="",
+                error=f"Unexpected error: {type(e).__name__}: {e}",
+                validation=ValidationResult(
+                    passed=False,
+                    issues=[f"Unexpected error: {type(e).__name__}: {e}"],
+                ),
+            )
+
     async def _run_agent_loop(self, messages: list[dict[str, Any]]) -> PlannerResult:
         """Run the Claude tool-use loop until a final text response is produced.
 
@@ -375,4 +435,52 @@ class PlannerAgent:
                 f"and simulate_race_outcomes if VDOT data is available. "
                 f"Return the complete plan as a JSON block."
             )
+        )
+
+    @staticmethod
+    def _build_revision_message(
+        athlete: AthleteProfile,
+        prior_plan_text: str,
+        reviewer_critique: str,
+        reviewer_issues: list[str],
+    ) -> str:
+        """Build a revision request message from reviewer feedback.
+
+        Includes the original athlete profile, the rejected plan, and the
+        reviewer's critique with specific issues to address.
+
+        Args:
+            athlete: The athlete profile the plan was built for.
+            prior_plan_text: The plan that was rejected.
+            reviewer_critique: The reviewer's textual assessment.
+            reviewer_issues: Specific actionable issues to fix.
+
+        Returns:
+            A formatted revision request message.
+        """
+        profile_data = athlete.model_dump(exclude_none=True)
+        profile_json = json.dumps(profile_data, indent=2)
+
+        issues_text = "\n".join(f"  - {issue}" for issue in reviewer_issues)
+        if not issues_text:
+            issues_text = "  (no specific issues listed)"
+
+        return (
+            f"Your previous training plan was REJECTED by the reviewer. "
+            f"Please revise it to address the issues below.\n\n"
+            f"## Athlete Profile\n"
+            f"```json\n{profile_json}\n```\n\n"
+            f"## Previous Plan (REJECTED)\n"
+            f"{prior_plan_text}\n\n"
+            f"## Reviewer Critique\n"
+            f"{reviewer_critique}\n\n"
+            f"## Specific Issues to Fix\n"
+            f"{issues_text}\n\n"
+            f"## Revision Instructions\n"
+            f"- Address EVERY issue listed above.\n"
+            f"- Re-run compute_training_stress for any workouts you modify.\n"
+            f"- Re-run validate_progression_constraints on the revised weekly "
+            f"load sequence.\n"
+            f"- Return the complete revised plan as a ```json block.\n"
+            f"- Do NOT just patch the old plan — regenerate with corrections.\n"
         )
