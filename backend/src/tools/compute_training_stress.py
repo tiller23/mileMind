@@ -12,6 +12,8 @@ validation and intensity factor resolution (HR-based override).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 from src.deterministic.training_stress import (
@@ -145,7 +147,7 @@ def _compute_tss(duration_minutes: float, intensity_factor: float) -> float:
 # ---------------------------------------------------------------------------
 
 
-def compute_training_stress_handler(input_data: dict) -> dict:
+def compute_training_stress_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     """Execute the TSS computation and return a serialisable output dict.
 
     This function is the handler registered with the ToolRegistry. It receives

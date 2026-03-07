@@ -8,7 +8,7 @@ output classification.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -149,7 +149,7 @@ _DESCRIPTION = (
 )
 
 
-def evaluate_fatigue_state_handler(input_data: dict) -> dict:
+def evaluate_fatigue_state_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     """Execute the evaluate_fatigue_state tool.
 
     Validates cross-field constraints, calls the Banister deterministic model,

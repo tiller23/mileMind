@@ -22,6 +22,16 @@ import math
 import random
 from dataclasses import dataclass
 
+__all__ = [
+    "DEFAULT_NUM_SIMULATIONS",
+    "DEFAULT_PACE_CV",
+    "EnvironmentConditions",
+    "SimulationResult",
+    "compute_confidence_interval",
+    "simulate_race",
+    "simulate_race_from_vdot",
+]
+
 from src.deterministic.daniels import compute_vdot, predict_race_time
 
 # --- Constants ---

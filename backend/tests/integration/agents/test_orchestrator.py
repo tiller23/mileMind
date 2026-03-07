@@ -20,23 +20,7 @@ from src.models.decision_log import ReviewerScores, ReviewOutcome
 from src.models.plan_change import PlanChangeType
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def sample_athlete() -> AthleteProfile:
-    """A simple athlete for testing."""
-    return AthleteProfile(
-        name="Test Runner",
-        age=30,
-        weekly_mileage_base=30.0,
-        goal_distance="5K",
-        goal_time_minutes=25.0,
-        vdot=40.0,
-        risk_tolerance=RiskTolerance.MODERATE,
-        training_days_per_week=4,
-    )
+# sample_athlete fixture is provided by tests/conftest.py
 
 
 def _make_planner_result(
@@ -418,7 +402,7 @@ class TestOrchestratorValidation:
 
         assert result.approved is False
         assert result.warning is not None
-        assert "1 attempts" in result.warning
+        assert "1 attempt" in result.warning
 
 
 class TestOrchestratorScoreThresholdGuard:

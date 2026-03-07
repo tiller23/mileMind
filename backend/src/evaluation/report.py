@@ -27,6 +27,14 @@ def _format_summary_table(metrics: HarnessMetrics) -> list[str]:
     Returns:
         List of markdown lines for the summary table.
     """
+    if metrics.total_personas == 0:
+        return [
+            "## Summary",
+            "",
+            "*(No personas were evaluated)*",
+            "",
+        ]
+
     return [
         "## Summary",
         "",
@@ -43,6 +51,7 @@ def _format_summary_table(metrics: HarnessMetrics) -> list[str]:
         f"| Avg cost/persona | ${metrics.avg_cost_usd:.4f} | — |",
         f"| Total cost | ${metrics.total_cost_usd:.4f} | — |",
         f"| Total time | {metrics.total_elapsed_seconds:.1f}s | — |",
+        f"| Total constraint violations | {metrics.total_with_violations} | 0 |",
         "",
     ]
 
@@ -111,12 +120,31 @@ def _format_persona_section(r: PersonaResult) -> list[str]:
             f"feasibility={r.final_scores.feasibility} "
             f"(overall={r.final_scores.overall:.1f})"
         )
+    else:
+        lines.append("- **Scores:** *(not available)*")
     if r.warning:
         lines.append(f"- **Warning:** {r.warning}")
     if r.error:
         lines.append(f"- **Error:** {r.error}")
     if r.constraint_violations:
         lines.append(f"- **Violations:** {'; '.join(r.constraint_violations)}")
+    lines.append("")
+
+    # Token usage breakdown
+    planner_total = r.planner_input_tokens + r.planner_output_tokens
+    reviewer_total = r.reviewer_input_tokens + r.reviewer_output_tokens
+    lines.append("### Token Usage")
+    lines.append("")
+    lines.append(
+        f"- **Planner tokens:** {planner_total:,} "
+        f"(in={r.planner_input_tokens:,}, out={r.planner_output_tokens:,})"
+    )
+    lines.append(
+        f"- **Reviewer tokens:** {reviewer_total:,} "
+        f"(in={r.reviewer_input_tokens:,}, out={r.reviewer_output_tokens:,})"
+    )
+    lines.append(f"- **Total tokens:** {r.total_tokens:,}")
+    lines.append(f"- **Estimated cost:** ${r.estimated_cost_usd:.4f}")
     lines.append("")
 
     # The actual plan (fenced to prevent markdown collision)
@@ -201,6 +229,7 @@ def _format_comparison_persona(
         ("Safety", lambda r: str(r.final_scores.safety) if r and r.final_scores else "—"),
         ("Overall", lambda r: f"{r.final_scores.overall:.1f}" if r and r.final_scores else "—"),
         ("Retries", lambda r: str(r.retry_count) if r else "—"),
+        ("Violations", lambda r: str(len(r.constraint_violations)) if r else "—"),
         ("Tokens", lambda r: f"{r.total_tokens:,}" if r else "—"),
         ("Cost", lambda r: f"${r.estimated_cost_usd:.4f}" if r else "—"),
         ("Time", lambda r: f"{r.elapsed_seconds:.1f}s" if r else "—"),
@@ -248,6 +277,11 @@ def generate_plan_review_report(
     lines.append("")
 
     lines.extend(_format_summary_table(metrics))
+
+    if not results:
+        lines.append("*(No results to display)*")
+        lines.append("")
+        return "\n".join(lines)
 
     # Per-persona results table
     lines.append("## Per-Persona Results")

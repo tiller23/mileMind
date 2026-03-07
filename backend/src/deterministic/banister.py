@@ -21,6 +21,18 @@ contribution decays as e^(-t/τ) over time.
 import math
 from typing import Literal
 
+__all__ = [
+    "DEFAULT_FATIGUE_TAU",
+    "DEFAULT_FITNESS_TAU",
+    "RecoveryStatus",
+    "classify_recovery_status",
+    "compute_atl",
+    "compute_ctl",
+    "compute_ema_series",
+    "compute_tsb",
+    "compute_tsb_series",
+]
+
 # Default time constants from exercise science literature
 DEFAULT_FITNESS_TAU = 42  # days — chronic training load decay
 DEFAULT_FATIGUE_TAU = 7   # days — acute training load decay

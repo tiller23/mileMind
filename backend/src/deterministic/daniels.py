@@ -17,6 +17,20 @@ References:
 
 import math
 
+__all__ = [
+    "compute_hr_zones",
+    "compute_training_paces",
+    "compute_vdot",
+    "estimate_hr_max",
+    "karvonen_hr",
+    "predict_race_time",
+    "sustained_vo2max_fraction",
+    "velocity_to_pace_per_km",
+    "velocity_to_pace_per_mile",
+    "velocity_to_vo2",
+    "vo2_to_velocity",
+]
+
 # -----------------------------------------------------------------------
 # Daniels-Gilbert equation coefficients
 # -----------------------------------------------------------------------

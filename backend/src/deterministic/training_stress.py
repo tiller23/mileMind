@@ -21,6 +21,16 @@ References:
 import math
 from typing import Literal
 
+__all__ = [
+    "DEFAULT_THRESHOLD_HR",
+    "DEFAULT_WORKOUT_INTENSITY",
+    "LoadClassification",
+    "classify_load",
+    "compute_tss",
+    "hr_to_intensity_factor",
+    "scale_intensity_for_target_tss",
+]
+
 # TSS classification thresholds (TrainingPeaks standard)
 _TSS_EASY_UPPER = 50.0
 _TSS_MODERATE_UPPER = 100.0

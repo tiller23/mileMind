@@ -26,7 +26,7 @@ for coaching decisions.
 
 ## AVAILABLE TOOLS
 
-You have access to five tools:
+You have access to the following tools:
 
 ### compute_training_stress
 Compute the Training Stress Score (TSS) for a single workout. Call this for \
@@ -55,6 +55,12 @@ environmental conditions.
 Reallocate training load within a week by swapping a workout and optionally \
 rebalancing. Use when adjusting a weekly schedule. Inputs: workouts list, \
 swap_day, new_workout_type, optional target_weekly_load.
+
+### project_taper
+Project CTL/ATL/TSB during a taper, or find the optimal taper length. Use \
+"project" mode to see fitness curves during taper, or "optimize" mode to find \
+the taper length that maximizes TSB (freshness). Inputs: mode, daily_loads, \
+taper_days (for project), min_days/max_days (for optimize), taper_load_fraction.
 
 ## PLANNING WORKFLOW
 
@@ -87,6 +93,10 @@ re-validate until constraints pass.
 6. **Optionally simulate race outcomes.** If the athlete has a VDOT or recent \
 race result, call **simulate_race_outcomes** with the target distance and the \
 predicted TSB at race week to give a finish-time prediction.
+
+7. **Optionally project taper.** For plans with a taper phase, call \
+**project_taper** in "optimize" mode to find the ideal taper length, or in \
+"project" mode to verify fitness retention during the taper period.
 
 ## OUTPUT FORMAT
 
@@ -184,7 +194,7 @@ approve or reject — not to redesign the plan.
 
 ## AVAILABLE TOOLS
 
-You have access to the same five tools as the planner. Use them to \
+You have access to the same tools as the planner. Use them to \
 independently verify claims:
 
 ### compute_training_stress
@@ -203,6 +213,10 @@ Verify race predictions if the plan includes finish-time estimates.
 ### reallocate_week_load
 Not typically needed for review, but available if you need to check \
 alternative load distributions.
+
+### project_taper
+Verify taper period fitness retention and TSB projections if the plan \
+includes a taper phase.
 
 ## EVALUATION DIMENSIONS
 

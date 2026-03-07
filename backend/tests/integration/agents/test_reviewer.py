@@ -7,7 +7,6 @@ Verifies verdict parsing, tool spot-checking, score handling, and error paths.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -17,25 +16,17 @@ from src.agents.reviewer import ReviewerAgent, ReviewerResult
 from src.agents.prompts import REVIEWER_SYSTEM_PROMPT
 from src.models.athlete import AthleteProfile, RiskTolerance
 from src.models.decision_log import ReviewerScores
+from tests.helpers import (
+    MockContentBlock,
+    MockResponse,
+    MockUsage,
+    make_end_turn_response,
+    make_tool_use_response,
+    make_verdict_response,
+)
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def sample_athlete() -> AthleteProfile:
-    """A simple beginner athlete for testing."""
-    return AthleteProfile(
-        name="Test Runner",
-        age=30,
-        weekly_mileage_base=30.0,
-        goal_distance="5K",
-        goal_time_minutes=25.0,
-        vdot=40.0,
-        risk_tolerance=RiskTolerance.MODERATE,
-        training_days_per_week=4,
-    )
+# sample_athlete fixture is provided by tests/conftest.py
 
 
 VALID_PLAN_TEXT = """\
@@ -59,83 +50,6 @@ SAMPLE_TOOL_CALLS = [
     {"name": "compute_training_stress", "input": {}, "output": {"tss": 30.0}, "success": True},
     {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
 ]
-
-
-# ---------------------------------------------------------------------------
-# Mock helpers (reused from test_planner.py patterns)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class MockContentBlock:
-    """Simulates a Claude API content block."""
-    type: str
-    text: str = ""
-    name: str = ""
-    input: dict[str, Any] | None = None
-    id: str = ""
-
-
-@dataclass
-class MockUsage:
-    """Simulates Claude API usage."""
-    input_tokens: int = 150
-    output_tokens: int = 250
-
-
-@dataclass
-class MockResponse:
-    """Simulates a Claude API response."""
-    content: list[MockContentBlock]
-    stop_reason: str
-    usage: MockUsage
-
-
-def make_tool_use_response(
-    tool_calls: list[dict[str, Any]],
-    text_before: str = "",
-) -> MockResponse:
-    """Build a mock response with tool_use blocks."""
-    blocks: list[MockContentBlock] = []
-    if text_before:
-        blocks.append(MockContentBlock(type="text", text=text_before))
-    for i, tc in enumerate(tool_calls):
-        blocks.append(MockContentBlock(
-            type="tool_use",
-            name=tc["name"],
-            input=tc["input"],
-            id=tc.get("id", f"toolu_{i:04d}"),
-        ))
-    return MockResponse(content=blocks, stop_reason="tool_use", usage=MockUsage())
-
-
-def make_verdict_response(
-    approved: bool,
-    scores: dict[str, int],
-    critique: str = "Looks good.",
-    issues: list[str] | None = None,
-) -> MockResponse:
-    """Build a mock response with a JSON verdict block."""
-    verdict = {
-        "approved": approved,
-        "scores": scores,
-        "critique": critique,
-        "issues": issues or [],
-    }
-    text = f"After reviewing the plan:\n\n```json\n{json.dumps(verdict, indent=2)}\n```"
-    return MockResponse(
-        content=[MockContentBlock(type="text", text=text)],
-        stop_reason="end_turn",
-        usage=MockUsage(),
-    )
-
-
-def make_end_turn_response(text: str) -> MockResponse:
-    """Build a mock end_turn response with raw text."""
-    return MockResponse(
-        content=[MockContentBlock(type="text", text=text)],
-        stop_reason="end_turn",
-        usage=MockUsage(),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -374,9 +288,9 @@ class TestReviewerAgentLoop:
 
         result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
 
-        # Each mock response: 150 input + 250 output
-        assert result.total_input_tokens == 300
-        assert result.total_output_tokens == 500
+        # Each mock response: 100 input + 200 output (from shared MockUsage)
+        assert result.total_input_tokens == 200
+        assert result.total_output_tokens == 400
 
     @pytest.mark.asyncio
     async def test_malformed_verdict_returns_error(
@@ -458,6 +372,8 @@ class TestReviewerSystemPrompt:
             "validate_progression_constraints",
             "evaluate_fatigue_state",
             "simulate_race_outcomes",
+            "reallocate_week_load",
+            "project_taper",
         ]:
             assert tool in REVIEWER_SYSTEM_PROMPT
 

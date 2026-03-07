@@ -10,7 +10,7 @@ all numbers are computed by the deterministic ``acwr`` module.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -135,7 +135,7 @@ class ValidateProgressionOutput(BaseModel):
 _TOOL_NAME = "validate_progression_constraints"
 
 
-def validate_progression_constraints_handler(input_data: dict) -> dict:
+def validate_progression_constraints_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     """Execute the validate_progression_constraints tool.
 
     Calls ``acwr.check_safety`` for the full-series safety evaluation and

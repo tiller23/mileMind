@@ -69,6 +69,39 @@ class OrchestrationResult:
     error: str | None = None
     athlete_cache_key: str = ""
 
+    def summary(self) -> str:
+        """Format key metrics as a human-readable summary.
+
+        Returns:
+            Multi-line string suitable for CLI or log output.
+        """
+        total_tokens = (
+            self.total_planner_input_tokens + self.total_planner_output_tokens
+            + self.total_reviewer_input_tokens + self.total_reviewer_output_tokens
+        )
+        lines = [
+            f"Approved: {'YES' if self.approved else 'NO'}",
+            f"Attempts: {len(self.decision_log)}",
+            f"Total iterations: {self.total_iterations}",
+            f"Total tokens: {total_tokens:,}",
+            f"Elapsed: {self.total_elapsed_seconds:.1f}s",
+        ]
+        if self.final_scores:
+            lines.append(f"Final scores: overall={self.final_scores.overall:.1f}")
+        if self.warning:
+            lines.append(f"Warning: {self.warning}")
+        if self.error:
+            lines.append(f"Error: {self.error}")
+        return "\n".join(lines)
+
+    def __repr__(self) -> str:
+        return (
+            f"OrchestrationResult(approved={self.approved}, "
+            f"attempts={len(self.decision_log)}, "
+            f"iterations={self.total_iterations}, "
+            f"elapsed={self.total_elapsed_seconds:.1f}s)"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Orchestrator
@@ -191,7 +224,14 @@ class Orchestrator:
         last_reviewer_issues: list[str] = []
 
         for attempt in range(1, effective_max_retries + 1):
-            logger.info("Orchestration attempt %d/%d", attempt, effective_max_retries)
+            total_tokens_so_far = (
+                result.total_planner_input_tokens + result.total_planner_output_tokens
+                + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
+            )
+            logger.info(
+                "Orchestration attempt %d/%d, change_type=%s, tokens_so_far=%d",
+                attempt, effective_max_retries, change_type.value, total_tokens_so_far,
+            )
 
             try:
                 # --- Step 1: Generate or revise plan ---
@@ -220,6 +260,11 @@ class Orchestrator:
                 total_tokens = (
                     result.total_planner_input_tokens + result.total_planner_output_tokens
                     + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
+                )
+                logger.info(
+                    "Token usage after planner: %d/%d (%.1f%%)",
+                    total_tokens, self._max_total_tokens,
+                    total_tokens / self._max_total_tokens * 100,
                 )
                 if total_tokens > self._max_total_tokens:
                     logger.warning(
@@ -299,6 +344,11 @@ class Orchestrator:
                     result.total_planner_input_tokens + result.total_planner_output_tokens
                     + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
                 )
+                logger.info(
+                    "Token usage after reviewer: %d/%d (%.1f%%)",
+                    total_tokens, self._max_total_tokens,
+                    total_tokens / self._max_total_tokens * 100,
+                )
                 if total_tokens > self._max_total_tokens:
                     logger.warning(
                         "Token budget exceeded after reviewer (%d > %d). Aborting.",
@@ -348,7 +398,15 @@ class Orchestrator:
 
                 # --- Step 5: Check outcome ---
                 if approved:
-                    logger.info("Plan approved on attempt %d", attempt)
+                    overall_score = (
+                        reviewer_result.scores.overall
+                        if reviewer_result.scores
+                        else None
+                    )
+                    logger.info(
+                        "Plan approved on attempt %d, overall_score=%s, total_tokens=%d",
+                        attempt, overall_score, total_tokens,
+                    )
                     result.plan_text = planner_result.plan_text
                     result.approved = True
                     result.total_elapsed_seconds = time.monotonic() - start_time
@@ -374,13 +432,20 @@ class Orchestrator:
                 return result
 
         # --- Max retries exhausted ---
+        total_tokens = (
+            result.total_planner_input_tokens + result.total_planner_output_tokens
+            + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
+        )
+        best_score = result.final_scores.overall if result.final_scores else None
         logger.warning(
-            "Max retries (%d) exhausted without approval (change_type=%s).",
-            effective_max_retries, change_type.value,
+            "Max retries (%d) exhausted without approval, change_type=%s, "
+            "total_tokens=%d, best_score=%s",
+            effective_max_retries, change_type.value, total_tokens, best_score,
         )
         result.plan_text = last_valid_plan
         result.warning = (
-            f"Plan was not approved after {effective_max_retries} attempts "
+            f"Plan was not approved after {effective_max_retries} "
+            f"{'attempt' if effective_max_retries == 1 else 'attempts'} "
             f"(change_type={change_type.value}). Returning the last generated plan."
         )
         result.total_elapsed_seconds = time.monotonic() - start_time

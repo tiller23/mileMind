@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import Any
 
@@ -71,6 +72,16 @@ def check_constraint_violations(
             f"Safety score {safety_score:.0f} below minimum {expected.min_safety_score:.0f}"
         )
 
+    # Check for ACWR values in plan text that exceed expected max
+    if hasattr(expected, "max_acwr"):
+        acwr_pattern = re.compile(r"ACWR\s*[:=]?\s*(\d+\.?\d*)", re.IGNORECASE)
+        for match in acwr_pattern.finditer(plan_text):
+            acwr_value = float(match.group(1))
+            if acwr_value > expected.max_acwr:
+                violations.append(
+                    f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}"
+                )
+
     return violations
 
 
@@ -122,17 +133,25 @@ class HarnessRunner:
             Populated PersonaResult with constraint violations checked.
         """
         # Check constraint violations against persona's expected behavior
-        persona = get_persona(persona_id)
-        safety_score = (
-            orch_result.final_scores.safety
-            if orch_result.final_scores is not None
-            else None
-        )
-        violations = check_constraint_violations(
-            orch_result.plan_text,
-            persona.expected_behavior,
-            safety_score=safety_score,
-        )
+        violations: list[str] = []
+        try:
+            persona = get_persona(persona_id)
+            safety_score = (
+                orch_result.final_scores.safety
+                if orch_result.final_scores is not None
+                else None
+            )
+            violations = check_constraint_violations(
+                orch_result.plan_text,
+                persona.expected_behavior,
+                safety_score=safety_score,
+            )
+        except KeyError:
+            logger.warning(
+                "Could not find persona '%s' for constraint checking — "
+                "skipping violation analysis",
+                persona_id,
+            )
 
         return PersonaResult(
             persona_id=persona_id,
@@ -237,7 +256,19 @@ class HarnessRunner:
 
         Returns:
             PersonaResult with plan, scores, tokens, and timing.
+
+        Raises:
+            KeyError: If the persona ID is not registered (with a clear message).
         """
+        # Validate persona is registered before spending API tokens
+        try:
+            get_persona(persona.persona_id)
+        except KeyError:
+            raise KeyError(
+                f"Unknown persona '{persona.persona_id}'. "
+                f"Registered personas: {[p.persona_id for p in ALL_PERSONAS]}"
+            ) from None
+
         logger.info("Running persona: %s", persona.persona_id)
         orchestrator = self._build_orchestrator()
         start = time.monotonic()
@@ -362,10 +393,18 @@ class HarnessRunner:
         finally:
             await coordinator.stop()
 
-        for result in results:
+        # Verify results list integrity — every persona should have a result
+        results_list = list(results)
+        if len(results_list) != len(personas):
+            logger.error(
+                "Results count mismatch: expected %d, got %d",
+                len(personas), len(results_list),
+            )
+
+        for result in results_list:
             self._log_result(result)
 
-        return list(results)
+        return results_list
 
     async def run_comparison(
         self,
@@ -438,11 +477,16 @@ class HarnessRunner:
             result: The PersonaResult to log.
         """
         logger.info(
-            "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, time=%.1fs",
+            "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, "
+            "time=%.1fs, constraint_violations=%d, "
+            "planner_model=%s, reviewer_model=%s",
             result.persona_id,
             result.approved,
             result.retry_count,
             result.total_tokens,
             result.estimated_cost_usd,
             result.elapsed_seconds,
+            len(result.constraint_violations),
+            result.planner_model,
+            result.reviewer_model,
         )

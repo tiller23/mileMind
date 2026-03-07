@@ -27,6 +27,23 @@ Zones:
 import math
 from dataclasses import dataclass, field
 
+__all__ = [
+    "DEFAULT_ACUTE_DAYS",
+    "DEFAULT_CHRONIC_DAYS",
+    "DEFAULT_MAX_WEEKLY_INCREASE_PCT",
+    "MAX_ALLOWED_WEEKLY_INCREASE_PCT",
+    "RISK_TOLERANCE_PRESETS",
+    "SAFE_LOWER",
+    "SAFE_UPPER",
+    "SafetyResult",
+    "WARNING_UPPER",
+    "check_safety",
+    "classify_zone",
+    "compute_acwr_ewma",
+    "compute_acwr_rolling",
+    "validate_weekly_increase",
+]
+
 # --- Constants ---
 
 SAFE_LOWER = 0.8
@@ -68,6 +85,7 @@ class SafetyResult:
     acwr_ewma: float | None
     zone: str
     violations: list[str] = field(default_factory=list)
+    capped_max_weekly_increase_pct: float | None = None
 
 
 # --- Public functions ---
@@ -242,6 +260,9 @@ def check_safety(
         )
 
     # --- Weekly mileage increase + spike detection (single pass) ---
+    # Defense-in-depth: _validate_safety_inputs already rejects values above
+    # MAX_ALLOWED_WEEKLY_INCREASE_PCT, but we clamp here too in case check_safety
+    # is called directly without the validator (e.g. from tests or future code).
     capped_pct = min(max_weekly_increase_pct, MAX_ALLOWED_WEEKLY_INCREASE_PCT)
     for i in range(1, len(weekly_loads)):
         prev = weekly_loads[i - 1]
@@ -266,6 +287,7 @@ def check_safety(
         acwr_ewma=acwr_ewma,
         zone=zone,
         violations=violations,
+        capped_max_weekly_increase_pct=capped_pct,
     )
 
 

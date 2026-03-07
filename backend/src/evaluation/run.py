@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -95,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         help="Per-persona token budget (default: 1000000)",
     )
     parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output results as JSON to stdout and write a .json file alongside the .md report",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose logging",
@@ -149,11 +156,6 @@ async def run_single(args: argparse.Namespace) -> None:
 
     metrics = runner.compute_metrics(results, total_elapsed_seconds=total_elapsed)
 
-    # Print summary
-    print()
-    print(metrics.summary())
-    print()
-
     # Write report
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -161,7 +163,21 @@ async def run_single(args: argparse.Namespace) -> None:
     report = generate_plan_review_report(results, metrics)
     report_path = output_dir / "plan_review_report.md"
     report_path.write_text(report)
-    print(f"Plan review report written to: {report_path}")
+
+    if getattr(args, "json_output", False):
+        json_data = {
+            "metrics": metrics.to_dict(),
+            "results": [r.to_dict() for r in results],
+        }
+        print(json.dumps(json_data, indent=2))
+        json_path = output_dir / "plan_review_report.json"
+        json_path.write_text(json.dumps(json_data, indent=2))
+        print(f"JSON report written to: {json_path}", file=sys.stderr)
+    else:
+        print()
+        print(metrics.summary())
+        print()
+        print(f"Plan review report written to: {report_path}")
 
 
 async def run_comparison(args: argparse.Namespace) -> None:

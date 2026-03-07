@@ -1,12 +1,12 @@
-"""Schema validation tests for all 5 tool wrappers.
+"""Schema validation tests for all 6 tool wrappers.
 
 Verifies that every tool registered in the ToolRegistry produces a valid
 Anthropic API tool definition:
 
 - JSON schema structure (type, properties, required)
 - No Pydantic "title" key at the root level (Anthropic rejects it)
-- All 5 tools can coexist in the same registry without naming conflicts
-- get_anthropic_tools() returns exactly 5 entries
+- All 6 tools can coexist in the same registry without naming conflicts
+- get_anthropic_tools() returns exactly 6 entries
 - Each entry has the required keys: name, description, input_schema
 - Tool names match the expected snake_case identifiers
 - Descriptions are non-empty strings
@@ -23,6 +23,7 @@ import pytest
 
 from src.tools.compute_training_stress import register as register_compute_training_stress
 from src.tools.evaluate_fatigue_state import register as register_evaluate_fatigue_state
+from src.tools.project_taper import register as register_project_taper
 from src.tools.reallocate_week_load import register as register_reallocate_week_load
 from src.tools.registry import ToolRegistry
 from src.tools.simulate_race_outcomes import register as register_simulate_race_outcomes
@@ -40,6 +41,7 @@ EXPECTED_TOOL_NAMES = [
     "validate_progression_constraints",
     "simulate_race_outcomes",
     "reallocate_week_load",
+    "project_taper",
 ]
 
 _REGISTER_FUNCS = [
@@ -48,6 +50,7 @@ _REGISTER_FUNCS = [
     register_validate_progression_constraints,
     register_simulate_race_outcomes,
     register_reallocate_week_load,
+    register_project_taper,
 ]
 
 
@@ -58,7 +61,7 @@ _REGISTER_FUNCS = [
 
 @pytest.fixture(scope="module")
 def full_registry() -> ToolRegistry:
-    """A ToolRegistry with all 5 tools registered.
+    """A ToolRegistry with all 6 tools registered.
 
     Module-scoped because registration is side-effect-free and building it
     once is cheaper than repeating it per test.
@@ -76,23 +79,23 @@ def anthropic_tools(full_registry: ToolRegistry) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Registration — all 5 tools coexist without conflicts
+# Registration — all 6 tools coexist without conflicts
 # ---------------------------------------------------------------------------
 
 
 class TestRegistrationNoConflicts:
-    """All 5 tools can be registered together without raising ValueError."""
+    """All 6 tools can be registered together without raising ValueError."""
 
-    def test_all_five_register_without_error(self) -> None:
-        """Creating a fresh registry and registering all 5 tools must succeed."""
+    def test_all_six_register_without_error(self) -> None:
+        """Creating a fresh registry and registering all 6 tools must succeed."""
         registry = ToolRegistry()
         for register_fn in _REGISTER_FUNCS:
             register_fn(registry)  # must not raise
-        assert len(registry.tool_names) == 5
+        assert len(registry.tool_names) == 6
 
     def test_tool_names_list_length(self, full_registry: ToolRegistry) -> None:
-        """tool_names property reports exactly 5 registered tools."""
-        assert len(full_registry.tool_names) == 5
+        """tool_names property reports exactly 6 registered tools."""
+        assert len(full_registry.tool_names) == 6
 
     @pytest.mark.parametrize("name", EXPECTED_TOOL_NAMES)
     def test_each_expected_name_is_registered(
@@ -126,9 +129,9 @@ class TestGetAnthropicToolsList:
         """Return type must be a list."""
         assert isinstance(anthropic_tools, list)
 
-    def test_returns_exactly_five_tools(self, anthropic_tools: list[dict]) -> None:
-        """The list must contain exactly 5 tool definitions."""
-        assert len(anthropic_tools) == 5
+    def test_returns_exactly_six_tools(self, anthropic_tools: list[dict]) -> None:
+        """The list must contain exactly 6 tool definitions."""
+        assert len(anthropic_tools) == 6
 
     def test_no_duplicate_tool_names(self, anthropic_tools: list[dict]) -> None:
         """All tool names in the returned list must be unique."""
@@ -143,12 +146,12 @@ class TestGetAnthropicToolsList:
 
 
 # ---------------------------------------------------------------------------
-# Per-tool definition shape — parametrized over all 5 tools
+# Per-tool definition shape — parametrized over all 6 tools
 # ---------------------------------------------------------------------------
 
 
 class TestEachToolDefinitionShape:
-    """Each of the 5 tool definitions has the required Anthropic API keys."""
+    """Each of the 6 tool definitions has the required Anthropic API keys."""
 
     @pytest.fixture(params=EXPECTED_TOOL_NAMES)
     def tool_def(self, request: pytest.FixtureRequest, anthropic_tools: list[dict]) -> dict:
@@ -383,3 +386,32 @@ class TestReallocateWeekLoadSchema:
         """Optional fields target_weekly_load and previous_week_load are in properties."""
         assert "target_weekly_load" in schema["properties"]
         assert "previous_week_load" in schema["properties"]
+
+
+class TestProjectTaperSchema:
+    """Schema spot-checks for project_taper."""
+
+    @pytest.fixture
+    def schema(self, anthropic_tools: list[dict]) -> dict:
+        """input_schema for project_taper."""
+        return next(t for t in anthropic_tools if t["name"] == "project_taper")[
+            "input_schema"
+        ]
+
+    def test_mode_in_required(self, schema: dict) -> None:
+        """mode is a required input field."""
+        assert "mode" in schema["required"]
+
+    def test_daily_loads_in_required(self, schema: dict) -> None:
+        """daily_loads is a required input field."""
+        assert "daily_loads" in schema["required"]
+
+    def test_taper_days_in_properties(self, schema: dict) -> None:
+        """taper_days is exposed as a schema property."""
+        assert "taper_days" in schema["properties"]
+
+    def test_optional_fields_in_properties(self, schema: dict) -> None:
+        """taper_load_fraction, min_days, max_days are in properties."""
+        assert "taper_load_fraction" in schema["properties"]
+        assert "min_days" in schema["properties"]
+        assert "max_days" in schema["properties"]
