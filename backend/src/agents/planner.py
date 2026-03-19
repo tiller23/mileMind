@@ -250,11 +250,38 @@ class PlannerAgent:
         )
 
     @staticmethod
+    def _classify_athlete_level(athlete: AthleteProfile) -> str:
+        """Classify athlete as beginner, intermediate, or advanced.
+
+        Uses VDOT and weekly mileage base to determine level, which informs
+        what workout types and intensities are appropriate.
+
+        Args:
+            athlete: The athlete profile to classify.
+
+        Returns:
+            One of "beginner", "intermediate", or "advanced".
+        """
+        vdot = athlete.vdot
+        base = athlete.weekly_mileage_base
+
+        # Advanced requires BOTH high base AND acceptable VDOT (or no VDOT data).
+        # A runner with high VDOT but low base is undertrained, not advanced.
+        if base > 60 and (vdot is None or vdot > 50):
+            return "advanced"
+        # Beginner if EITHER signal indicates low level — err on the side of safety.
+        # Low base alone is enough; low VDOT with moderate base is still beginner.
+        if base < 25 or (vdot is not None and vdot < 35):
+            return "beginner"
+        return "intermediate"
+
+    @staticmethod
     def _build_user_message(athlete: AthleteProfile) -> str:
         """Build the initial user message from an athlete profile.
 
         Serializes the athlete profile into a structured prompt that gives
-        Claude all the information needed to design a training plan.
+        Claude all the information needed to design a training plan. Includes
+        athlete level classification and explicit safety constraints.
 
         Args:
             athlete: The athlete profile to serialize.
@@ -265,16 +292,36 @@ class PlannerAgent:
         """
         profile_data = athlete.model_dump(exclude_none=True)
         profile_json = json.dumps(profile_data, indent=2)
+        level = PlannerAgent._classify_athlete_level(athlete)
+
+        # Build injury context with nuance
+        injury_section = ""
+        if athlete.injury_history:
+            injury_section = (
+                f"- Injury history: {athlete.injury_history}\n"
+                f"  Apply the injury guidelines from your system prompt — "
+                f"past healed injuries need strengthening notes, not blanket "
+                f"restrictions. Only reduce training for recent/current issues.\n"
+            )
 
         return (
             f"Please generate a periodized training plan for this athlete.\n\n"
             f"## Athlete Profile\n"
             f"```json\n{profile_json}\n```\n\n"
+            f"## Athlete Level: {level.upper()}\n"
+            f"Refer to the '{level}' section of your Athlete-Level Coaching "
+            f"Guidelines for appropriate workout types and intensity.\n\n"
+            f"## Safety Constraints (HARD LIMITS)\n"
+            f"- Max weekly load increase: {athlete.max_weekly_increase_pct:.0%} "
+            f"(athlete's max_weekly_increase_pct = {athlete.max_weekly_increase_pct})\n"
+            f"- Risk tolerance: {athlete.risk_tolerance.value}\n"
+            f"- Recovery weeks MUST appear every 3-4 building weeks\n"
+            f"- Validate progression AFTER EACH PHASE with "
+            f"validate_progression_constraints\n\n"
             f"## Instructions\n"
             f"- Design a multi-week plan targeting the {athlete.goal_distance} distance.\n"
             f"- The athlete trains {athlete.training_days_per_week} days per week.\n"
             f"- Current weekly mileage baseline: {athlete.weekly_mileage_base} km.\n"
-            f"- Risk tolerance: {athlete.risk_tolerance.value}.\n"
             + (
                 f"- Goal finish time: {athlete.goal_time_minutes} minutes.\n"
                 if athlete.goal_time_minutes
@@ -290,15 +337,13 @@ class PlannerAgent:
                 if athlete.vo2max
                 else ""
             )
-            + (
-                f"- Injury history: {athlete.injury_history}\n"
-                if athlete.injury_history
-                else ""
-            )
+            + injury_section
             + (
                 f"\nUse compute_training_stress for every workout, "
-                f"validate_progression_constraints for the weekly load sequence, "
+                f"validate_progression_constraints AFTER EACH PHASE "
+                f"(not just at the end), "
                 f"and simulate_race_outcomes if VDOT data is available. "
+                f"Use Zone 1-6 pace zones in your plan. "
                 f"Return the complete plan as a JSON block."
             )
         )
@@ -349,11 +394,18 @@ class PlannerAgent:
         if not issues_text:
             issues_text = "  (no specific issues listed)"
 
+        level = PlannerAgent._classify_athlete_level(athlete)
+
         return (
             f"Your previous training plan was REJECTED by the reviewer. "
             f"Please revise it to address the issues below.\n\n"
             f"## Athlete Profile\n"
             f"```json\n{profile_json}\n```\n\n"
+            f"## Athlete Level: {level.upper()}\n\n"
+            f"## Safety Constraints (HARD LIMITS — most common rejection reasons)\n"
+            f"- Max weekly load increase: {athlete.max_weekly_increase_pct:.0%}\n"
+            f"- Recovery weeks MUST appear every 3-4 building weeks\n"
+            f"- Risk tolerance: {athlete.risk_tolerance.value}\n\n"
             f"## Previous Plan (REJECTED)\n"
             f"{prior_plan_text}\n\n"
             f"## Reviewer Critique\n"
@@ -364,7 +416,8 @@ class PlannerAgent:
             f"- Address EVERY issue listed above.\n"
             f"- Re-run compute_training_stress for any workouts you modify.\n"
             f"- Re-run validate_progression_constraints on the revised weekly "
-            f"load sequence.\n"
+            f"load sequence — validate AFTER EACH PHASE.\n"
+            f"- Use Zone 1-6 pace zones.\n"
             f"- Return the complete revised plan as a ```json block.\n"
             f"- Do NOT just patch the old plan — regenerate with corrections.\n"
         )

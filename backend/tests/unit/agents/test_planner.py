@@ -358,6 +358,197 @@ class TestBuildRevisionMessage:
         assert "compute_training_stress" in msg
         assert "validate_progression_constraints" in msg
 
+    def test_revision_includes_athlete_level(self, sample_athlete: AthleteProfile) -> None:
+        """Revision message includes athlete level classification."""
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", ["issue"],
+        )
+        assert "INTERMEDIATE" in msg or "BEGINNER" in msg or "ADVANCED" in msg
+
+    def test_revision_includes_safety_constraints(self, sample_athlete: AthleteProfile) -> None:
+        """Revision message includes hard limit safety constraints."""
+        msg = PlannerAgent._build_revision_message(
+            sample_athlete, "plan", "critique", ["issue"],
+        )
+        assert "Recovery weeks" in msg
+        assert "max_weekly_increase_pct" in msg or "weekly load increase" in msg
+
+
+# ---------------------------------------------------------------------------
+# Tests: _classify_athlete_level
+# ---------------------------------------------------------------------------
+
+
+class TestClassifyAthleteLevel:
+    """Verify athlete level classification logic.
+
+    WHY: The level classification drives which workout types the planner
+    uses. Misclassification can result in VO2max intervals for beginners
+    or overly conservative plans for advanced runners.
+    """
+
+    def test_beginner_low_vdot(self) -> None:
+        """Low VDOT classifies as beginner."""
+        athlete = AthleteProfile(
+            name="Beginner", age=30, weekly_mileage_base=20.0,
+            goal_distance="5K", vdot=30.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "beginner"
+
+    def test_beginner_low_base(self) -> None:
+        """Low weekly mileage base classifies as beginner even with no VDOT."""
+        athlete = AthleteProfile(
+            name="Beginner", age=30, weekly_mileage_base=12.0,
+            goal_distance="5K",
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "beginner"
+
+    def test_intermediate(self) -> None:
+        """Mid-range VDOT and base classifies as intermediate."""
+        athlete = AthleteProfile(
+            name="Intermediate", age=28, weekly_mileage_base=40.0,
+            goal_distance="10K", vdot=42.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "intermediate"
+
+    def test_advanced_high_vdot(self) -> None:
+        """High VDOT classifies as advanced."""
+        athlete = AthleteProfile(
+            name="Advanced", age=35, weekly_mileage_base=80.0,
+            goal_distance="marathon", vdot=55.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "advanced"
+
+    def test_advanced_high_base_no_vdot(self) -> None:
+        """High weekly base with no VDOT classifies as advanced.
+
+        When VDOT is unknown, high base alone indicates an experienced runner.
+        """
+        athlete = AthleteProfile(
+            name="Advanced", age=35, weekly_mileage_base=70.0,
+            goal_distance="marathon",
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "advanced"
+
+    def test_no_vdot_low_base_is_beginner(self) -> None:
+        """No VDOT provided with low base defaults to beginner (safe default)."""
+        athlete = AthleteProfile(
+            name="Unknown", age=25, weekly_mileage_base=15.0,
+            goal_distance="5K",
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "beginner"
+
+    def test_no_vdot_high_base_is_advanced(self) -> None:
+        """No VDOT with high base classifies as advanced."""
+        athlete = AthleteProfile(
+            name="Unknown", age=30, weekly_mileage_base=80.0,
+            goal_distance="marathon",
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "advanced"
+
+    def test_high_vdot_low_base_not_advanced(self) -> None:
+        """High VDOT but very low base is NOT advanced — undertrained but talented.
+
+        WHY: An athlete with high VDOT but low weekly mileage hasn't built the
+        base to handle advanced programming (double threshold, VO2max reps).
+        Classifying as advanced could lead to injury.
+        """
+        athlete = AthleteProfile(
+            name="Talented Beginner", age=25, weekly_mileage_base=15.0,
+            goal_distance="5K", vdot=55.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) != "advanced"
+
+    def test_low_vdot_high_base_is_intermediate(self) -> None:
+        """Low VDOT with high base — consistent but slow runner.
+
+        Despite high mileage, VDOT < 35 indicates beginner-level fitness.
+        Safety first: err toward beginner classification.
+        """
+        athlete = AthleteProfile(
+            name="Slow but steady", age=40, weekly_mileage_base=70.0,
+            goal_distance="marathon", vdot=30.0,
+        )
+        # Low VDOT triggers beginner even with high base
+        assert PlannerAgent._classify_athlete_level(athlete) == "beginner"
+
+    def test_boundary_vdot_35_base_25_is_intermediate(self) -> None:
+        """Exact boundary values (VDOT=35, base=25) classify as intermediate."""
+        athlete = AthleteProfile(
+            name="Boundary", age=30, weekly_mileage_base=25.0,
+            goal_distance="10K", vdot=35.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "intermediate"
+
+    def test_no_vdot_boundary_base_25_is_intermediate(self) -> None:
+        """No VDOT with base exactly at 25 km/week is intermediate."""
+        athlete = AthleteProfile(
+            name="Boundary", age=30, weekly_mileage_base=25.0,
+            goal_distance="10K",
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "intermediate"
+
+    def test_high_vdot_moderate_base_is_intermediate(self) -> None:
+        """High VDOT with moderate base — intermediate, not advanced.
+
+        Advanced requires both high base AND high VDOT.
+        """
+        athlete = AthleteProfile(
+            name="Fast but low volume", age=28, weekly_mileage_base=40.0,
+            goal_distance="10K", vdot=55.0,
+        )
+        assert PlannerAgent._classify_athlete_level(athlete) == "intermediate"
+
+
+# ---------------------------------------------------------------------------
+# Tests: user message includes new prompt elements
+# ---------------------------------------------------------------------------
+
+
+class TestUserMessageNewElements:
+    """Verify that _build_user_message includes athlete level, safety constraints,
+    and zone-based pace zone instructions.
+
+    WHY: These new elements directly address eval harness failures — the planner
+    was ignoring safety rules and prescribing inappropriate workout types because
+    the constraints weren't prominent enough in the prompt.
+    """
+
+    def test_athlete_level_present(self, sample_athlete: AthleteProfile) -> None:
+        """Athlete level classification appears in the message."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "INTERMEDIATE" in msg
+
+    def test_beginner_level_present(self, minimal_athlete: AthleteProfile) -> None:
+        """Beginner athlete gets BEGINNER label in message."""
+        msg = PlannerAgent._build_user_message(minimal_athlete)
+        assert "BEGINNER" in msg
+
+    def test_max_weekly_increase_in_message(self, sample_athlete: AthleteProfile) -> None:
+        """max_weekly_increase_pct is stated as a hard limit."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "max_weekly_increase_pct" in msg or "10%" in msg
+
+    def test_recovery_week_reminder(self, sample_athlete: AthleteProfile) -> None:
+        """Recovery weeks are called out as mandatory."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "Recovery week" in msg or "recovery week" in msg
+
+    def test_zone_pace_instruction(self, sample_athlete: AthleteProfile) -> None:
+        """Zone 1-6 pace zone system is referenced."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "Zone" in msg
+
+    def test_per_phase_validation_instruction(self, sample_athlete: AthleteProfile) -> None:
+        """Instructions explicitly say to validate AFTER EACH PHASE."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "AFTER EACH PHASE" in msg or "after each phase" in msg.lower()
+
+    def test_injury_nuance_instruction(self, sample_athlete: AthleteProfile) -> None:
+        """Injury history section includes nuance guidance."""
+        msg = PlannerAgent._build_user_message(sample_athlete)
+        assert "strengthening" in msg.lower() or "blanket" in msg.lower()
+
 
 # ---------------------------------------------------------------------------
 # Tests: generate_plan with mock transport

@@ -88,6 +88,84 @@ class TestPlannerSystemPrompt:
         """
         assert "NEVER" in PLANNER_SYSTEM_PROMPT
 
+    def test_safety_rules_before_workflow(self) -> None:
+        """Safety rules appear before the planning workflow.
+
+        WHY: In the eval run, the planner ignored safety rules that were at the
+        bottom of the prompt. Moving them before the workflow ensures they are
+        read first and applied throughout plan generation.
+        """
+        safety_pos = PLANNER_SYSTEM_PROMPT.index("SAFETY RULES")
+        workflow_pos = PLANNER_SYSTEM_PROMPT.index("PLANNING WORKFLOW")
+        assert safety_pos < workflow_pos, (
+            "SAFETY RULES must appear before PLANNING WORKFLOW in the prompt"
+        )
+
+    def test_contains_pace_zone_table(self) -> None:
+        """PLANNER_SYSTEM_PROMPT must define numbered pace zones (Zone 1-6).
+
+        WHY: The eval output used vague labels like 'easy' and 'repetition'.
+        Numbered zones map to Daniels paces and give athletes clearer guidance.
+        """
+        for zone_num in range(1, 7):
+            assert f"Zone {zone_num}" in PLANNER_SYSTEM_PROMPT, (
+                f"PLANNER_SYSTEM_PROMPT missing Zone {zone_num} definition"
+            )
+
+    def test_contains_athlete_level_guidelines(self) -> None:
+        """PLANNER_SYSTEM_PROMPT must include level-specific coaching guidelines.
+
+        WHY: Without level awareness, the planner prescribed VO2max intervals
+        for a beginner. The prompt must differentiate beginner/intermediate/advanced.
+        """
+        assert "Beginners" in PLANNER_SYSTEM_PROMPT
+        assert "Intermediate" in PLANNER_SYSTEM_PROMPT
+        assert "Advanced" in PLANNER_SYSTEM_PROMPT
+
+    def test_contains_recovery_week_mandate(self) -> None:
+        """Recovery weeks are explicitly called out as mandatory.
+
+        WHY: The eval run's beginner plan had zero recovery weeks, which was
+        the primary reason for rejection. The prompt must be unambiguous.
+        """
+        assert "recovery week" in PLANNER_SYSTEM_PROMPT.lower()
+        # Check for strong language about recovery weeks
+        assert "mandatory" in PLANNER_SYSTEM_PROMPT.lower() or "WILL be rejected" in PLANNER_SYSTEM_PROMPT
+
+    def test_contains_per_phase_validation(self) -> None:
+        """PLANNER_SYSTEM_PROMPT instructs validation after each phase.
+
+        WHY: The eval plan validated only at the end, by which point errors
+        had compounded. Per-phase validation catches violations early.
+        """
+        assert "AFTER EACH PHASE" in PLANNER_SYSTEM_PROMPT
+
+    def test_contains_injury_nuance_guidelines(self) -> None:
+        """PLANNER_SYSTEM_PROMPT includes nuanced injury handling.
+
+        WHY: The old prompt had a blanket 'avoid workout types that aggravate',
+        but past healed injuries should only trigger supplementary exercises,
+        not blanket restrictions.
+        """
+        assert "Past injuries" in PLANNER_SYSTEM_PROMPT or "past injuries" in PLANNER_SYSTEM_PROMPT
+        assert "strengthening" in PLANNER_SYSTEM_PROMPT.lower()
+
+    def test_long_runs_not_always_easy(self) -> None:
+        """PLANNER_SYSTEM_PROMPT acknowledges long runs can include Zone 3.
+
+        WHY: The eval output had all long runs at easy pace. Zone 3 long runs
+        (e.g., progression runs) are normal for intermediate+ athletes.
+        """
+        assert "NOT always Zone 2" in PLANNER_SYSTEM_PROMPT or "Zone 3" in PLANNER_SYSTEM_PROMPT
+
+    def test_seiler_80_20_citation(self) -> None:
+        """PLANNER_SYSTEM_PROMPT cites Seiler for the 80/20 rule.
+
+        WHY: The user asked where the 80/20 rule comes from. Citing the source
+        provides credibility and helps users understand the basis.
+        """
+        assert "Seiler" in PLANNER_SYSTEM_PROMPT
+
 
 # ---------------------------------------------------------------------------
 # REVIEWER_SYSTEM_PROMPT tests
@@ -176,6 +254,36 @@ class TestReviewerSystemPrompt:
         generate physiological values on its own.
         """
         assert "NEVER" in REVIEWER_SYSTEM_PROMPT
+
+    def test_specificity_is_level_aware(self) -> None:
+        """Reviewer specificity criteria differentiates athlete levels.
+
+        WHY: The old prompt said '5K plans should include VO2max sessions',
+        which penalized beginner plans for not having VO2max work — then the
+        planner added VO2max and got penalized for safety. No-win scenario.
+        """
+        assert "Beginners" in REVIEWER_SYSTEM_PROMPT or "beginner" in REVIEWER_SYSTEM_PROMPT.lower()
+        # Should NOT have the old blanket statement
+        assert "5K plan should include intervals and VO2max" not in REVIEWER_SYSTEM_PROMPT
+
+    def test_long_run_assessment_section(self) -> None:
+        """Reviewer includes nuanced long run intensity guidance.
+
+        WHY: Long runs at Zone 3 are normal for intermediate+ athletes.
+        The reviewer should not penalize progression long runs.
+        """
+        assert "LONG RUN ASSESSMENT" in REVIEWER_SYSTEM_PROMPT or "Long Run" in REVIEWER_SYSTEM_PROMPT
+
+    def test_injury_history_assessment_section(self) -> None:
+        """Reviewer includes nuanced injury assessment guidance.
+
+        WHY: Past healed injuries should not trigger automatic rejection.
+        """
+        assert "INJURY HISTORY" in REVIEWER_SYSTEM_PROMPT or "Past injuries" in REVIEWER_SYSTEM_PROMPT
+
+    def test_seiler_citation_in_reviewer(self) -> None:
+        """Reviewer also cites Seiler for the 80/20 intensity distribution."""
+        assert "Seiler" in REVIEWER_SYSTEM_PROMPT
 
 
 # ---------------------------------------------------------------------------
