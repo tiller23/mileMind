@@ -138,7 +138,7 @@ class TestPlannerSystemPrompt:
         WHY: The eval plan validated only at the end, by which point errors
         had compounded. Per-phase validation catches violations early.
         """
-        assert "AFTER EACH PHASE" in PLANNER_SYSTEM_PROMPT
+        assert "at least twice" in PLANNER_SYSTEM_PROMPT
 
     def test_contains_injury_nuance_guidelines(self) -> None:
         """PLANNER_SYSTEM_PROMPT includes nuanced injury handling.

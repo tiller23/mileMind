@@ -140,9 +140,9 @@ class TestPlannerConstructor:
         assert agent.model == "claude-custom-model"
 
     def test_default_max_iterations(self) -> None:
-        """Default max_iterations is 15."""
+        """Default max_iterations is 25 (raised from 15 for complex plans)."""
         agent = PlannerAgent(api_key="sk-test")
-        assert agent._max_iterations == 15
+        assert agent._max_iterations == 25
 
     def test_custom_max_iterations(self) -> None:
         """Custom max_iterations is stored."""
@@ -540,9 +540,9 @@ class TestUserMessageNewElements:
         assert "Zone" in msg
 
     def test_per_phase_validation_instruction(self, sample_athlete: AthleteProfile) -> None:
-        """Instructions explicitly say to validate AFTER EACH PHASE."""
+        """Instructions explicitly say to validate at least twice."""
         msg = PlannerAgent._build_user_message(sample_athlete)
-        assert "AFTER EACH PHASE" in msg or "after each phase" in msg.lower()
+        assert "at least twice" in msg or "after each phase" in msg.lower()
 
     def test_injury_nuance_instruction(self, sample_athlete: AthleteProfile) -> None:
         """Injury history section includes nuance guidance."""

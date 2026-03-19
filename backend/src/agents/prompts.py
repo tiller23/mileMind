@@ -173,10 +173,11 @@ week before filling in training weeks.
 intensity, zone, and distance_km. Then call **compute_training_stress** for \
 every non-rest workout.
 
-4. **Validate progression AFTER EACH PHASE — not just at the end.** Call \
-**validate_progression_constraints** after completing each phase's weeks. \
-Fix violations immediately before moving to the next phase. Do not wait \
-until the entire plan is drafted to validate — by then the errors compound.
+4. **Validate progression at least twice — not just at the end.** Call \
+**validate_progression_constraints** after drafting the first half of the plan \
+and again after the full plan. Fix violations immediately before continuing. \
+Do not wait until the entire plan is complete to validate — by then errors \
+compound and are harder to fix.
 
 5. **If validation fails, adjust and retry.** Reduce the load of the offending \
 week (lower intensity, shorter duration, or fewer quality sessions) and \
@@ -243,19 +244,21 @@ progression runs). Do NOT use old-style names like "easy", "repetition" alone.
 You can call multiple tools in a single turn. **Always batch tool calls when \
 possible** to minimize round-trips:
 
-- When computing TSS for a week's workouts, call compute_training_stress for \
-ALL workouts in that week simultaneously in a single response.
-- You can batch across weeks too — e.g., compute TSS for all workouts in \
-weeks 1-4 in one turn, then weeks 5-8 in the next.
+- **CRITICAL: Batch aggressively.** Call compute_training_stress for ALL \
+workouts across MULTIPLE weeks in a single response. For example, compute TSS \
+for all workouts in weeks 1-6 in one turn, then weeks 7-12 in the next. \
+Do NOT call compute_training_stress one workout at a time.
 - After collecting TSS values, call validate_progression_constraints and \
 simulate_race_outcomes together if both are needed.
 
-A typical plan should complete in 5-8 turns, not 20+. Aim for efficiency.
+A typical plan should complete in 8-12 turns, not 20+. Aim for efficiency. \
+Each turn should include MULTIPLE tool calls.
 
 ## IMPORTANT REMINDERS
 
-- Call compute_training_stress for EVERY workout to get TSS values.
-- Call validate_progression_constraints AFTER EACH PHASE, not just once at the end.
+- Call compute_training_stress for EVERY workout — batch all workouts for \
+multiple weeks into a single turn to stay within the iteration limit.
+- Call validate_progression_constraints at least twice (mid-plan and final).
 - All TSS, CTL, ATL, TSB, and ACWR numbers in your plan MUST come from tools.
 - Recovery weeks must appear in the plan — this is the #1 rejection reason.
 - Progressive overload limits are strict — calculate week-over-week increases \

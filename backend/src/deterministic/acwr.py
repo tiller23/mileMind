@@ -32,6 +32,7 @@ __all__ = [
     "DEFAULT_CHRONIC_DAYS",
     "DEFAULT_MAX_WEEKLY_INCREASE_PCT",
     "MAX_ALLOWED_WEEKLY_INCREASE_PCT",
+    "RECOVERY_WEEK_DROP_PCT",
     "RISK_TOLERANCE_PRESETS",
     "SAFE_LOWER",
     "SAFE_UPPER",
@@ -57,6 +58,7 @@ DEFAULT_MAX_WEEKLY_INCREASE_PCT = 0.10  # 10% rule
 MAX_ALLOWED_WEEKLY_INCREASE_PCT = 0.20  # Hard ceiling even for aggressive
 
 SPIKE_THRESHOLD_PCT = 0.40  # 40% single-week spike flagged per PRD
+RECOVERY_WEEK_DROP_PCT = 0.15  # 15%+ drop from previous week = recovery week
 
 # Risk tolerance presets: maps tolerance name to the ACWR ceiling that
 # triggers a violation. The hard cap at 1.5 is *always* enforced on top.
@@ -263,22 +265,44 @@ def check_safety(
     # Defense-in-depth: _validate_safety_inputs already rejects values above
     # MAX_ALLOWED_WEEKLY_INCREASE_PCT, but we clamp here too in case check_safety
     # is called directly without the validator (e.g. from tests or future code).
+    #
+    # Recovery week handling: when a week drops >=15% from the prior week, it's
+    # a recovery/step-back week. The NEXT week's increase is compared against
+    # the last non-recovery week (the "build reference"), not the recovery week.
+    # This prevents false positives where returning to normal training after a
+    # planned recovery week is flagged as an unsafe spike.
     capped_pct = min(max_weekly_increase_pct, MAX_ALLOWED_WEEKLY_INCREASE_PCT)
+    last_build_load = weekly_loads[0]  # Track last non-recovery week load
     for i in range(1, len(weekly_loads)):
         prev = weekly_loads[i - 1]
         curr = weekly_loads[i]
-        if prev > 0:
-            increase = (curr - prev) / prev
+
+        # Detect recovery week: significant drop from previous week
+        is_recovery = prev > 0 and (prev - curr) / prev >= RECOVERY_WEEK_DROP_PCT
+
+        if is_recovery:
+            # Recovery weeks are intentional drops — no increase violation check.
+            # Don't update last_build_load; the next week compares against it.
+            continue
+
+        # For weeks after a recovery week, compare against last build week
+        # instead of the recovery week to avoid false positives.
+        reference = last_build_load if last_build_load > prev else prev
+        if reference > 0:
+            increase = (curr - reference) / reference
             if increase > capped_pct:
                 violations.append(
                     f"Week {i + 1} increase {increase:.0%} exceeds "
-                    f"limit {capped_pct:.0%} (from {prev:.1f} to {curr:.1f})"
+                    f"limit {capped_pct:.0%} (from {reference:.1f} to {curr:.1f})"
                 )
             if increase >= SPIKE_THRESHOLD_PCT:
                 violations.append(
                     f"Load spike in week {i + 1}: {increase:.0%} increase "
                     f"(threshold {SPIKE_THRESHOLD_PCT:.0%})"
                 )
+
+        # Update build reference to current week (only for non-recovery weeks)
+        last_build_load = curr
 
     safe = len(violations) == 0
     return SafetyResult(

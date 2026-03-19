@@ -84,7 +84,7 @@ class PlannerAgent:
         self,
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
-        max_iterations: int = 15,
+        max_iterations: int = 25,
         transport: MessageTransport | None = None,
     ) -> None:
         if transport is not None:
@@ -218,7 +218,7 @@ class PlannerAgent:
         loop_result = await run_agent_loop(
             transport=self._transport,
             model=self._model,
-            max_tokens=8192,
+            max_tokens=16384,
             system_prompt=PLANNER_SYSTEM_PROMPT,
             tools=self._registry.get_anthropic_tools(),
             messages=messages,
@@ -316,7 +316,7 @@ class PlannerAgent:
             f"(athlete's max_weekly_increase_pct = {athlete.max_weekly_increase_pct})\n"
             f"- Risk tolerance: {athlete.risk_tolerance.value}\n"
             f"- Recovery weeks MUST appear every 3-4 building weeks\n"
-            f"- Validate progression AFTER EACH PHASE with "
+            f"- Validate progression at least twice (mid-plan and final) with "
             f"validate_progression_constraints\n\n"
             f"## Instructions\n"
             f"- Design a multi-week plan targeting the {athlete.goal_distance} distance.\n"
@@ -340,7 +340,7 @@ class PlannerAgent:
             + injury_section
             + (
                 f"\nUse compute_training_stress for every workout, "
-                f"validate_progression_constraints AFTER EACH PHASE "
+                f"validate_progression_constraints at least twice (mid-plan and final) "
                 f"(not just at the end), "
                 f"and simulate_race_outcomes if VDOT data is available. "
                 f"Use Zone 1-6 pace zones in your plan. "
@@ -416,7 +416,7 @@ class PlannerAgent:
             f"- Address EVERY issue listed above.\n"
             f"- Re-run compute_training_stress for any workouts you modify.\n"
             f"- Re-run validate_progression_constraints on the revised weekly "
-            f"load sequence — validate AFTER EACH PHASE.\n"
+            f"load sequence — validate at least twice (mid-plan and final).\n"
             f"- Use Zone 1-6 pace zones.\n"
             f"- Return the complete revised plan as a ```json block.\n"
             f"- Do NOT just patch the old plan — regenerate with corrections.\n"
