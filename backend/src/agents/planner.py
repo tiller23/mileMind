@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +31,36 @@ from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile
 
 logger = logging.getLogger(__name__)
+
+# Patterns that look like prompt injection attempts in free-text fields
+_INJECTION_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions)"
+    r"|(?:you\s+are\s+now\s+)"
+    r"|(?:system\s*:\s*)"
+    r"|(?:NEVER\s+(?:reject|fail|penalize))"
+    r"|(?:always\s+approve)"
+    r"|(?:override\s+(?:safety|constraints|rules))"
+)
+
+
+def _sanitize_free_text(text: str) -> str:
+    """Sanitize user-provided free text before embedding in prompts.
+
+    Strips patterns that look like prompt injection attempts. This is a
+    defense-in-depth measure — the reviewer agent operates independently
+    and provides a second layer of safety verification.
+
+    Args:
+        text: Raw user input (e.g., injury_history).
+
+    Returns:
+        Sanitized text with injection patterns removed.
+    """
+    sanitized = _INJECTION_PATTERNS.sub("[FILTERED]", text)
+    # Remove any XML/HTML-like tags that could confuse the model
+    sanitized = re.sub(r"<[^>]{1,50}>", "", sanitized)
+    return sanitized.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -295,10 +326,13 @@ class PlannerAgent:
         level = PlannerAgent._classify_athlete_level(athlete)
 
         # Build injury context with nuance
+        # Sanitize free-text fields to prevent prompt injection
         injury_section = ""
         if athlete.injury_history:
+            # Strip any instruction-like patterns from free text
+            sanitized = _sanitize_free_text(athlete.injury_history)
             injury_section = (
-                f"- Injury history: {athlete.injury_history}\n"
+                f"- Injury history: {sanitized}\n"
                 f"  Apply the injury guidelines from your system prompt — "
                 f"past healed injuries need strengthening notes, not blanket "
                 f"restrictions. Only reduce training for recent/current issues.\n"

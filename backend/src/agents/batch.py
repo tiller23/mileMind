@@ -124,7 +124,9 @@ class BatchCoordinator:
         self._poll_interval = poll_interval_seconds
         self._max_poll_seconds = max_poll_seconds
 
-        # Active transports that haven't finished yet
+        # All known transports (registered but may not have called yet)
+        self._known_transports: set[str] = set()
+        # Active transports that have made at least one API call
         self._active_transports: set[str] = set()
         # Pending requests: custom_id -> (params, future)
         self._pending: dict[str, tuple[dict[str, Any], asyncio.Future[Any]]] = {}
@@ -138,7 +140,12 @@ class BatchCoordinator:
         self._shutdown = asyncio.Event()
 
     def register_transport(self, transport_id: str) -> BatchTransport:
-        """Create and register a new BatchTransport.
+        """Create a new BatchTransport (lazily activated on first enqueue).
+
+        The transport is NOT marked active until its first API call. This
+        prevents deadlocks when transports are registered upfront but only
+        some make calls in a given round (e.g., planner calls first, then
+        reviewer calls later).
 
         Args:
             transport_id: Unique ID for the transport.
@@ -146,8 +153,10 @@ class BatchCoordinator:
         Returns:
             A new BatchTransport instance bound to this coordinator.
         """
-        self._active_transports.add(transport_id)
-        logger.debug("Registered transport: %s (active=%d)", transport_id, len(self._active_transports))
+        # Track as known but NOT active — activated on first enqueue
+        self._known_transports.add(transport_id)
+        logger.debug("Registered transport: %s (known=%d, active=%d)",
+                      transport_id, len(self._known_transports), len(self._active_transports))
         return BatchTransport(transport_id, self)
 
     def deregister_transport(self, transport_id: str) -> None:
@@ -156,6 +165,7 @@ class BatchCoordinator:
         Args:
             transport_id: The transport to deregister.
         """
+        self._known_transports.discard(transport_id)
         self._active_transports.discard(transport_id)
         self._enqueued_transport_ids.discard(transport_id)
         logger.debug("Deregistered transport: %s (active=%d)", transport_id, len(self._active_transports))
@@ -183,8 +193,15 @@ class BatchCoordinator:
             params: API request parameters.
             future: Future to resolve with the API response.
         """
+        # Extract transport_id: custom_id format is "{transport_id}:{call_number}"
+        # Use rsplit with maxsplit=1 to handle transport_ids containing colons
         transport_id = custom_id.rsplit(":", 1)[0]
         self._pending[custom_id] = (params, future)
+        # Activate transport on first enqueue (lazy activation prevents deadlock)
+        if transport_id not in self._active_transports:
+            self._active_transports.add(transport_id)
+            logger.debug("Activated transport: %s (active=%d)",
+                          transport_id, len(self._active_transports))
         self._enqueued_transport_ids.add(transport_id)
         logger.debug(
             "Enqueued %s (pending=%d, active=%d, enqueued=%d)",
@@ -339,7 +356,7 @@ class BatchCoordinator:
                     )
                 break
 
-            if elapsed + self._poll_interval >= self._max_poll_seconds:
+            if elapsed >= self._max_poll_seconds:
                 raise TimeoutError(
                     f"Batch {batch_id} did not complete within "
                     f"{self._max_poll_seconds:.0f}s"

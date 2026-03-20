@@ -150,8 +150,9 @@ class Orchestrator:
                 max_iterations,
             )
 
+        resolved_reviewer_model = reviewer_model or "claude-opus-4-20250514"
         planner_kwargs: dict[str, Any] = {"api_key": api_key, "model": planner_model}
-        reviewer_kwargs: dict[str, Any] = {"api_key": api_key, "model": reviewer_model}
+        reviewer_kwargs: dict[str, Any] = {"api_key": api_key, "model": resolved_reviewer_model}
         if max_iterations is not None:
             planner_kwargs["max_iterations"] = max_iterations
             reviewer_kwargs["max_iterations"] = max_iterations
