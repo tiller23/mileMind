@@ -25,42 +25,15 @@ if TYPE_CHECKING:
 import anthropic
 
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
-from src.agents.shared import build_registry, run_agent_loop
+from src.agents.shared import build_registry, run_agent_loop, sanitize_prompt_text
 from src.agents.transport import AnthropicTransport, MessageTransport
 from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile
 
 logger = logging.getLogger(__name__)
 
-# Patterns that look like prompt injection attempts in free-text fields
-_INJECTION_PATTERNS = re.compile(
-    r"(?i)"
-    r"(?:ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions)"
-    r"|(?:you\s+are\s+now\s+)"
-    r"|(?:system\s*:\s*)"
-    r"|(?:NEVER\s+(?:reject|fail|penalize))"
-    r"|(?:always\s+approve)"
-    r"|(?:override\s+(?:safety|constraints|rules))"
-)
-
-
-def _sanitize_free_text(text: str) -> str:
-    """Sanitize user-provided free text before embedding in prompts.
-
-    Strips patterns that look like prompt injection attempts. This is a
-    defense-in-depth measure — the reviewer agent operates independently
-    and provides a second layer of safety verification.
-
-    Args:
-        text: Raw user input (e.g., injury_history).
-
-    Returns:
-        Sanitized text with injection patterns removed.
-    """
-    sanitized = _INJECTION_PATTERNS.sub("[FILTERED]", text)
-    # Remove any XML/HTML-like tags that could confuse the model
-    sanitized = re.sub(r"<[^>]{1,50}>", "", sanitized)
-    return sanitized.strip()
+# Backward-compatible alias — tests import _sanitize_free_text from here
+_sanitize_free_text = sanitize_prompt_text
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +393,11 @@ class PlannerAgent:
                 len(reviewer_critique), _MAX_CRITIQUE_CHARS,
             )
             reviewer_critique = reviewer_critique[:_MAX_CRITIQUE_CHARS] + "\n[...TRUNCATED]"
+
+        # Sanitize inter-agent text to prevent indirect injection
+        # (reviewer output flowing into planner prompt)
+        reviewer_critique = _sanitize_free_text(reviewer_critique)
+        reviewer_issues = [_sanitize_free_text(issue) for issue in reviewer_issues]
 
         profile_data = athlete.model_dump(exclude_none=True)
         profile_json = json.dumps(profile_data, indent=2)

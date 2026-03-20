@@ -35,6 +35,8 @@ from src.evaluation.report import generate_comparison_report, generate_plan_revi
 from src.evaluation.results import HarnessMetrics
 from src.evaluation.runner import HarnessRunner
 
+logger = logging.getLogger(__name__)
+
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments.
@@ -158,8 +160,14 @@ async def run_single(args: argparse.Namespace) -> None:
 
     metrics = runner.compute_metrics(results, total_elapsed_seconds=total_elapsed)
 
-    # Write report
-    output_dir = Path(args.output_dir)
+    # Write report — warn if output directory is outside CWD subtree
+    output_dir = Path(args.output_dir).resolve()
+    cwd = Path.cwd().resolve()
+    if not str(output_dir).startswith(str(cwd)):
+        logger.warning(
+            "output-dir '%s' is outside the current working directory '%s'",
+            output_dir, cwd,
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     report = generate_plan_review_report(results, metrics)
@@ -214,8 +222,14 @@ async def run_comparison(args: argparse.Namespace) -> None:
         print(m.summary())
         print()
 
-    # Write comparison report
-    output_dir = Path(args.output_dir)
+    # Write comparison report — warn if output directory is outside CWD subtree
+    output_dir = Path(args.output_dir).resolve()
+    cwd = Path.cwd().resolve()
+    if not str(output_dir).startswith(str(cwd)):
+        logger.warning(
+            "output-dir '%s' is outside the current working directory '%s'",
+            output_dir, cwd,
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     report = generate_comparison_report(comparison_results)
