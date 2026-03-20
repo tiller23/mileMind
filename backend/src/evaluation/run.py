@@ -31,8 +31,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from src.evaluation.personas import ALL_PERSONAS, list_persona_ids
-
-load_dotenv()
 from src.evaluation.report import generate_comparison_report, generate_plan_review_report
 from src.evaluation.results import HarnessMetrics
 from src.evaluation.runner import HarnessRunner
@@ -236,6 +234,7 @@ async def run_comparison(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """CLI entry point."""
+    load_dotenv()
     args = parse_args()
     _setup_logging(args.verbose)
 

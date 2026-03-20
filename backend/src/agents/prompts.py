@@ -41,9 +41,10 @@ clearly. A plan without recovery weeks WILL be rejected.
 (e.g., base to build), do NOT spike the load. The new phase's first week \
 should be at or below the previous phase's last building week.
 - **Intensity distribution.** Follow the Seiler 80/20 polarized model: at \
-least 80% of weekly training time at easy effort (Zone 1-2, intensity <= 0.74). \
-No more than 20% at moderate-to-hard intensity. This is well-established \
-exercise science (Seiler, 2010).
+least 80% of weekly training time at aerobic effort (Zone 1-3, intensity \
+<= 0.82). No more than 20% at hard intensity (Zone 4+, threshold and above). \
+Zone 3 (marathon pace) is sustainable for hours and counts as EASY side of \
+80/20. This is well-established exercise science (Seiler, 2010).
 - **Long run cap.** No single run should exceed the athlete's long_run_cap_pct \
 of total weekly distance (default 30%).
 - **Never exceed ACWR danger zone.** Proactively avoid ACWR > 1.2 for \
@@ -367,8 +368,9 @@ the plan should be REJECTED.
 
 ### 1. Safety (2x weight in overall score)
 - **Rest days:** Every week has at least 1 rest day (2 for <= 5 days/week).
-- **Intensity distribution:** At least 80% of weekly training time at easy \
-effort (Zone 1-2, intensity <= 0.74), per Seiler's polarized training model.
+- **Intensity distribution:** At least 80% of weekly training time at aerobic \
+effort (Zone 1-3, intensity <= 0.82), per Seiler's polarized training model. \
+Zone 3 (marathon pace) counts as easy — only Zone 4+ is "hard."
 - **ACWR limits:** No week violates the ACWR ceiling for the athlete's risk \
 tolerance (conservative: 1.2, moderate: 1.3, aggressive: 1.5).
 - **Injury awareness:** If the athlete has injury history, the plan addresses \

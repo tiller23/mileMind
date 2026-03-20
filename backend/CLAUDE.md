@@ -25,18 +25,18 @@ All Claude API calls are gated by multiple limits to prevent runaway costs:
 | Safeguard | Default | Where |
 |-----------|---------|-------|
 | CLI confirmation prompt | enabled (skip with `-y`) | `cli.py` |
-| Planner max_iterations | 15 | `PlannerAgent.__init__` |
+| Planner max_iterations | 25 | `PlannerAgent.__init__` |
 | Reviewer max_iterations | 10 | `ReviewerAgent.__init__` |
 | Orchestrator max_retries | 3 | `Orchestrator.__init__` |
 | **Token budget** | **1,000,000** | `Orchestrator.__init__` |
-| Planner max_tokens/call | 8,192 | `_run_agent_loop` |
+| Planner max_tokens/call | 16,384 | `_run_agent_loop` |
 | Reviewer max_tokens/call | 4,096 | `_run_agent_loop` |
 
 **Pricing reference** (Sonnet planner, Opus reviewer):
-- Happy path (1 cycle, ~7+3 iterations): **~$0.52**
-- Typical run (1-2 cycles): **~$0.52-$1.04**
+- Happy path (1 cycle, ~8-12 iterations): **~$1.40**
+- Typical run (1-2 cycles): **~$1.40-$2.80**
 - Token budget worst case (1M tokens): **~$7.50**
-- Uncapped theoretical max (3×15 + 3×10 iters): ~$13 — prevented by token budget
+- Uncapped theoretical max (3x25 + 3x10 iters): ~$20 — prevented by token budget
 
 The `max_total_tokens` budget is the hard backstop. Override via
 `Orchestrator(max_total_tokens=N)` or accept the 1M default.
