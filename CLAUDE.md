@@ -63,10 +63,10 @@ generates physiological numbers directly.
 - **Phase 1: Deterministic Engine** — 5 models (banister, daniels, acwr, taper, monte_carlo) + training_stress. 286 unit tests, 100% coverage.
 - **Phase 2: Tool Wrappers + Single Agent** — 5 tool wrappers, ToolRegistry, PlannerAgent, CLI, domain models. 929 tests total. Two code review rounds enforced deterministic boundary (all physiology math in src/deterministic/).
 - **Phase 3: Multi-Agent Loop** — ReviewerAgent, Orchestrator, PlanChangeType routing (FULL/ADAPTATION/TWEAK), MessageTransport Protocol, AthleteProfile.cache_key(), decision logging, cost optimization patterns. 1046 tests total. Two code review rounds + cost analysis.
+- **Phase 4: Evaluation Harness** — 7 synthetic personas (5 edge cases + 2 normal), HarnessRunner, BatchCoordinator (50% cost savings), markdown/PDF reports, CLI with --dry-run/--batch/--compare. Prompt injection sanitization, security hardening. 1747 tests total. Multiple code reviews + security audit.
 
 ### Next Up
-- **Phase 4: Evaluation Harness** — Synthetic athlete profiles, automated benchmarking, metrics collection, constraint violation rates. Validate Sonnet-as-reviewer. Batch API transport.
-- **Phase 5: Consumer Frontend + Real Data** — Next.js web dashboard, Strava integration, auth, PostgreSQL, cloud deployment.
+- **Phase 5: Consumer Frontend + Real Data** — See `HANDOFF.md` for full plan. Next.js web dashboard, FastAPI routes, PostgreSQL, auth, Strava integration, cloud deployment.
 
 ## When Compacting
 Always preserve: list of modified files, current phase, test results, and any failing test details.

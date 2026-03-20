@@ -43,6 +43,9 @@ out/
 .expo/
 *.tsbuildinfo
 
+# Generated reports
+*.pdf
+
 # OS
 .DS_Store
 Thumbs.db
