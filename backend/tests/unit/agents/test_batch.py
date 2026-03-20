@@ -172,21 +172,24 @@ class TestBatchCoordinatorRegistration:
         assert isinstance(transport, BatchTransport)
         assert transport.transport_id == "test"
 
-    def test_register_adds_to_active(self) -> None:
-        """Registered transports are tracked in active set."""
+    def test_register_adds_to_known(self) -> None:
+        """Registered transports are tracked in known set (lazy activation)."""
         with patch("src.agents.batch.anthropic"):
             coordinator = BatchCoordinator(api_key="test-key")
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
-        assert "t1" in coordinator._active_transports
-        assert "t2" in coordinator._active_transports
+        assert "t1" in coordinator._known_transports
+        assert "t2" in coordinator._known_transports
+        # Not active until first enqueue
+        assert "t1" not in coordinator._active_transports
 
-    def test_deregister_removes_from_active(self) -> None:
-        """Deregistered transports are removed from active set."""
+    def test_deregister_removes_from_known_and_active(self) -> None:
+        """Deregistered transports are removed from both sets."""
         with patch("src.agents.batch.anthropic"):
             coordinator = BatchCoordinator(api_key="test-key")
         coordinator.register_transport("t1")
         coordinator.deregister_transport("t1")
+        assert "t1" not in coordinator._known_transports
         assert "t1" not in coordinator._active_transports
 
     def test_deregister_nonexistent_is_safe(self) -> None:
@@ -217,12 +220,46 @@ class TestBatchCoordinatorEnqueue:
         assert "t1:1" in coordinator._pending
 
     @pytest.mark.asyncio
+    async def test_enqueue_lazy_activates_transport(self) -> None:
+        """First enqueue activates a transport (lazy activation pattern)."""
+        with patch("src.agents.batch.anthropic"):
+            coordinator = BatchCoordinator(api_key="test-key")
+        coordinator.register_transport("t1")
+        assert "t1" not in coordinator._active_transports
+
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        coordinator.enqueue("t1:1", {"model": "m"}, future)
+
+        assert "t1" in coordinator._active_transports
+
+    @pytest.mark.asyncio
+    async def test_single_transport_round_ready_on_enqueue(self) -> None:
+        """With lazy activation, a single transport's enqueue triggers round ready."""
+        with patch("src.agents.batch.anthropic"):
+            coordinator = BatchCoordinator(api_key="test-key")
+        coordinator.register_transport("t1")
+        coordinator.register_transport("t2")  # registered but won't enqueue
+
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        coordinator.enqueue("t1:1", {"model": "m"}, future)
+
+        # t1 is the only active transport, so round is ready
+        assert coordinator._round_ready.is_set()
+
+    @pytest.mark.asyncio
     async def test_round_ready_when_all_active_enqueued(self) -> None:
-        """Round ready event is set when all active transports have enqueued."""
+        """Round ready event is set when all active transports have enqueued.
+
+        With lazy activation, transports become active on first enqueue.
+        To test the barrier, we pre-activate both transports so the
+        coordinator waits for both before signaling round ready.
+        """
         with patch("src.agents.batch.anthropic"):
             coordinator = BatchCoordinator(api_key="test-key")
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
+        # Pre-activate both so barrier waits for both
+        coordinator._active_transports.update({"t1", "t2"})
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         f2: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
@@ -235,12 +272,14 @@ class TestBatchCoordinatorEnqueue:
 
     @pytest.mark.asyncio
     async def test_round_not_ready_with_partial_enqueue(self) -> None:
-        """Round is not ready if only some transports have enqueued."""
+        """Round is not ready if only some active transports have enqueued."""
         with patch("src.agents.batch.anthropic"):
             coordinator = BatchCoordinator(api_key="test-key")
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
         coordinator.register_transport("t3")
+        # Pre-activate all three so barrier requires all to enqueue
+        coordinator._active_transports.update({"t1", "t2", "t3"})
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         coordinator.enqueue("t1:1", {"model": "m"}, f1)
@@ -249,11 +288,13 @@ class TestBatchCoordinatorEnqueue:
 
     @pytest.mark.asyncio
     async def test_deregister_triggers_round_ready(self) -> None:
-        """Deregistering a transport can make remaining transports ready."""
+        """Deregistering an active transport can make remaining transports ready."""
         with patch("src.agents.batch.anthropic"):
             coordinator = BatchCoordinator(api_key="test-key")
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
+        # Pre-activate both so barrier waits for both
+        coordinator._active_transports.update({"t1", "t2"})
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         coordinator.enqueue("t1:1", {"model": "m"}, f1)
@@ -575,6 +616,8 @@ class TestBatchCoordinatorMultiTransport:
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
         coordinator.register_transport("t3")
+        # Pre-activate all three to test barrier logic
+        coordinator._active_transports.update({"t1", "t2", "t3"})
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         f2: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
@@ -789,6 +832,8 @@ class TestBatchCoordinatorDeregisterRace:
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
         coordinator.register_transport("t3")
+        # Pre-activate all three to test deregister barrier behavior
+        coordinator._active_transports.update({"t1", "t2", "t3"})
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         f2: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
@@ -837,6 +882,8 @@ class TestBatchCoordinatorDeregisterRace:
         coordinator.register_transport("t1")
         coordinator.register_transport("t2")
         coordinator.register_transport("t3")
+        # Pre-activate all three to test deregister barrier behavior
+        coordinator._active_transports.update({"t1", "t2", "t3"})
 
         params = {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()

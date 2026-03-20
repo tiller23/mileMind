@@ -73,14 +73,14 @@ def check_constraint_violations(
         )
 
     # Check for ACWR values in plan text that exceed expected max
-    if hasattr(expected, "max_acwr"):
-        acwr_pattern = re.compile(r"ACWR\s*[:=]?\s*(\d+\.?\d*)", re.IGNORECASE)
-        for match in acwr_pattern.finditer(plan_text):
-            acwr_value = float(match.group(1))
-            if acwr_value > expected.max_acwr:
-                violations.append(
-                    f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}"
-                )
+    # Best-effort text matching — ACWR may appear in various formats
+    acwr_pattern = re.compile(r"ACWR\s*[:=]?\s*(\d+\.?\d*)", re.IGNORECASE)
+    for match in acwr_pattern.finditer(plan_text):
+        acwr_value = float(match.group(1))
+        if acwr_value > expected.max_acwr:
+            violations.append(
+                f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}"
+            )
 
     return violations
 

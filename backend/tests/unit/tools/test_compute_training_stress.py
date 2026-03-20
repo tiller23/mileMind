@@ -170,9 +170,9 @@ class TestComputeTrainingStressInput:
         assert data.avg_heart_rate is None
 
     def test_avg_heart_rate_lower_bound(self) -> None:
-        """HR of 30 bpm is the minimum accepted value."""
-        data = ComputeTrainingStressInput(**_make_input(avg_heart_rate=30))
-        assert data.avg_heart_rate == 30
+        """HR of 60 bpm is the minimum accepted value."""
+        data = ComputeTrainingStressInput(**_make_input(avg_heart_rate=60))
+        assert data.avg_heart_rate == 60
 
     def test_avg_heart_rate_upper_bound(self) -> None:
         """HR of 250 bpm is the maximum accepted value."""
@@ -180,9 +180,9 @@ class TestComputeTrainingStressInput:
         assert data.avg_heart_rate == 250
 
     def test_avg_heart_rate_below_minimum_raises(self) -> None:
-        """HR below 30 bpm must raise ValidationError."""
+        """HR below 60 bpm must raise ValidationError."""
         with pytest.raises(ValidationError):
-            ComputeTrainingStressInput(**_make_input(avg_heart_rate=29))
+            ComputeTrainingStressInput(**_make_input(avg_heart_rate=59))
 
     def test_avg_heart_rate_above_maximum_raises(self) -> None:
         """HR above 250 bpm must raise ValidationError."""

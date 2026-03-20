@@ -55,7 +55,7 @@ class ComputeTrainingStressInput(BaseModel):
         default=None, gt=0, description="Distance in kilometres (optional)"
     )
     avg_heart_rate: int | None = Field(
-        default=None, ge=30, le=250, description="Average heart rate in bpm (optional)"
+        default=None, ge=60, le=250, description="Average heart rate in bpm (optional)"
     )
 
     @model_validator(mode="after")
