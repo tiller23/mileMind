@@ -1,9 +1,22 @@
 # Phase 5: Consumer Frontend + Real Data
 
-**Status:** Ready to start
-**Branch:** `main` (all prior phases merged)
-**Tests:** 1747 passing
+**Status:** 5a complete, 5b next
+**Branch:** `feature/phase-5a-db-api`
+**Tests:** 1783 passing (36 new)
 **Date:** 2026-03-19
+
+## Phase 5a Completed
+- SQLAlchemy ORM: 7 tables (users, athlete_profiles, training_plans, workout_logs, jobs, chat_messages, strava_tokens)
+- Async sessions with SQLite fallback for tests
+- FastAPI app with CORS, lifespan hooks
+- JWT auth: access (15min) + refresh (30d) via httpOnly cookies
+- Google OAuth callback with email_verified check
+- Profile CRUD (GET/PUT, upsert pattern)
+- Plan routes (list, get, debug, archive)
+- Pydantic request/response schemas
+- Alembic configured (sync engine for migrations)
+- Security: JWT secret production validator, no info disclosure, Pydantic validation on all inputs
+- Code reviewed: 5 CRITICALs fixed, 6 WARNINGs fixed
 
 ---
 

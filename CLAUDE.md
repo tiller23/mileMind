@@ -28,7 +28,7 @@ generates physiological numbers directly.
 - `cd backend && pytest tests/unit/deterministic/` — Deterministic engine tests
 - `cd backend && pytest tests/integration/` — Integration tests
 - `cd frontend/web && npm test` — Frontend tests
-- `cd backend && uvicorn src.api.main:app --reload` — Dev server
+- `cd backend && uvicorn src.api.main:create_app --factory --reload` — Dev server
 
 ## Constraints
 - MUST: All physiological metrics computed by deterministic Python functions
@@ -65,8 +65,11 @@ generates physiological numbers directly.
 - **Phase 3: Multi-Agent Loop** — ReviewerAgent, Orchestrator, PlanChangeType routing (FULL/ADAPTATION/TWEAK), MessageTransport Protocol, AthleteProfile.cache_key(), decision logging, cost optimization patterns. 1046 tests total. Two code review rounds + cost analysis.
 - **Phase 4: Evaluation Harness** — 7 synthetic personas (5 edge cases + 2 normal), HarnessRunner, BatchCoordinator (50% cost savings), markdown/PDF reports, CLI with --dry-run/--batch/--compare. Prompt injection sanitization, security hardening. 1747 tests total. Multiple code reviews + security audit.
 
+- **Phase 5a: Database + API Foundation** — SQLAlchemy ORM (7 tables), async sessions, FastAPI routes (auth, profile, plans), JWT auth (httpOnly cookies), Google OAuth, Pydantic schemas, Alembic migrations. 1783 tests total.
+
 ### Next Up
-- **Phase 5: Consumer Frontend + Real Data** — See `HANDOFF.md` for full plan. Next.js web dashboard, FastAPI routes, PostgreSQL, auth, Strava integration, cloud deployment.
+- **Phase 5b: Plan Generation + SSE** — Job manager, SSE streaming, orchestrator on_progress callback.
+- **Phase 5c-5h** — Chat negotiation, Strava integration, Frontend, Deployment. See `HANDOFF.md`.
 
 ## When Compacting
 Always preserve: list of modified files, current phase, test results, and any failing test details.
