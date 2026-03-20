@@ -166,6 +166,79 @@ class TestPlannerSystemPrompt:
         """
         assert "Seiler" in PLANNER_SYSTEM_PROMPT
 
+    def test_workout_variety_guidance(self) -> None:
+        """PLANNER_SYSTEM_PROMPT instructs rotating quality session types.
+
+        WHY: The eval plan repeated hill repeats every build week. Rotating
+        workout types develops different systems and prevents staleness.
+        """
+        assert "WORKOUT VARIETY" in PLANNER_SYSTEM_PROMPT
+        assert "rotate" in PLANNER_SYSTEM_PROMPT.lower()
+
+    def test_prescription_format_guidance(self) -> None:
+        """PLANNER_SYSTEM_PROMPT specifies distance vs duration prescription.
+
+        WHY: The eval plan gave duration for everything. Quality sessions need
+        distance + structure; easy runs benefit from duration-based prescription.
+        """
+        assert "WORKOUT PRESCRIPTION FORMAT" in PLANNER_SYSTEM_PROMPT
+        assert "DURATION" in PLANNER_SYSTEM_PROMPT
+        assert "DISTANCE" in PLANNER_SYSTEM_PROMPT
+
+    def test_recovery_week_calibration(self) -> None:
+        """Recovery weeks should be 20-30% reduction, not 50%.
+
+        WHY: The eval plan had 50% drops for recovery weeks, which is too
+        aggressive and disrupts training continuity.
+        """
+        assert "NOT 50%" in PLANNER_SYSTEM_PROMPT
+        assert "every 4 building weeks" in PLANNER_SYSTEM_PROMPT
+
+    def test_experienced_base_phase(self) -> None:
+        """Advanced athletes should start at their current weekly mileage.
+
+        WHY: The eval plan ramped up from below the athlete's 100 km/week base.
+        Experienced runners don't need to build up from a lower starting point.
+        """
+        assert "start at" in PLANNER_SYSTEM_PROMPT.lower()
+        assert "current weekly mileage" in PLANNER_SYSTEM_PROMPT.lower()
+
+    def test_fartlek_definition_required(self) -> None:
+        """Vague terms like 'fartlek' must include specific structure.
+
+        WHY: The user asked 'what is this?' about fartlek in the eval output.
+        Workouts should be self-explanatory without coaching jargon.
+        """
+        assert "fartlek" in PLANNER_SYSTEM_PROMPT.lower()
+        assert "specific" in PLANNER_SYSTEM_PROMPT.lower()
+
+    def test_peak_phase_not_highest_volume(self) -> None:
+        """Peak phase should sharpen with intensity, not maximize volume.
+
+        WHY: The eval plan had peak weeks (510-537 TSS) as the highest-volume
+        weeks. Peak is about sharpness, not maximum load.
+        """
+        assert "sharpening" in PLANNER_SYSTEM_PROMPT.lower() or "sharpen" in PLANNER_SYSTEM_PROMPT.lower()
+        assert "NOT make peak" in PLANNER_SYSTEM_PROMPT or "not maximum volume" in PLANNER_SYSTEM_PROMPT.lower()
+
+    def test_weekly_coaching_notes_mandate(self) -> None:
+        """Every week must include purpose-explaining notes.
+
+        WHY: The user praised weekly coaching notes as building trust and
+        engagement. This is a key differentiator.
+        """
+        assert "WEEKLY COACHING NOTES" in PLANNER_SYSTEM_PROMPT
+        assert "PURPOSE" in PLANNER_SYSTEM_PROMPT
+
+    def test_build_phase_splitting_guidance(self) -> None:
+        """Planner is guided to split build into sub-phases for longer plans.
+
+        WHY: The eval plan's Build 2 phase split was praised as a 'nice touch'.
+        Encourage this for 12+ week plans.
+        """
+        assert "BUILD 1" in PLANNER_SYSTEM_PROMPT or "Build 1" in PLANNER_SYSTEM_PROMPT
+        assert "BUILD 2" in PLANNER_SYSTEM_PROMPT or "Build 2" in PLANNER_SYSTEM_PROMPT
+
 
 # ---------------------------------------------------------------------------
 # REVIEWER_SYSTEM_PROMPT tests
@@ -284,6 +357,26 @@ class TestReviewerSystemPrompt:
     def test_seiler_citation_in_reviewer(self) -> None:
         """Reviewer also cites Seiler for the 80/20 intensity distribution."""
         assert "Seiler" in REVIEWER_SYSTEM_PROMPT
+
+    def test_reviewer_workout_variety(self) -> None:
+        """Reviewer checks that quality sessions rotate across weeks."""
+        assert "rotate across weeks" in REVIEWER_SYSTEM_PROMPT.lower()
+
+    def test_reviewer_peak_phase_assessment(self) -> None:
+        """Reviewer scores down if peak weeks are the highest volume."""
+        assert "highest-volume weeks" in REVIEWER_SYSTEM_PROMPT
+
+    def test_reviewer_recovery_week_calibration(self) -> None:
+        """Reviewer expects 20-30% recovery drops, not 50%."""
+        assert "NOT 50%" in REVIEWER_SYSTEM_PROMPT
+
+    def test_reviewer_prescription_format(self) -> None:
+        """Reviewer checks workout prescription format (distance vs duration)."""
+        assert "Quality sessions should specify distance" in REVIEWER_SYSTEM_PROMPT
+
+    def test_reviewer_coaching_notes(self) -> None:
+        """Reviewer evaluates presence of weekly coaching notes."""
+        assert "coaching notes" in REVIEWER_SYSTEM_PROMPT.lower() or "weekly notes" in REVIEWER_SYSTEM_PROMPT.lower()
 
 
 # ---------------------------------------------------------------------------

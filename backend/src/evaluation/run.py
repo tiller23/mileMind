@@ -1,7 +1,7 @@
 """CLI entry point for the evaluation harness.
 
 Usage:
-    # Run all 5 personas with default models
+    # Run all personas with default models
     python -m src.evaluation.run
 
     # Run specific persona
@@ -28,7 +28,11 @@ import sys
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from src.evaluation.personas import ALL_PERSONAS, list_persona_ids
+
+load_dotenv()
 from src.evaluation.report import generate_comparison_report, generate_plan_review_report
 from src.evaluation.results import HarnessMetrics
 from src.evaluation.runner import HarnessRunner
@@ -48,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         choices=list_persona_ids(),
-        help="Run specific persona(s). Default: all 5.",
+        help="Run specific persona(s). Default: all.",
     )
     parser.add_argument(
         "--planner-model",

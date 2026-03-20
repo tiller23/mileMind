@@ -3,8 +3,10 @@
 import pytest
 
 from src.evaluation.report import (
+    _extract_plan_json,
     _format_comparison_persona,
     _format_persona_section,
+    _format_plan_overview,
     generate_comparison_report,
     generate_plan_review_report,
 )
@@ -462,3 +464,152 @@ class TestFormatPersonaSectionUnknownPersona:
 
         assert "Persona definition not found" not in joined
         assert "### Athlete Profile" in joined
+
+
+# ---------------------------------------------------------------------------
+# Plan overview extraction and formatting
+# ---------------------------------------------------------------------------
+
+
+_VALID_PLAN_JSON = """\
+```json
+{
+  "goal_event": "Half Marathon",
+  "predicted_finish_time_minutes": 105.3,
+  "weeks": [
+    {
+      "week_number": 1,
+      "phase": "base",
+      "target_load": 180.5,
+      "workouts": [
+        {"day": 1, "workout_type": "easy", "pace_zone": "Zone 2", "duration_minutes": 45, "intensity": 0.65, "tss": 29.3, "description": "Zone 2 easy run"},
+        {"day": 3, "workout_type": "tempo", "pace_zone": "Zone 4", "distance_km": 8.0, "duration_minutes": 40, "intensity": 0.85, "tss": 51.0, "description": "Zone 4 tempo run"},
+        {"day": 5, "workout_type": "long_run", "pace_zone": "Zone 2", "distance_km": 16.0, "duration_minutes": 90, "intensity": 0.68, "tss": 61.2, "description": "Zone 2 long run"},
+        {"day": 7, "workout_type": "rest", "description": "Rest day"}
+      ],
+      "notes": "Base phase week 1: aerobic development"
+    },
+    {
+      "week_number": 2,
+      "phase": "base",
+      "target_load": 195.0,
+      "workouts": [
+        {"day": 1, "workout_type": "easy", "pace_zone": "Zone 2", "tss": 30.0},
+        {"day": 7, "workout_type": "rest"}
+      ]
+    }
+  ],
+  "supplementary_notes": "Include ankle stability 3x/week",
+  "notes": "12-week progressive plan"
+}
+```
+"""
+
+
+class TestExtractPlanJson:
+    """Tests for _extract_plan_json parsing."""
+
+    def test_extracts_from_fenced_json_block(self) -> None:
+        """Parses JSON from a ```json fenced block."""
+        result = _extract_plan_json(_VALID_PLAN_JSON)
+        assert result is not None
+        assert result["goal_event"] == "Half Marathon"
+        assert len(result["weeks"]) == 2
+
+    def test_extracts_bare_json(self) -> None:
+        """Parses JSON without code fences."""
+        bare = '{"weeks": [{"week_number": 1, "phase": "base"}]}'
+        result = _extract_plan_json(bare)
+        assert result is not None
+        assert len(result["weeks"]) == 1
+
+    def test_extracts_json_with_trailing_text(self) -> None:
+        """Parses JSON when followed by prose text."""
+        text = '{"weeks": []} Here is some trailing explanation.'
+        result = _extract_plan_json(text)
+        assert result is not None
+        assert result["weeks"] == []
+
+    def test_returns_none_for_no_json(self) -> None:
+        """Returns None when no JSON is present."""
+        assert _extract_plan_json("Just a plain text plan.") is None
+
+    def test_returns_none_for_malformed_json(self) -> None:
+        """Returns None for invalid JSON."""
+        assert _extract_plan_json("```json\n{broken json\n```") is None
+
+    def test_returns_none_for_empty_string(self) -> None:
+        """Returns None for empty input."""
+        assert _extract_plan_json("") is None
+
+
+class TestFormatPlanOverview:
+    """Tests for _format_plan_overview rendering."""
+
+    def test_renders_week_table_from_valid_plan(self) -> None:
+        """Valid plan produces a week-by-week table."""
+        lines = _format_plan_overview(_VALID_PLAN_JSON)
+        joined = "\n".join(lines)
+        assert "| Week | Phase |" in joined
+        assert "| 1 |" in joined
+        assert "| 2 |" in joined
+        assert "Half Marathon" in joined
+
+    def test_renders_predicted_finish_time(self) -> None:
+        """Numeric predicted_finish_time_minutes is formatted."""
+        lines = _format_plan_overview(_VALID_PLAN_JSON)
+        joined = "\n".join(lines)
+        assert "1:45" in joined
+        assert "105.3" in joined
+
+    def test_handles_string_predicted_time(self) -> None:
+        """String predicted_finish_time_minutes (e.g. placeholder) is skipped."""
+        text = '```json\n{"weeks": [], "predicted_finish_time_minutes": "<from tool>"}\n```'
+        lines = _format_plan_overview(text)
+        joined = "\n".join(lines)
+        assert "Predicted finish" not in joined
+
+    def test_handles_string_target_load(self) -> None:
+        """String target_load like '<sum of...>' doesn't crash."""
+        text = '```json\n{"weeks": [{"week_number": 1, "phase": "base", "target_load": "<sum of TSS>", "workouts": []}]}\n```'
+        lines = _format_plan_overview(text)
+        joined = "\n".join(lines)
+        assert "| 1 |" in joined
+
+    def test_sums_tss_when_target_load_missing(self) -> None:
+        """Falls back to summing workout TSS when target_load absent."""
+        text = '```json\n{"weeks": [{"week_number": 1, "phase": "base", "workouts": [{"workout_type": "easy", "tss": 30}, {"workout_type": "tempo", "tss": 50}]}]}\n```'
+        lines = _format_plan_overview(text)
+        joined = "\n".join(lines)
+        assert "80" in joined
+
+    def test_handles_no_weeks_key(self) -> None:
+        """Plan with no 'weeks' key shows fallback message."""
+        text = '```json\n{"goal_event": "Marathon"}\n```'
+        lines = _format_plan_overview(text)
+        joined = "\n".join(lines)
+        assert "Could not extract" in joined
+
+    def test_handles_non_json_plan(self) -> None:
+        """Non-JSON plan text shows fallback message."""
+        lines = _format_plan_overview("Week 1: Easy run. Week 2: Tempo run.")
+        joined = "\n".join(lines)
+        assert "Could not extract" in joined
+
+    def test_shows_supplementary_notes(self) -> None:
+        """Supplementary notes are rendered."""
+        lines = _format_plan_overview(_VALID_PLAN_JSON)
+        joined = "\n".join(lines)
+        assert "ankle stability" in joined
+
+    def test_identifies_long_run(self) -> None:
+        """Long runs appear in the Long Run column."""
+        lines = _format_plan_overview(_VALID_PLAN_JSON)
+        joined = "\n".join(lines)
+        assert "16.0km" in joined
+
+    def test_identifies_quality_sessions(self) -> None:
+        """Quality sessions appear in Key Sessions column."""
+        lines = _format_plan_overview(_VALID_PLAN_JSON)
+        joined = "\n".join(lines)
+        assert "Zone 4 tempo run" in joined

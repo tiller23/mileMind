@@ -1,6 +1,6 @@
 """Tests for the evaluation persona definitions.
 
-Validates that all 5 synthetic athlete personas are correctly defined,
+Validates that all synthetic athlete personas are correctly defined,
 produce valid AthleteProfile instances, and have complete expected
 behavior specifications.
 """
@@ -30,9 +30,9 @@ from src.models.athlete import AthleteProfile, RiskTolerance
 class TestPersonaRegistry:
     """Tests for the persona registry and lookup functions."""
 
-    def test_all_personas_has_five_entries(self) -> None:
-        """PRD Section 8.1 specifies exactly 5 synthetic athletes."""
-        assert len(ALL_PERSONAS) == 5
+    def test_all_personas_count(self) -> None:
+        """Registry contains all defined personas (5 PRD + 2 normal-person)."""
+        assert len(ALL_PERSONAS) == 7
 
     def test_all_persona_ids_are_unique(self) -> None:
         """No duplicate persona IDs."""
@@ -43,7 +43,7 @@ class TestPersonaRegistry:
         """list_persona_ids returns sorted list."""
         ids = list_persona_ids()
         assert ids == sorted(ids)
-        assert len(ids) == 5
+        assert len(ids) == 7
 
     def test_get_persona_by_id(self) -> None:
         """Each persona is retrievable by its ID."""
@@ -67,9 +67,11 @@ class TestPersonaRegistry:
             get_persona("")
 
     def test_expected_persona_ids(self) -> None:
-        """The 5 personas match the PRD specification."""
+        """All personas are registered with expected IDs."""
         expected_ids = {
             "beginner_runner",
+            "casual_10k_runner",
+            "recreational_half",
             "overtrained_athlete",
             "aggressive_spiker",
             "injury_prone_runner",

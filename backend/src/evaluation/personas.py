@@ -1,8 +1,8 @@
 """Synthetic athlete personas for evaluation benchmarking.
 
-Each persona is designed to stress-test a specific aspect of the
-planner-reviewer pipeline. The 5 personas match the PRD Section 8.1
-Evaluation Harness specification.
+The 5 original stress-test personas match the PRD Section 8.1 specification.
+Two additional normal-person personas (casual_10k_runner, recreational_half)
+cover typical, non-edge-case athletes.
 
 Usage:
     from src.evaluation.personas import ALL_PERSONAS, get_persona
@@ -24,8 +24,10 @@ __all__ = [
     "ADVANCED_MARATHONER",
     "AGGRESSIVE_SPIKER",
     "BEGINNER_RUNNER",
+    "CASUAL_10K_RUNNER",
     "INJURY_PRONE_RUNNER",
     "OVERTRAINED_ATHLETE",
+    "RECREATIONAL_HALF",
     "EvaluationPersona",
     "ExpectedBehavior",
     "get_persona",
@@ -283,12 +285,93 @@ ADVANCED_MARATHONER = EvaluationPersona(
     ),
 )
 
+RECREATIONAL_HALF = EvaluationPersona(
+    persona_id="recreational_half",
+    profile=AthleteProfile(
+        name="Recreational Half Marathoner",
+        age=34,
+        vo2max=44.0,
+        vdot=40.0,
+        weekly_mileage_base=40.0,
+        hr_max=186,
+        hr_rest=62,
+        injury_history="",
+        risk_tolerance=RiskTolerance.MODERATE,
+        max_weekly_increase_pct=0.10,
+        goal_distance="half_marathon",
+        goal_time_minutes=105.0,
+        training_days_per_week=4,
+        long_run_cap_pct=0.30,
+    ),
+    expected_behavior=ExpectedBehavior(
+        description=(
+            "Normal intermediate runner training for a half marathon PR. "
+            "Should see a straightforward base/build/peak/taper structure "
+            "with tempo runs and some threshold work in the build phase. "
+            "Long runs progressing to half marathon distance with some "
+            "Zone 3 segments. Nothing exotic — just a solid, normal plan."
+        ),
+        must_include=("tempo", "long run", "recovery"),
+        max_weekly_increase_pct=0.10,
+        min_rest_days_per_week=1,
+        max_acwr=1.3,
+        min_safety_score=80.0,
+        notes=(
+            "Normal-person test. Not an edge case — a typical intermediate "
+            "runner who wants to PR their half marathon. Plan should be "
+            "competent and realistic, not overly conservative or aggressive. "
+            "VDOT 40 predicts ~1:51 half; 1:45 goal is ambitious but achievable."
+        ),
+    ),
+)
+
+CASUAL_10K_RUNNER = EvaluationPersona(
+    persona_id="casual_10k_runner",
+    profile=AthleteProfile(
+        name="Casual 10K Runner",
+        age=27,
+        vo2max=42.0,
+        vdot=38.0,
+        weekly_mileage_base=25.0,
+        hr_rest=68,
+        injury_history="",
+        risk_tolerance=RiskTolerance.MODERATE,
+        max_weekly_increase_pct=0.10,
+        goal_distance="10K",
+        goal_time_minutes=50.0,
+        training_days_per_week=4,
+        long_run_cap_pct=0.30,
+    ),
+    expected_behavior=ExpectedBehavior(
+        description=(
+            "Straightforward 10K plan for a casual runner. Shorter plan "
+            "(8-10 weeks). Base phase at current mileage, build phase adds "
+            "tempo and threshold work, brief peak and taper. Should be "
+            "simple and achievable — no VO2max intervals until late build "
+            "or peak phase."
+        ),
+        must_include=("easy", "tempo", "recovery"),
+        max_weekly_increase_pct=0.10,
+        min_rest_days_per_week=1,
+        max_acwr=1.3,
+        min_safety_score=80.0,
+        notes=(
+            "Normal-person test. Represents the most common user: someone "
+            "who runs a few times a week and wants a structured 10K plan. "
+            "VDOT 38 predicts ~52 min 10K; 50 min goal is ambitious but achievable. "
+            "Plan should be shorter and simpler than marathon plans."
+        ),
+    ),
+)
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
 ALL_PERSONAS: list[EvaluationPersona] = [
     BEGINNER_RUNNER,
+    CASUAL_10K_RUNNER,
+    RECREATIONAL_HALF,
     OVERTRAINED_ATHLETE,
     AGGRESSIVE_SPIKER,
     INJURY_PRONE_RUNNER,

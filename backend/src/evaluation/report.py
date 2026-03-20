@@ -1,21 +1,199 @@
 """Report generation for evaluation harness results.
 
 Produces markdown reports for:
-1. Single-run results (all 5 plans for human review)
+1. Single-run results (all plans for human review)
 2. Sonnet-vs-Opus comparison (side-by-side metrics)
 """
 
 from __future__ import annotations
 
+import json
+import logging
 from datetime import datetime, timezone
 
 from src.evaluation.personas import get_persona
 from src.evaluation.results import HarnessMetrics, PersonaResult
 
+logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _extract_plan_json(plan_text: str) -> dict | None:
+    """Try to extract the JSON plan from the plan text.
+
+    The planner wraps the plan in a ```json fenced block. This function
+    finds and parses it.
+
+    Args:
+        plan_text: Raw plan text from the planner agent.
+
+    Returns:
+        Parsed plan dict, or None if extraction fails.
+    """
+    # Try to find ```json ... ``` block
+    start = plan_text.find("```json")
+    if start == -1:
+        start = plan_text.find("```\n{")
+    if start == -1:
+        # Try raw JSON using raw_decode to handle trailing text
+        brace = plan_text.find("{")
+        if brace == -1:
+            return None
+        try:
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(plan_text, brace)
+            return obj
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+    # Skip the ```json line
+    json_start = plan_text.find("\n", start) + 1
+    end = plan_text.find("```", json_start)
+    if end == -1:
+        json_str = plan_text[json_start:]
+    else:
+        json_str = plan_text[json_start:end]
+
+    try:
+        return json.loads(json_str.strip())
+    except json.JSONDecodeError:
+        return None
+
+
+def _format_plan_overview(plan_text: str) -> list[str]:
+    """Build a human-readable week-by-week plan overview table.
+
+    Extracts the JSON plan and renders a summary table showing phase,
+    weekly load, week-over-week change, key sessions, and long run for
+    each week. Falls back gracefully if JSON parsing fails.
+
+    Args:
+        plan_text: Raw plan text from the planner agent.
+
+    Returns:
+        List of markdown lines for the plan overview.
+    """
+    plan = _extract_plan_json(plan_text)
+    if not plan or "weeks" not in plan:
+        return ["*(Could not extract plan overview from JSON)*", ""]
+
+    lines: list[str] = []
+    weeks = plan["weeks"]
+
+    # Header info
+    if plan.get("goal_event"):
+        lines.append(f"**Goal:** {plan['goal_event']}")
+    predicted = plan.get("predicted_finish_time_minutes")
+    if isinstance(predicted, (int, float)):
+        hours = int(predicted) // 60
+        remaining = int(predicted) % 60
+        lines.append(f"**Predicted finish:** {hours}:{remaining:02d} ({predicted:.1f} min)")
+    if lines:
+        lines.append("")
+
+    # Week-by-week table
+    lines.append("| Week | Phase | Load (TSS) | WoW % | Key Sessions | Long Run |")
+    lines.append("|------|-------|------------|-------|--------------|----------|")
+
+    prev_load: float | None = None
+    for week in weeks:
+        wk_num = week.get("week_number", "?")
+        phase = week.get("phase", "?")
+        target_load = week.get("target_load")
+
+        # Try to compute load from workouts if target_load is a string
+        load_val: float | None = None
+        if isinstance(target_load, (int, float)):
+            load_val = float(target_load)
+        elif isinstance(target_load, str):
+            try:
+                load_val = float(target_load)
+            except (ValueError, TypeError):
+                pass
+
+        # If still no load, sum workout TSS
+        if load_val is None and "workouts" in week:
+            tss_sum = 0.0
+            for w in week["workouts"]:
+                tss = w.get("tss")
+                if isinstance(tss, (int, float)):
+                    tss_sum += float(tss)
+            if tss_sum > 0:
+                load_val = tss_sum
+
+        load_str = f"{load_val:.0f}" if load_val is not None else "—"
+
+        # Week-over-week change
+        wow = ""
+        if load_val is not None and prev_load is not None and prev_load > 0:
+            pct = (load_val - prev_load) / prev_load * 100
+            if pct < -15:
+                wow = f"**{pct:+.0f}%**"  # Bold for recovery weeks
+            else:
+                wow = f"{pct:+.0f}%"
+        elif load_val is not None and prev_load is None:
+            wow = "—"
+
+        # Extract key sessions and long run
+        key_sessions: list[str] = []
+        long_run = "—"
+        workouts = week.get("workouts", [])
+        for w in workouts:
+            wtype = w.get("workout_type", "").lower()
+            desc = w.get("description", "")
+            zone = w.get("pace_zone", "")
+            dist = w.get("distance_km")
+            dur = w.get("duration_minutes")
+
+            if wtype == "rest":
+                continue
+
+            # Identify long run
+            if wtype in ("long_run", "long run", "long") or "long" in desc.lower():
+                dist_str = f"{dist}km" if dist else f"{dur}min" if dur else ""
+                zone_str = zone if zone else ""
+                long_run = f"{dist_str} {zone_str}".strip()
+                continue
+
+            # Key quality sessions (skip easy/recovery)
+            if wtype in ("easy", "recovery", "warm_up", "cooldown"):
+                continue
+
+            # Build a compact description
+            if desc and len(desc) < 50:
+                key_sessions.append(desc)
+            elif zone:
+                label = wtype.replace("_", " ").title()
+                key_sessions.append(f"{zone} {label}")
+
+        key_str = ", ".join(key_sessions[:2]) if key_sessions else "Easy/recovery"
+
+        # Bold phase for recovery weeks
+        phase_str = f"**{phase.title()}**" if "recover" in phase.lower() else phase.title()
+
+        lines.append(
+            f"| {wk_num} | {phase_str} | {load_str} | {wow} "
+            f"| {key_str} | {long_run} |"
+        )
+
+        if load_val is not None:
+            prev_load = load_val
+
+    lines.append("")
+
+    # Supplementary notes
+    if plan.get("supplementary_notes"):
+        lines.append(f"**Supplementary notes:** {plan['supplementary_notes']}")
+        lines.append("")
+    if plan.get("notes"):
+        lines.append(f"**Plan rationale:** {plan['notes']}")
+        lines.append("")
+
+    return lines
 
 
 def _format_summary_table(metrics: HarnessMetrics) -> list[str]:
@@ -40,8 +218,8 @@ def _format_summary_table(metrics: HarnessMetrics) -> list[str]:
         "",
         "| Metric | Value | Target |",
         "|--------|-------|--------|",
-        f"| Personas evaluated | {metrics.total_personas} | 5 |",
-        f"| Plans approved | {metrics.total_approved}/{metrics.total_personas} | 5/5 |",
+        f"| Personas evaluated | {metrics.total_personas} | — |",
+        f"| Plans approved | {metrics.total_approved}/{metrics.total_personas} | all |",
         f"| Constraint violation rate | {metrics.violation_rate:.1%} | < 5% |",
         f"| Avg retries to convergence | {metrics.avg_retry_count:.1f} | < 3 |",
         f"| Avg safety score | {metrics.avg_safety_score:.1f} | > 85 |",
@@ -147,12 +325,21 @@ def _format_persona_section(r: PersonaResult) -> list[str]:
     lines.append(f"- **Estimated cost:** ${r.estimated_cost_usd:.4f}")
     lines.append("")
 
-    # The actual plan (fenced to prevent markdown collision)
-    lines.append("### Generated Plan")
+    # Human-readable plan overview
+    lines.append("### Plan Overview")
+    lines.append("")
+    if r.plan_text:
+        lines.extend(_format_plan_overview(r.plan_text))
+    else:
+        lines.append("*(No plan generated)*")
+        lines.append("")
+
+    # The full plan JSON (fenced, collapsible)
+    lines.append("### Full Plan JSON")
     lines.append("")
     if r.plan_text:
         lines.append("<details>")
-        lines.append("<summary>Click to expand plan</summary>")
+        lines.append("<summary>Click to expand full JSON</summary>")
         lines.append("")
         lines.append("```")
         lines.append(r.plan_text)

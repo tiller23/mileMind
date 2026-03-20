@@ -184,8 +184,8 @@ class TestHarnessRunnerAll:
     """Tests for running all personas."""
 
     @pytest.mark.asyncio
-    async def test_run_all_returns_five_results(self) -> None:
-        """run_all with no filter returns 5 results."""
+    async def test_run_all_returns_all_results(self) -> None:
+        """run_all with no filter returns results for all personas."""
         runner = HarnessRunner(api_key="test-key", transport=MagicMock())
         orch_result = _make_orch_result()
 
@@ -196,7 +196,7 @@ class TestHarnessRunnerAll:
 
             results = await runner.run_all()
 
-        assert len(results) == 5
+        assert len(results) == len(ALL_PERSONAS)
         persona_ids = {r.persona_id for r in results}
         assert persona_ids == {p.persona_id for p in ALL_PERSONAS}
 

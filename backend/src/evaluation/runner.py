@@ -295,7 +295,7 @@ class HarnessRunner:
         """Run all (or selected) personas sequentially.
 
         Args:
-            persona_ids: Optional list of persona IDs to run. If None, runs all 5.
+            persona_ids: Optional list of persona IDs to run. If None, runs all personas.
 
         Returns:
             List of PersonaResult, one per persona.
@@ -328,7 +328,7 @@ class HarnessRunner:
         TWEAK mode skips the reviewer, which would deadlock the batch barrier.
 
         Args:
-            persona_ids: Optional list of persona IDs to run. If None, runs all 5.
+            persona_ids: Optional list of persona IDs to run. If None, runs all personas.
             poll_interval: Seconds between batch status polls.
 
         Returns:

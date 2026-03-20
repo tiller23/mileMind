@@ -32,15 +32,16 @@ These rules are NON-NEGOTIABLE. Plans that violate them will be rejected.
 athlete's max_weekly_increase_pct (default 10%) week over week. This is the \
 #1 reason plans get rejected — plan conservatively.
 - **Recovery weeks are mandatory.** Insert a recovery week (reduce load by \
-20-30%) every 3-4 weeks of building. Label these weeks clearly in your plan. \
-A plan without recovery weeks WILL be rejected.
+20-30% — NOT 50%) every 4 building weeks as a default. Beginners may need \
+recovery every 3 weeks; advanced athletes can go 4-5. Label these weeks \
+clearly. A plan without recovery weeks WILL be rejected.
 - **Rest days are mandatory.** Every week must include at least 1 rest day \
 (2 for athletes training <= 5 days/week).
 - **Phase transitions must be smooth.** When transitioning between phases \
 (e.g., base to build), do NOT spike the load. The new phase's first week \
 should be at or below the previous phase's last building week.
 - **Intensity distribution.** Follow the Seiler 80/20 polarized model: at \
-least 80% of weekly training time at easy effort (Zone 1-2, intensity <= 0.70). \
+least 80% of weekly training time at easy effort (Zone 1-2, intensity <= 0.74). \
 No more than 20% at moderate-to-hard intensity. This is well-established \
 exercise science (Seiler, 2010).
 - **Long run cap.** No single run should exceed the athlete's long_run_cap_pct \
@@ -67,9 +68,12 @@ the build phase, not full VO2max sessions.
 - Long runs can include Zone 3 segments (e.g., last 15-20 min at marathon pace).
 
 ### Advanced (VDOT > 50, base > 60 km/week)
-- Full workout variety: tempo, intervals, VO2max, repetitions.
+- Full workout variety: tempo, intervals, VO2max, repetitions, hill repeats.
 - Long runs can include sustained tempo or progression segments.
 - More sophisticated periodization (e.g., double threshold days).
+- **Base phase should start AT the athlete's current weekly mileage** — \
+advanced runners don't need to "build up" from a lower base. The base phase \
+focuses on aerobic development and consistency, not volume ramp-up.
 
 ## PACE ZONES
 
@@ -92,6 +96,46 @@ purpose and the subjective feel.
 long runs can and should include Zone 3 segments (e.g., "Long run: first 60 min \
 Zone 2, final 20 min build to Zone 3"). Even for beginners, occasional Zone 2-3 \
 long runs are normal and beneficial after a solid base phase.
+
+## WORKOUT VARIETY
+
+Do NOT repeat the same quality session type every week. Rotate workout types \
+across weeks to develop different physiological systems:
+
+- **Good rotation:** Week 5 hill repeats → Week 6 tempo run → Week 7 track \
+800m repeats → Week 8 recovery → Week 9 mile repeats → Week 10 fartlek → ...
+- **Bad pattern:** Week 5 hills → Week 6 hills → Week 7 hills → ... (stale, \
+injury-prone, and ignores other systems)
+
+Within each phase, alternate between 2-3 quality session types. For example:
+- BUILD phase: alternate tempo runs, hill repeats, and threshold intervals
+- PEAK phase: alternate race-pace intervals, VO2max work, and speed reps
+
+## WORKOUT PRESCRIPTION FORMAT
+
+How you prescribe workouts matters for athlete usability:
+
+- **Easy/recovery runs:** Prescribe by DURATION (e.g., "45 min Zone 1-2"). \
+Duration keeps athletes from pushing pace on recovery days.
+- **Quality sessions (intervals, tempo, repeats):** Prescribe by DISTANCE \
+with specific structure (e.g., "6x800m at Zone 5 with 400m jog recovery" or \
+"5 km continuous Zone 4 tempo"). Athletes need to know exactly what to do.
+- **Long runs:** Prescribe by DISTANCE (e.g., "28 km with final 5 km at \
+Zone 3"). Long runs are distance-based training.
+- **Avoid vague terms:** Instead of "fartlek" alone, describe the structure: \
+"Easy run with 6x30-sec pickups to Zone 4, 90-sec easy between." If using \
+"fartlek," always include the specific intervals within the description.
+
+## WEEKLY COACHING NOTES
+
+Every week MUST include a "notes" field explaining the week's PURPOSE — \
+why this week matters in the training arc. Athletes should understand the \
+reasoning behind their training. Examples:
+- "Recovery week: absorb 3 weeks of progressive loading before next build"
+- "Build week 2: introducing threshold work to improve lactate clearance"
+- "Peak week 1: sharpening with race-specific intensity while holding volume"
+
+This is one of the most important features for athlete engagement and trust.
 
 ## INJURY HISTORY GUIDELINES
 
@@ -164,9 +208,16 @@ intermediate, advanced) and what workout types are appropriate.
 number of weeks and assign each to a training phase. **Plan recovery weeks \
 FIRST** — mark every 4th week (or 3rd for conservative athletes) as a recovery \
 week before filling in training weeks.
-   - BASE: Build aerobic foundation. Mostly Zone 1-2 runs. 4-6 weeks.
-   - BUILD: Introduce quality sessions (Zone 3-4). 3-5 weeks.
-   - PEAK: Race-specific intensity (Zone 4-5). Highest training stress. 2-3 weeks.
+   - BASE: Build aerobic foundation. Mostly Zone 1-2 runs. For experienced \
+athletes, start at their current weekly mileage — don't ramp from a lower \
+base. 4-6 weeks.
+   - BUILD: Introduce quality sessions (Zone 3-4). 3-5 weeks. Consider \
+splitting into BUILD 1 (strength-focused: hills, tempo) and BUILD 2 \
+(race-specific: goal-pace work, progression runs) for plans 12+ weeks.
+   - PEAK: Race-specific sharpening. Increase INTENSITY but maintain or \
+SLIGHTLY REDUCE volume from the build phase. The peak phase is about \
+sharpness, not maximum volume — do NOT make peak weeks the highest-volume \
+weeks. 2-3 weeks.
    - TAPER: Reduce volume 20-40%, maintain some intensity. 1-3 weeks.
 
 3. **For each week, propose workouts.** Assign workout_type, duration_minutes, \
@@ -317,7 +368,7 @@ the plan should be REJECTED.
 ### 1. Safety (2x weight in overall score)
 - **Rest days:** Every week has at least 1 rest day (2 for <= 5 days/week).
 - **Intensity distribution:** At least 80% of weekly training time at easy \
-effort (Zone 1-2, intensity <= 0.70), per Seiler's polarized training model.
+effort (Zone 1-2, intensity <= 0.74), per Seiler's polarized training model.
 - **ACWR limits:** No week violates the ACWR ceiling for the athlete's risk \
 tolerance (conservative: 1.2, moderate: 1.3, aggressive: 1.5).
 - **Injury awareness:** If the athlete has injury history, the plan addresses \
@@ -327,8 +378,9 @@ it appropriately (see injury guidelines below).
 ### 2. Progression
 - **Weekly load increases:** No week-to-week increase exceeds the athlete's \
 max_weekly_increase_pct (default 10%).
-- **Step-back weeks:** A recovery week (20-30% load reduction) appears every \
-3-4 building weeks. Plans without recovery weeks should score very low here.
+- **Step-back weeks:** A recovery week (20-30% load reduction — NOT 50%) \
+appears every 4 building weeks by default (3 for beginners, 4-5 for advanced). Plans \
+without recovery weeks should score very low here.
 - **Phase transitions:** Load doesn't spike at phase boundaries.
 
 ### 3. Specificity
@@ -346,7 +398,21 @@ Long runs can include Zone 3 segments. Intervals appropriate in build/peak.
 race-specific sessions.
 - **Phase-appropriate:** Base phase should be mostly easy/long; build phase \
 adds quality; peak has race-specific intensity; taper reduces volume.
-- **Workout variety:** Sessions within a week should serve different purposes.
+- **Workout variety:** Sessions within a week should serve different purposes. \
+Quality session types should ROTATE across weeks (e.g., hills one week, tempo \
+the next, track repeats the week after) — NOT repeat the same workout every week.
+- **Peak phase design:** Peak should increase intensity while maintaining or \
+slightly reducing volume from the build phase. Score down if peak weeks are \
+the highest-volume weeks — that's still building, not sharpening.
+- **Workout prescription format:** Quality sessions should specify distance \
+and structure (e.g., "6x800m at Zone 5"), not just duration. Easy/recovery \
+runs should use duration. Vague terms like "fartlek" should include the \
+specific interval structure.
+- **Base phase for experienced athletes:** Advanced athletes should start at \
+their current weekly base, not build up from below it.
+- **Weekly coaching notes:** Every week should include notes explaining its \
+purpose in the training arc. Plans without coaching notes miss a key \
+engagement feature — score down under specificity if absent.
 
 ### 4. Feasibility
 - **Duration realistic:** Workout durations are achievable for the athlete's \

@@ -1,71 +1,119 @@
-# Eval Harness Feedback — Advanced Marathoner
+# Eval Harness Feedback - Normal Person Personas
 
-**Run date:** 2026-03-19
+**Run date:** 2026-03-20
 **Branch:** feature/phase-4-review-fixes
 **Planner:** claude-sonnet-4-20250514 | **Reviewer:** claude-opus-4-20250514
-**Result:** APPROVED (safety=92, progression=95, specificity=94, feasibility=90, overall=92.6)
-**Cost:** $3.95 | **Time:** 496s | **Retries:** 2 (1st failed on tool errors, 2nd approved)
+**Mode:** Sync (batch deadlock - to fix)
+**Total cost:** $2.81 | **Total time:** 385s
 
 ---
 
-## Athlete Profile
+## Persona 1: Recreational Half Marathoner
 
-- VDOT 58, VO2max 60, 100 km/week base, 6 days/week
-- Goal: Marathon in 2:50 (170 min)
-- Risk tolerance: moderate, max 10% weekly increase
-- Predicted finish: 2:46:22 (166.4 min) — beats goal by 3+ min
+**Profile:** VDOT 40, VO2max 44, 40 km/week base, 4 days/week
+**Goal:** Half Marathon in 1:45 (105 min)
+**Result:** APPROVED (safety=92, progression=88, specificity=95, feasibility=90, overall=91.4)
+**Cost:** $1.41 | **Time:** 192s | **Retries:** 0
+**Predicted finish:** 1:50 (110.3 min)
+
+### Week-by-Week Summary
+
+| Week | Phase | TSS | Key Sessions | Long Run |
+|------|-------|-----|-------------|----------|
+| 1 | Base | 154 | Easy/recovery | 18km Zone 2 |
+| 2 | Base | 168 | Easy/recovery | 19km Zone 2 |
+| 3 | Base | 182 | Easy/recovery | 20km Zone 2 |
+| 4 | Base | 190 | Easy/recovery | 21km Zone 2 |
+| 5 | Build 1 | 203 | Zone 4 Hills | 22km Zone 2-3 |
+| 6 | Build 1 | 218 | Zone 4 Tempo | 23km Zone 2-3 |
+| 7 | Build 1 | 194 | Zone 4 Hills | 24km Zone 2-3 |
+| 8 | **Recovery** | 124 | Easy/recovery | 15km Zone 2 |
+| 9 | Build 2 | 213 | Zone 4-5 Intervals | 22km Zone 2-3 |
+| 10 | Build 2 | 233 | Zone 3 Marathon Pace | 25km Zone 2-3 |
+| 11 | Build 2 | 244 | Zone 5 Intervals | 26km Zone 2-3 |
+| 12 | Taper | 156 | Zone 5-6 Reps | - |
+
+### Feedback
+
+**Plan quality (1-5):** 4
+**Safety (1-5):** 5
+**Would you trust this plan for a recreational half marathoner?** mostly yes
+
+#### Things that look good:
+
+I like each run having a zone that is good stuff. 
+
+Overall plan looks awesome I like the feel of it, just the couple of ocmments and maybe add a bit more speed work, a speed workout more towards beginning could be good especially if they arent beginner runners. 
+
+#### Things that look off:
+
+Why the decimal for intensity now> how are we transferring that to the other things etc. I see the zones too
+
+I feel like we have way too much zone 2, psuhing into zone 3 really isnt too hard for most people I feel like?
+
+#### Prompt tuning ideas:
+
+Could maybe investigate getting tempo paces and athen providing those and things like that.
+
+this would be like going for a tempo finding run like 2 mile time trial first week then getting them from that
+
+this could really help people zone in. 
 
 ---
 
-## Week-by-Week Summary
+## Persona 2: Casual 10K Runner
 
-| Week | Phase | TSS | WoW % | Key Sessions | Long Run |
-|------|-------|-----|-------|-------------|----------|
-| 1 | Base | 337.8 | — | Zone 2-3 fartlek | 22km Zone 2 |
-| 2 | Base | 356.0 | +5.4% | Zone 2-3 fartlek | 24km Zone 2 |
-| 3 | Base | 368.5 | +3.5% | Zone 2-3 fartlek | 26km Zone 2 |
-| 4 | **Recovery** | 184.6 | -49.9% | Zone 1 recovery x2, 2 rest days | 17km Zone 2 |
-| 5 | Build | 385.4 | — | Zone 4 tempo, Zone 3-4 hills | 23km Zone 2 |
-| 6 | Build | 401.9 | +4.3% | Zone 4 tempo, Zone 3-4 hills | 24km Zone 2 |
-| 7 | Build | 419.9 | +4.5% | Zone 4 tempo, Zone 3-4 hills | 26km Zone 2-3 progression |
-| 8 | **Recovery** | 184.6 | -56.1% | Zone 1 recovery x2, 2 rest days | 17km Zone 2 |
-| 9 | Build 2 | 459.2 | — | Zone 5 VO2max, Zone 3-4 hills | 24.5km Zone 3 MP |
-| 10 | Build 2 | 500.1 | +8.9% | Zone 5 VO2max, Zone 3-4 hills | 28km Zone 3 MP |
-| 11 | Build 2 | 485.7 | -2.9% | Zone 4 tempo, Zone 3-4 hills | 29km Zone 3 MP |
-| 12 | **Recovery** | 274.9 | -43.4% | Zone 1 recovery, Zone 2-3 fartlek | 20km Zone 2 |
-| 13 | Peak | 510.5 | — | Zone 6 reps, Zone 4 tempo | 30km Zone 3 MP sim |
-| 14 | Peak | 534.3 | +4.7% | Zone 5 VO2max, Zone 4 tempo | 31km Zone 3 MP |
-| 15 | Peak | 537.3 | +0.6% | Zone 6 reps, Zone 4 tempo | 32km Zone 3 MP sim |
-| 16 | **Taper** | 208.3 | -61.2% | Zone 4 tempo (short), 3 rest days | 17km Zone 2 |
+**Profile:** VDOT 38, VO2max 42, 25 km/week base, 4 days/week
+**Goal:** 10K in 50:00
+**Result:** APPROVED (safety=82, progression=85, specificity=78, feasibility=80, overall=81.4)
+**Cost:** $1.40 | **Time:** 193s | **Retries:** 0
+**Predicted finish:** 52:00
 
----
+### Week-by-Week Summary
 
-## Plan Quality Feedback
+| Week | Phase | TSS | Key Sessions | Long Run |
+|------|-------|-----|-------------|----------|
+| 1 | Base | 128 | Easy/recovery | 10km Zone 2 |
+| 2 | Base | 140 | Easy/recovery | 11km Zone 2 |
+| 3 | Base | 154 | Zone 3-4 Hills | 11.5km Zone 2-3 |
+| 4 | Base | 108 | Easy/recovery (recovery) | 8.5km Zone 2 |
+| 5 | Build | 169 | Zone 4 Tempo | 12.5km Zone 2-3 |
+| 6 | Build | 185 | Zone 4-5 Intervals | 13km Zone 2-3 |
+| 7 | Build | 130 | Zone 3 MP (recovery) | 9km Zone 2 |
+| 8 | Build | 199 | Zone 5 Intervals | 13km Zone 2-3 |
+| 9 | Peak | 135 | Zone 5 Intervals | 10.5km Zone 2-3 |
+| 10 | Peak | 185 | Zone 3 MP | 13km Zone 2-3 |
+| 11 | Peak | 154 | Zone 5 Intervals | 10.5km Zone 2-3 |
+| 12 | Taper | 125 | Zone 4 Tempo | 8km Zone 2 |
 
-**Plan quality (1-5):** ___
-**Safety (1-5):** ___
-**Would you trust this plan for a sub-2:50 marathoner?** ___
+### Feedback
 
-### Things that look good:
+**Plan quality (1-5):** 4
+**Safety (1-5):** 5
+**Would you trust this plan for a casual 10K runner?** mostly yeah
+
+#### Things that look good:
 
 
-### Things that look off:
+#### Things that look off:
+
+Same thing I still feel like we are too focused on zone 2 work especially for people who have ran before
+
+But lets look into taht. 
+
+same tempo notes as before. 
 
 
-### Prompt tuning ideas:
+#### Prompt tuning ideas:
 
+
+Looking good so far just notes above. 
 
 ---
 
 ## Quick Notes for Review
 
-Some things I noticed while formatting — NOT coaching opinions, just observations:
-
-- Zones used: Zone 1, 2, 2-3, 3, 3-4, 4, 5, 6 — full range
-- Recovery weeks at wk 4, 8, 12 — every 3-4 building weeks
-- Taper week present with 61% volume reduction
-- Long runs progress: 22→24→26→(recovery)→23→24→26→(recovery)→24.5→28→29→(recovery)→30→31→32→17
-- Hill repeats in every build week — interesting coaching choice
-- "Build 2" phase is a nice touch — splits build into strength-focused and race-specific
-- Peak phase has high TSS (510-537) — is this too much for a moderate risk tolerance?
-- All marathon pace runs are labeled Zone 3 at intensity 0.78 — consistent
+- Both plans approved first attempt, zero constraint violations
+- Prompt fixes from last session (workout variety, recovery calibration, peak sharpening, prescription format) were active for this run
+- Batch mode had a deadlock bug - ran sync instead. Batch fix is a TODO.
+- Plan overview tables are new in the report generator - check if the format is useful
