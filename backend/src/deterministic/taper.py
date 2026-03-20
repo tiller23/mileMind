@@ -18,6 +18,12 @@ References:
       model by setting future training impulse to zero"
 """
 
+__all__ = [
+    "compute_taper_fitness_retention",
+    "find_optimal_taper_length",
+    "project_taper",
+]
+
 from src.deterministic.banister import (
     DEFAULT_FATIGUE_TAU,
     DEFAULT_FITNESS_TAU,

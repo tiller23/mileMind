@@ -1,7 +1,7 @@
 """CLI entry point for the evaluation harness.
 
 Usage:
-    # Run all 5 personas with default models
+    # Run all personas with default models
     python -m src.evaluation.run
 
     # Run specific persona
@@ -21,11 +21,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
 import time
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 from src.evaluation.personas import ALL_PERSONAS, list_persona_ids
 from src.evaluation.report import generate_comparison_report, generate_plan_review_report
@@ -47,7 +50,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         choices=list_persona_ids(),
-        help="Run specific persona(s). Default: all 5.",
+        help="Run specific persona(s). Default: all.",
     )
     parser.add_argument(
         "--planner-model",
@@ -93,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=1_000_000,
         help="Per-persona token budget (default: 1000000)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output results as JSON to stdout and write a .json file alongside the .md report",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -149,11 +158,6 @@ async def run_single(args: argparse.Namespace) -> None:
 
     metrics = runner.compute_metrics(results, total_elapsed_seconds=total_elapsed)
 
-    # Print summary
-    print()
-    print(metrics.summary())
-    print()
-
     # Write report
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -161,7 +165,21 @@ async def run_single(args: argparse.Namespace) -> None:
     report = generate_plan_review_report(results, metrics)
     report_path = output_dir / "plan_review_report.md"
     report_path.write_text(report)
-    print(f"Plan review report written to: {report_path}")
+
+    if getattr(args, "json_output", False):
+        json_data = {
+            "metrics": metrics.to_dict(),
+            "results": [r.to_dict() for r in results],
+        }
+        print(json.dumps(json_data, indent=2))
+        json_path = output_dir / "plan_review_report.json"
+        json_path.write_text(json.dumps(json_data, indent=2))
+        print(f"JSON report written to: {json_path}", file=sys.stderr)
+    else:
+        print()
+        print(metrics.summary())
+        print()
+        print(f"Plan review report written to: {report_path}")
 
 
 async def run_comparison(args: argparse.Namespace) -> None:
@@ -216,6 +234,7 @@ async def run_comparison(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """CLI entry point."""
+    load_dotenv()
     args = parse_args()
     _setup_logging(args.verbose)
 

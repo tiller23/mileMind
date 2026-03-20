@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import anthropic
 
 from src.agents.prompts import REVIEWER_SYSTEM_PROMPT
-from src.agents.shared import build_registry, extract_text
+from src.agents.shared import build_registry, run_agent_loop
 from src.agents.transport import AnthropicTransport, MessageTransport
 from src.models.athlete import AthleteProfile
 from src.models.decision_log import REVIEW_PASS_THRESHOLD, ReviewerScores
@@ -153,8 +153,8 @@ class ReviewerAgent:
     async def _run_agent_loop(self, messages: list[dict[str, Any]]) -> ReviewerResult:
         """Run the Claude tool-use loop until a verdict is produced.
 
-        Same pattern as PlannerAgent._run_agent_loop(), but parses the
-        final text as a review verdict instead of a training plan.
+        Delegates to the shared ``run_agent_loop()`` and converts the generic
+        ``AgentLoopResult`` into a ``ReviewerResult`` by parsing the verdict.
 
         Args:
             messages: The conversation messages (starts with user message).
@@ -162,110 +162,46 @@ class ReviewerAgent:
         Returns:
             ReviewerResult parsed from the final text response.
         """
-        tool_definitions = self._registry.get_anthropic_tools()
-        tool_call_log: list[dict[str, Any]] = []
-        total_input_tokens = 0
-        total_output_tokens = 0
-        iterations = 0
-
-        for iteration in range(1, self._max_iterations + 1):
-            iterations = iteration
-
-            logger.info(
-                "Reviewer agent iteration %d/%d (messages: %d)",
-                iteration, self._max_iterations, len(messages),
-            )
-
-            response = await self._transport.create_message(
-                model=self._model,
-                max_tokens=4096,
-                system=REVIEWER_SYSTEM_PROMPT,
-                tools=tool_definitions,
-                messages=messages,
-            )
-
-            total_input_tokens += response.usage.input_tokens
-            total_output_tokens += response.usage.output_tokens
-
-            logger.info(
-                "Iteration %d: stop_reason=%s, tokens(in=%d, out=%d)",
-                iteration,
-                response.stop_reason,
-                response.usage.input_tokens,
-                response.usage.output_tokens,
-            )
-
-            if response.stop_reason == "end_turn":
-                verdict_text = extract_text(response.content)
-                result = self._parse_review_verdict(verdict_text)
-                result.tool_calls = tool_call_log
-                result.iterations = iterations
-                result.total_input_tokens = total_input_tokens
-                result.total_output_tokens = total_output_tokens
-                return result
-
-            if response.stop_reason == "tool_use":
-                messages.append({"role": "assistant", "content": response.content})
-
-                tool_result_blocks: list[dict[str, Any]] = []
-
-                for block in response.content:
-                    if block.type != "tool_use":
-                        continue
-
-                    tool_name = block.name
-                    tool_input = block.input
-                    tool_use_id = block.id
-
-                    logger.info(
-                        "Executing tool: %s (id=%s)", tool_name, tool_use_id,
-                    )
-
-                    result = self._registry.execute(tool_name, tool_input)
-
-                    tool_call_log.append({
-                        "name": tool_name,
-                        "input": tool_input,
-                        "output": result.output,
-                        "success": result.success,
-                    })
-
-                    tool_result_blocks.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_id,
-                        "content": result.to_content_block(),
-                        "is_error": not result.success,
-                    })
-
-                messages.append({"role": "user", "content": tool_result_blocks})
-            else:
-                verdict_text = extract_text(response.content)
-                result = self._parse_review_verdict(verdict_text)
-                result.tool_calls = tool_call_log
-                result.iterations = iterations
-                result.total_input_tokens = total_input_tokens
-                result.total_output_tokens = total_output_tokens
-                if not result.error:
-                    result.error = (
-                        f"Unexpected stop_reason: {response.stop_reason}. "
-                        "Response may be incomplete."
-                    )
-                return result
-
-        logger.warning(
-            "Reviewer agent hit max iterations (%d) without completing.",
-            self._max_iterations,
+        loop_result = await run_agent_loop(
+            transport=self._transport,
+            model=self._model,
+            max_tokens=4096,
+            system_prompt=REVIEWER_SYSTEM_PROMPT,
+            tools=self._registry.get_anthropic_tools(),
+            messages=messages,
+            registry=self._registry,
+            max_iterations=self._max_iterations,
+            logger_name="Reviewer",
         )
-        return ReviewerResult(
-            approved=False,
-            tool_calls=tool_call_log,
-            iterations=iterations,
-            total_input_tokens=total_input_tokens,
-            total_output_tokens=total_output_tokens,
-            error=(
-                f"Reviewer did not complete within {self._max_iterations} iterations."
-            ),
-        )
+
+        # Handle max_iterations case
+        if loop_result.stop_reason == "max_iterations":
+            return ReviewerResult(
+                approved=False,
+                tool_calls=loop_result.tool_calls,
+                iterations=loop_result.iterations,
+                total_input_tokens=loop_result.total_input_tokens,
+                total_output_tokens=loop_result.total_output_tokens,
+                error=(
+                    f"Reviewer did not complete within {self._max_iterations} iterations."
+                ),
+            )
+
+        # Parse the verdict from the final text
+        result = self._parse_review_verdict(loop_result.final_text)
+        result.tool_calls = loop_result.tool_calls
+        result.iterations = loop_result.iterations
+        result.total_input_tokens = loop_result.total_input_tokens
+        result.total_output_tokens = loop_result.total_output_tokens
+
+        # For unexpected stop reasons, add error if not already set
+        if loop_result.stop_reason not in ("end_turn",) and not result.error:
+            result.error = (
+                f"Unexpected stop_reason: {loop_result.stop_reason}. "
+                "Response may be incomplete."
+            )
+
+        return result
 
     @staticmethod
     def _parse_review_verdict(text: str) -> ReviewerResult:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 import anthropic
@@ -87,6 +88,9 @@ class BatchTransport:
             params={
                 "model": model,
                 "max_tokens": max_tokens,
+                # W8: The Anthropic API accepts `system` as either a plain string
+                # or a list of text blocks (e.g. [{"type": "text", "text": "..."}]).
+                # We intentionally pass a plain string here; both formats are valid.
                 "system": system,
                 "tools": tools,
                 "messages": messages,
@@ -169,6 +173,11 @@ class BatchCoordinator:
         Called by ``BatchTransport.create_message``. The future will be resolved
         when the batch completes.
 
+        Note: This method is NOT thread-safe. It mutates ``_pending`` and
+        ``_enqueued_transport_ids`` without locks, assuming single-event-loop
+        execution (no concurrent threads). This is safe for asyncio coroutines
+        because they yield cooperatively and this method contains no awaits.
+
         Args:
             custom_id: Unique request ID within the batch.
             params: API request parameters.
@@ -185,7 +194,12 @@ class BatchCoordinator:
         self._check_round_ready()
 
     def _check_round_ready(self) -> None:
-        """Check if all active transports have enqueued and signal if so."""
+        """Check if all active transports have enqueued and signal if so.
+
+        Note: NOT thread-safe. Reads ``_active_transports``,
+        ``_enqueued_transport_ids``, and ``_pending`` without locks.
+        Safe under single-event-loop asyncio (no awaits in this method).
+        """
         if (
             self._active_transports
             and self._enqueued_transport_ids >= self._active_transports
@@ -293,6 +307,11 @@ class BatchCoordinator:
 
         Terminal statuses: ``ended``, ``canceled``, ``expired``.
 
+        Timeout hierarchy: this method enforces ``max_poll_seconds`` using
+        wall-clock time (``time.monotonic``). Callers may also wrap this in
+        ``asyncio.wait_for`` for an outer timeout (e.g. ``run_all_batched``
+        uses ``_BATCH_TIMEOUT_SECONDS``). The tighter of the two wins.
+
         Args:
             batch_id: The batch ID to poll.
 
@@ -303,9 +322,10 @@ class BatchCoordinator:
             TimeoutError: If polling exceeds max_poll_seconds.
             RuntimeError: If batch reaches canceled or expired status.
         """
-        elapsed = 0.0
+        start = time.monotonic()
         while True:
             batch = await self._client.messages.batches.retrieve(batch_id)
+            elapsed = time.monotonic() - start
             logger.debug(
                 "Batch %s: status=%s (%.0fs elapsed)",
                 batch_id, batch.processing_status, elapsed,
@@ -319,8 +339,7 @@ class BatchCoordinator:
                     )
                 break
 
-            elapsed += self._poll_interval
-            if elapsed >= self._max_poll_seconds:
+            if elapsed + self._poll_interval >= self._max_poll_seconds:
                 raise TimeoutError(
                     f"Batch {batch_id} did not complete within "
                     f"{self._max_poll_seconds:.0f}s"

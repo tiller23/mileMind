@@ -22,6 +22,16 @@ import math
 import random
 from dataclasses import dataclass
 
+__all__ = [
+    "DEFAULT_NUM_SIMULATIONS",
+    "DEFAULT_PACE_CV",
+    "EnvironmentConditions",
+    "SimulationResult",
+    "compute_confidence_interval",
+    "simulate_race",
+    "simulate_race_from_vdot",
+]
+
 from src.deterministic.daniels import compute_vdot, predict_race_time
 
 # --- Constants ---
@@ -375,8 +385,14 @@ def _compute_statistics(
     variance = sum((t - mean_time) ** 2 for t in sorted_times) / n
     std_time = math.sqrt(variance)
 
+    # True median: average of two middle elements for even n
+    if n % 2 == 0:
+        median = (sorted_times[n // 2 - 1] + sorted_times[n // 2]) / 2.0
+    else:
+        median = sorted_times[n // 2]
+
     return SimulationResult(
-        median_time_minutes=sorted_times[n // 2],
+        median_time_minutes=median,
         mean_time_minutes=mean_time,
         std_time_minutes=std_time,
         p5_time_minutes=sorted_times[max(0, int(0.05 * n))],

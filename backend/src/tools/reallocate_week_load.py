@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from src.deterministic.acwr import validate_weekly_increase
 from src.deterministic.training_stress import (
@@ -50,7 +50,8 @@ class WorkoutEntry(BaseModel):
 
     Attributes:
         day: Day of the week (1=Monday, 7=Sunday).
-        workout_type: One of the WorkoutType enum string values.
+        workout_type: A WorkoutType enum value (e.g. "easy", "tempo"). Pydantic
+            validates the value against the enum automatically.
         distance_km: Planned distance in kilometres.
         duration_minutes: Planned duration in minutes.
         intensity: Intensity factor in [0, 1].  0=rest, 1=max effort.
@@ -58,32 +59,11 @@ class WorkoutEntry(BaseModel):
     """
 
     day: int = Field(ge=1, le=7, description="Day of the week (1=Monday, 7=Sunday)")
-    workout_type: str = Field(description="WorkoutType value (e.g. 'easy', 'tempo')")
+    workout_type: WorkoutType = Field(description="WorkoutType value (e.g. 'easy', 'tempo')")
     distance_km: float = Field(ge=0.0, description="Distance in kilometres")
     duration_minutes: float = Field(ge=0.0, description="Duration in minutes")
     intensity: float = Field(ge=0.0, le=1.0, description="Intensity factor [0, 1]")
     description: str = Field(default="", description="Optional workout description")
-
-    @field_validator("workout_type")
-    @classmethod
-    def validate_workout_type(cls, v: str) -> str:
-        """Reject workout_type values that are not in the WorkoutType enum.
-
-        Args:
-            v: The raw string value from the caller.
-
-        Returns:
-            The validated string (lowercased enum value).
-
-        Raises:
-            ValueError: If v is not a recognised WorkoutType.
-        """
-        valid_values = {wt.value for wt in WorkoutType}
-        if v not in valid_values:
-            raise ValueError(
-                f"workout_type '{v}' is not valid. Must be one of: {sorted(valid_values)}"
-            )
-        return v
 
 
 class ReallocateWeekInput(BaseModel):
@@ -116,7 +96,7 @@ class ReallocateWeekInput(BaseModel):
         description="Current week's workouts (1-21 entries; max 3 per day)",
     )
     swap_day: int = Field(ge=1, le=7, description="Day to modify (1=Monday, 7=Sunday)")
-    new_workout_type: str = Field(description="WorkoutType value for the replacement workout")
+    new_workout_type: WorkoutType = Field(description="WorkoutType value for the replacement workout")
     new_intensity: float | None = Field(
         default=None,
         ge=0.0,
@@ -137,27 +117,6 @@ class ReallocateWeekInput(BaseModel):
         default="moderate",
         description="Risk tolerance for progression constraint validation",
     )
-
-    @field_validator("new_workout_type")
-    @classmethod
-    def validate_new_workout_type(cls, v: str) -> str:
-        """Reject new_workout_type values not in WorkoutType.
-
-        Args:
-            v: The raw string value from the caller.
-
-        Returns:
-            The validated string.
-
-        Raises:
-            ValueError: If v is not a recognised WorkoutType.
-        """
-        valid_values = {wt.value for wt in WorkoutType}
-        if v not in valid_values:
-            raise ValueError(
-                f"new_workout_type '{v}' is not valid. Must be one of: {sorted(valid_values)}"
-            )
-        return v
 
     @model_validator(mode="after")
     def validate_swap_day_exists(self) -> "ReallocateWeekInput":
@@ -310,16 +269,20 @@ def _scale_workouts_to_target(
 def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     """Execute the reallocate_week_load tool.
 
+    The registry validates input_data against ReallocateWeekInput before calling
+    this handler, passing the result of ``model_dump()``.  The handler therefore
+    works with plain dicts and does not re-validate the input.
+
     Steps:
-        1. Parse input via ReallocateWeekInput (already validated by registry).
-        2. Compute original TSS for each workout.
-        3. Apply the swap on swap_day (first matching workout).
-        4. If target_weekly_load is given, scale remaining workouts.
-        5. If previous_week_load is given, run validate_weekly_increase().
-        6. Build and return ReallocateWeekOutput as a plain dict.
+        1. Compute original TSS for each workout from the validated input dict.
+        2. Apply the swap on swap_day (first matching workout).
+        3. If target_weekly_load is given, scale remaining workouts.
+        4. If previous_week_load is given, run validate_weekly_increase().
+        5. Build and return ReallocateWeekOutput as a plain dict.
 
     Args:
-        input_data: Validated dict matching ReallocateWeekInput fields.
+        input_data: Validated dict produced by ``ReallocateWeekInput.model_dump()``.
+            All fields have already been validated by the ToolRegistry.
 
     Returns:
         Dict matching ReallocateWeekOutput.
@@ -328,19 +291,31 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
         ValueError: If an internal invariant is violated (should not normally
             occur after input validation).
     """
-    inp = ReallocateWeekInput.model_validate(input_data)
+    workouts_raw: list[dict[str, Any]] = input_data["workouts"]
+    swap_day: int = input_data["swap_day"]
+    new_workout_type: str = (
+        input_data["new_workout_type"].value
+        if isinstance(input_data["new_workout_type"], WorkoutType)
+        else input_data["new_workout_type"]
+    )
+    new_intensity_override: float | None = input_data.get("new_intensity")
+    target_weekly_load: float | None = input_data.get("target_weekly_load")
+    previous_week_load: float | None = input_data.get("previous_week_load")
+    risk_tolerance: str = input_data.get("risk_tolerance", "moderate")
 
     # --- Step 1: Build mutable workout list with original TSS ---
     workouts_out: list[dict[str, Any]] = []
-    for w in inp.workouts:
-        tss = _compute_tss(w.duration_minutes, w.intensity)
+    for w in workouts_raw:
+        wt = w["workout_type"]
+        wt_str = wt.value if isinstance(wt, WorkoutType) else wt
+        tss = _compute_tss(w["duration_minutes"], w["intensity"])
         workouts_out.append({
-            "day": w.day,
-            "workout_type": w.workout_type,
-            "distance_km": w.distance_km,
-            "duration_minutes": w.duration_minutes,
-            "intensity": w.intensity,
-            "description": w.description,
+            "day": w["day"],
+            "workout_type": wt_str,
+            "distance_km": w["distance_km"],
+            "duration_minutes": w["duration_minutes"],
+            "intensity": w["intensity"],
+            "description": w.get("description", ""),
             "tss": round(tss, 4),
         })
 
@@ -349,21 +324,22 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     # --- Step 2: Locate the first workout on swap_day ---
     swap_idx: int | None = None
     for i, w in enumerate(workouts_out):
-        if w["day"] == inp.swap_day:
+        if w["day"] == swap_day:
             swap_idx = i
             break
 
-    # The model_validator guarantees swap_day exists, so swap_idx is always set.
-    # This assert makes the type-checker happy and documents the invariant.
-    assert swap_idx is not None, "swap_day validated but no matching workout found"
+    # The model_validator on ReallocateWeekInput guarantees swap_day exists in
+    # the workouts list, so swap_idx is always set after registry validation.
+    if swap_idx is None:
+        raise ValueError("swap_day validated but no matching workout found")
 
     old_workout = workouts_out[swap_idx]
-    new_intensity = _resolve_intensity(inp.new_workout_type, inp.new_intensity)
+    new_intensity = _resolve_intensity(new_workout_type, new_intensity_override)
     new_tss = _compute_tss(old_workout["duration_minutes"], new_intensity)
 
     workouts_out[swap_idx] = {
-        "day": inp.swap_day,
-        "workout_type": inp.new_workout_type,
+        "day": swap_day,
+        "workout_type": new_workout_type,
         "distance_km": old_workout["distance_km"],
         "duration_minutes": old_workout["duration_minutes"],
         "intensity": round(new_intensity, 6),
@@ -372,24 +348,24 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
     }
 
     swap_summary = (
-        f"Day {inp.swap_day}: replaced '{old_workout['workout_type']}' "
+        f"Day {swap_day}: replaced '{old_workout['workout_type']}' "
         f"(intensity {old_workout['intensity']:.2f}, "
         f"TSS {old_workout['tss']:.1f}) "
-        f"with '{inp.new_workout_type}' "
+        f"with '{new_workout_type}' "
         f"(intensity {new_intensity:.2f}, TSS {new_tss:.1f})"
     )
 
     # --- Step 3: Optional load rebalancing ---
-    if inp.target_weekly_load is not None:
+    if target_weekly_load is not None:
         workouts_out = _scale_workouts_to_target(
             workouts_out,
             swap_idx,
-            inp.target_weekly_load,
+            target_weekly_load,
             new_tss,
         )
         swap_summary += (
             f"; remaining workouts scaled to target weekly load "
-            f"{inp.target_weekly_load:.1f} TSS"
+            f"{target_weekly_load:.1f} TSS"
         )
 
     adjusted_load = sum(w["tss"] for w in workouts_out)
@@ -401,18 +377,18 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
 
     # --- Step 4: Progression validation ---
     violations: list[str] = []
-    if inp.previous_week_load is not None:
+    if previous_week_load is not None:
         is_valid, increase_pct = validate_weekly_increase(
-            previous_week=inp.previous_week_load,
+            previous_week=previous_week_load,
             proposed_week=adjusted_load,
         )
         if not is_valid:
             violations.append(
                 f"Adjusted weekly load {adjusted_load:.1f} TSS is "
                 f"{increase_pct:.0%} above previous week "
-                f"({inp.previous_week_load:.1f} TSS), "
+                f"({previous_week_load:.1f} TSS), "
                 f"exceeding the 10% progression limit "
-                f"[risk_tolerance={inp.risk_tolerance}]"
+                f"[risk_tolerance={risk_tolerance}]"
             )
 
     validation_passed = len(violations) == 0

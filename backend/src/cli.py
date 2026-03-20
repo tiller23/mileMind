@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -182,6 +183,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Claude model for reviewer (default: claude-opus-4-20250514)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose logging (DEBUG level for agent internals)",
     )
     return parser.parse_args()
 
@@ -423,6 +429,14 @@ def print_dry_run(
 async def main() -> None:
     """Main CLI entry point."""
     args = parse_args()
+
+    # Configure logging
+    if args.verbose:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%H:%M:%S",
+        )
 
     # Load athlete profile
     athlete = load_athlete(args)

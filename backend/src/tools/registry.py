@@ -90,6 +90,7 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: dict[str, ToolDefinition] = {}
+        self._anthropic_tools_cache: list[dict[str, Any]] | None = None
 
     def register(self, tool: ToolDefinition) -> None:
         """Register a tool definition.
@@ -103,6 +104,7 @@ class ToolRegistry:
         if tool.name in self._tools:
             raise ValueError(f"Tool '{tool.name}' is already registered")
         self._tools[tool.name] = tool
+        self._anthropic_tools_cache = None  # Invalidate cache on registration
         logger.info("Registered tool: %s", tool.name)
 
     def get(self, name: str) -> ToolDefinition | None:
@@ -127,9 +129,14 @@ class ToolRegistry:
         Returns a list of dicts matching the Anthropic tool-use schema:
         [{"name": ..., "description": ..., "input_schema": {...}}, ...]
 
+        The result is cached and invalidated on new tool registration.
+
         Returns:
             List of Anthropic-format tool definitions.
         """
+        if self._anthropic_tools_cache is not None:
+            return self._anthropic_tools_cache
+
         tools = []
         for tool in self._tools.values():
             schema = tool.input_model.model_json_schema()
@@ -143,6 +150,7 @@ class ToolRegistry:
                 "description": tool.description,
                 "input_schema": schema,
             })
+        self._anthropic_tools_cache = tools
         return tools
 
     def execute(self, tool_name: str, input_data: dict[str, Any]) -> ToolResult:

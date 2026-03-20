@@ -587,3 +587,118 @@ class TestCoverageGaps:
         loads = [0.0, 0.0, 0.0, 0.0, 0.0, 4.0, -3.0]
         acwr = compute_acwr_ewma(loads, acute_days=3, chronic_days=7)
         assert math.isinf(acwr)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Recovery week bounce-back handling
+# ---------------------------------------------------------------------------
+
+
+class TestRecoveryWeekBounceBack:
+    """Verify that returning to normal load after a recovery week is not flagged.
+
+    WHY: A planned recovery week drops load by 20-30%. Returning to pre-recovery
+    levels the next week looks like a >10% increase if compared against the
+    recovery week. The check should compare against the last BUILD week instead.
+    """
+
+    def test_return_to_build_after_recovery_not_flagged(self) -> None:
+        """Returning to pre-recovery load should not produce increase violation.
+
+        Pattern: 300, 330, 360, 270 (recovery -25%), 340 (return ~= pre-recovery)
+        Week 5 (340) vs recovery week 4 (270) = 26% — but vs last build week 3 (360) = -6%.
+        Should NOT flag a violation.
+        """
+        weeks = [300.0, 330.0, 360.0, 270.0, 340.0]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        assert len(increase_violations) == 0, (
+            f"Recovery bounce-back falsely flagged: {increase_violations}"
+        )
+
+    def test_genuine_spike_after_recovery_still_flagged(self) -> None:
+        """A real spike after recovery (exceeding pre-recovery levels) is flagged.
+
+        Pattern: 300, 330, 360, 270 (recovery), 420 (real spike, +17% vs 360)
+        """
+        weeks = [300.0, 330.0, 360.0, 270.0, 420.0]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        assert len(increase_violations) > 0, (
+            "Genuine spike after recovery should still be flagged"
+        )
+
+    def test_recovery_week_itself_not_flagged(self) -> None:
+        """The recovery week drop should not produce any increase violation.
+
+        A drop is never an increase violation — only spikes are checked.
+        """
+        weeks = [300.0, 330.0, 360.0, 270.0]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        assert len(increase_violations) == 0
+
+    def test_multiple_recovery_weeks(self) -> None:
+        """Two recovery weeks in a plan should both be handled correctly.
+
+        Pattern: build, build, build, recovery, build, build, build, recovery, build
+        """
+        weeks = [
+            200.0, 220.0, 240.0,  # Build (weeks 1-3)
+            180.0,                  # Recovery (week 4, -25%)
+            240.0,                  # Return to build (week 5, compare vs week 3)
+            260.0,                  # Build (week 6, +8% vs week 5)
+            280.0,                  # Build (week 7, +8% vs week 6)
+            210.0,                  # Recovery (week 8, -25%)
+            280.0,                  # Return to build (week 9, compare vs week 7)
+        ]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        assert len(increase_violations) == 0, (
+            f"Multiple recovery bounce-backs falsely flagged: {increase_violations}"
+        )
+
+    def test_small_drop_not_treated_as_recovery(self) -> None:
+        """A small drop (< 15%) is NOT a recovery week — normal fluctuation.
+
+        Pattern: 300, 330, 320 (small drop -3%), 360 (+12.5% vs 320)
+        The 320→360 increase should be flagged because the drop was too small
+        to qualify as a recovery week.
+        """
+        weeks = [300.0, 330.0, 320.0, 360.0]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        assert len(increase_violations) > 0, (
+            "Small drop should not be treated as recovery week"
+        )
+
+    def test_advanced_marathoner_pattern(self) -> None:
+        """Real-world pattern from eval harness: advanced marathoner with recovery weeks.
+
+        Weeks: 347.7, 365.4, 394.6, 294.7 (recovery), 336.1, 372.1
+        Post-recovery increases should compare against week 3 (394.6).
+        336.1 vs 394.6 = -15% (fine), 372.1 vs 336.1 = +11% (borderline but
+        compare against 336.1 since that's the new build reference).
+        """
+        weeks = [347.7, 365.4, 394.6, 294.7, 336.1, 372.1]
+        result = check_safety(weeks, max_weekly_increase_pct=0.10)
+        increase_violations = [
+            v for v in result.violations if "increase" in v.lower()
+        ]
+        # Week 6 (372.1) vs week 5 (336.1) = 10.7% — this IS a borderline violation
+        # but week 5 (336.1) vs last build week 3 (394.6) = -15% is fine
+        # The real question: is 372.1 vs 336.1 (10.7%) a violation?
+        # Yes — week 5 is a non-recovery week, so week 6 compares against it normally.
+        assert len(increase_violations) <= 1, (
+            f"Only week 6 borderline violation expected, got: {increase_violations}"
+        )

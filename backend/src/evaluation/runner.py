@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import Any
 
@@ -21,7 +22,12 @@ from src.agents.orchestrator import Orchestrator, OrchestrationResult
 from src.agents.planner import PlannerAgent
 from src.agents.reviewer import ReviewerAgent
 from src.agents.transport import MessageTransport
-from src.evaluation.personas import ALL_PERSONAS, EvaluationPersona, get_persona
+from src.evaluation.personas import (
+    ALL_PERSONAS,
+    EvaluationPersona,
+    ExpectedBehavior,
+    get_persona,
+)
 from src.evaluation.results import HarnessMetrics, PersonaResult
 from src.models.plan_change import PlanChangeType
 
@@ -29,6 +35,54 @@ logger = logging.getLogger(__name__)
 
 # Timeout for the entire batched run (2 hours default)
 _BATCH_TIMEOUT_SECONDS = 7200.0
+
+
+def check_constraint_violations(
+    plan_text: str,
+    expected: ExpectedBehavior,
+    safety_score: float | None = None,
+) -> list[str]:
+    """Check a plan against expected behavior constraints.
+
+    Performs text-based checks on the generated plan to verify it meets
+    the persona's expected constraints. This is a post-hoc analysis that
+    populates the constraint_violations field on PersonaResult.
+
+    Args:
+        plan_text: The generated plan text.
+        expected: The persona's expected behavior constraints.
+        safety_score: Reviewer's safety score (None if not reviewed).
+
+    Returns:
+        List of violation descriptions. Empty if all constraints pass.
+    """
+    violations: list[str] = []
+    text_lower = plan_text.lower()
+
+    for phrase in expected.must_include:
+        if phrase.lower() not in text_lower:
+            violations.append(f"Missing required phrase: '{phrase}'")
+
+    for phrase in expected.must_not_include:
+        if phrase.lower() in text_lower:
+            violations.append(f"Contains prohibited phrase: '{phrase}'")
+
+    if safety_score is not None and safety_score < expected.min_safety_score:
+        violations.append(
+            f"Safety score {safety_score:.0f} below minimum {expected.min_safety_score:.0f}"
+        )
+
+    # Check for ACWR values in plan text that exceed expected max
+    if hasattr(expected, "max_acwr"):
+        acwr_pattern = re.compile(r"ACWR\s*[:=]?\s*(\d+\.?\d*)", re.IGNORECASE)
+        for match in acwr_pattern.finditer(plan_text):
+            acwr_value = float(match.group(1))
+            if acwr_value > expected.max_acwr:
+                violations.append(
+                    f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}"
+                )
+
+    return violations
 
 
 class HarnessRunner:
@@ -76,13 +130,34 @@ class HarnessRunner:
             elapsed: Wall-clock seconds for this persona.
 
         Returns:
-            Populated PersonaResult.
+            Populated PersonaResult with constraint violations checked.
         """
+        # Check constraint violations against persona's expected behavior
+        violations: list[str] = []
+        try:
+            persona = get_persona(persona_id)
+            safety_score = (
+                orch_result.final_scores.safety
+                if orch_result.final_scores is not None
+                else None
+            )
+            violations = check_constraint_violations(
+                orch_result.plan_text,
+                persona.expected_behavior,
+                safety_score=safety_score,
+            )
+        except KeyError:
+            logger.warning(
+                "Could not find persona '%s' for constraint checking — "
+                "skipping violation analysis",
+                persona_id,
+            )
+
         return PersonaResult(
             persona_id=persona_id,
             plan_text=orch_result.plan_text,
             approved=orch_result.approved,
-            retry_count=len(orch_result.decision_log),  # review cycles (includes initial)
+            retry_count=len(orch_result.decision_log),
             total_iterations=orch_result.total_iterations,
             final_scores=orch_result.final_scores,
             decision_log=orch_result.decision_log,
@@ -91,6 +166,7 @@ class HarnessRunner:
             reviewer_input_tokens=orch_result.total_reviewer_input_tokens,
             reviewer_output_tokens=orch_result.total_reviewer_output_tokens,
             elapsed_seconds=elapsed,
+            constraint_violations=violations,
             athlete_cache_key=orch_result.athlete_cache_key,
             warning=orch_result.warning,
             error=orch_result.error,
@@ -180,7 +256,19 @@ class HarnessRunner:
 
         Returns:
             PersonaResult with plan, scores, tokens, and timing.
+
+        Raises:
+            KeyError: If the persona ID is not registered (with a clear message).
         """
+        # Validate persona is registered before spending API tokens
+        try:
+            get_persona(persona.persona_id)
+        except KeyError:
+            raise KeyError(
+                f"Unknown persona '{persona.persona_id}'. "
+                f"Registered personas: {[p.persona_id for p in ALL_PERSONAS]}"
+            ) from None
+
         logger.info("Running persona: %s", persona.persona_id)
         orchestrator = self._build_orchestrator()
         start = time.monotonic()
@@ -207,7 +295,7 @@ class HarnessRunner:
         """Run all (or selected) personas sequentially.
 
         Args:
-            persona_ids: Optional list of persona IDs to run. If None, runs all 5.
+            persona_ids: Optional list of persona IDs to run. If None, runs all personas.
 
         Returns:
             List of PersonaResult, one per persona.
@@ -240,7 +328,7 @@ class HarnessRunner:
         TWEAK mode skips the reviewer, which would deadlock the batch barrier.
 
         Args:
-            persona_ids: Optional list of persona IDs to run. If None, runs all 5.
+            persona_ids: Optional list of persona IDs to run. If None, runs all personas.
             poll_interval: Seconds between batch status polls.
 
         Returns:
@@ -305,10 +393,18 @@ class HarnessRunner:
         finally:
             await coordinator.stop()
 
-        for result in results:
+        # Verify results list integrity — every persona should have a result
+        results_list = list(results)
+        if len(results_list) != len(personas):
+            logger.error(
+                "Results count mismatch: expected %d, got %d",
+                len(personas), len(results_list),
+            )
+
+        for result in results_list:
             self._log_result(result)
 
-        return list(results)
+        return results_list
 
     async def run_comparison(
         self,
@@ -381,11 +477,16 @@ class HarnessRunner:
             result: The PersonaResult to log.
         """
         logger.info(
-            "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, time=%.1fs",
+            "Persona %s: approved=%s, retries=%d, tokens=%d, cost=$%.4f, "
+            "time=%.1fs, constraint_violations=%d, "
+            "planner_model=%s, reviewer_model=%s",
             result.persona_id,
             result.approved,
             result.retry_count,
             result.total_tokens,
             result.estimated_cost_usd,
             result.elapsed_seconds,
+            len(result.constraint_violations),
+            result.planner_model,
+            result.reviewer_model,
         )

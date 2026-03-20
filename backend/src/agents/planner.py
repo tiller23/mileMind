@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import anthropic
 
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
-from src.agents.shared import build_registry, extract_text
+from src.agents.shared import build_registry, run_agent_loop
 from src.agents.transport import AnthropicTransport, MessageTransport
 from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile
@@ -84,7 +84,7 @@ class PlannerAgent:
         self,
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
-        max_iterations: int = 15,
+        max_iterations: int = 25,
         transport: MessageTransport | None = None,
     ) -> None:
         if transport is not None:
@@ -206,13 +206,8 @@ class PlannerAgent:
     async def _run_agent_loop(self, messages: list[dict[str, Any]]) -> PlannerResult:
         """Run the Claude tool-use loop until a final text response is produced.
 
-        On each iteration:
-        1. Send messages to Claude with the system prompt and tool definitions.
-        2. If stop_reason is "tool_use", execute each tool call via the registry,
-           append tool results to the conversation, and loop.
-        3. If stop_reason is "end_turn", extract the final text and return.
-        4. If max_iterations is reached, return with whatever text is available
-           plus an error note.
+        Delegates to the shared ``run_agent_loop()`` and converts the generic
+        ``AgentLoopResult`` into a ``PlannerResult``.
 
         Args:
             messages: The conversation messages (starts with user message).
@@ -220,127 +215,73 @@ class PlannerAgent:
         Returns:
             PlannerResult with accumulated data from the full run.
         """
-        tool_definitions = self._registry.get_anthropic_tools()
-        tool_call_log: list[dict[str, Any]] = []
-        total_input_tokens = 0
-        total_output_tokens = 0
-        iterations = 0
-
-        for iteration in range(1, self._max_iterations + 1):
-            iterations = iteration
-
-            logger.info(
-                "Planner agent iteration %d/%d (messages: %d)",
-                iteration, self._max_iterations, len(messages),
-            )
-
-            response = await self._transport.create_message(
-                model=self._model,
-                max_tokens=8192,
-                system=PLANNER_SYSTEM_PROMPT,
-                tools=tool_definitions,
-                messages=messages,
-            )
-
-            # Track token usage
-            total_input_tokens += response.usage.input_tokens
-            total_output_tokens += response.usage.output_tokens
-
-            logger.info(
-                "Iteration %d: stop_reason=%s, tokens(in=%d, out=%d)",
-                iteration,
-                response.stop_reason,
-                response.usage.input_tokens,
-                response.usage.output_tokens,
-            )
-
-            # If Claude is done (no more tool calls), extract final text
-            if response.stop_reason == "end_turn":
-                plan_text = extract_text(response.content)
-                return PlannerResult(
-                    plan_text=plan_text,
-                    tool_calls=tool_call_log,
-                    iterations=iterations,
-                    total_input_tokens=total_input_tokens,
-                    total_output_tokens=total_output_tokens,
-                )
-
-            # If Claude wants to use tools, process them
-            if response.stop_reason == "tool_use":
-                # Append the assistant's full response (text + tool_use blocks)
-                messages.append({"role": "assistant", "content": response.content})
-
-                # Execute each tool call and collect results
-                tool_result_blocks: list[dict[str, Any]] = []
-
-                for block in response.content:
-                    if block.type != "tool_use":
-                        continue
-
-                    tool_name = block.name
-                    tool_input = block.input
-                    tool_use_id = block.id
-
-                    logger.info(
-                        "Executing tool: %s (id=%s)", tool_name, tool_use_id,
-                    )
-
-                    result = self._registry.execute(tool_name, tool_input)
-
-                    tool_call_log.append({
-                        "name": tool_name,
-                        "input": tool_input,
-                        "output": result.output,
-                        "success": result.success,
-                    })
-
-                    tool_result_blocks.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_id,
-                        "content": result.to_content_block(),
-                        "is_error": not result.success,
-                    })
-
-                # Append all tool results in a single user message
-                messages.append({"role": "user", "content": tool_result_blocks})
-            else:
-                # Unexpected stop reason (e.g., max_tokens hit)
-                plan_text = extract_text(response.content)
-                return PlannerResult(
-                    plan_text=plan_text,
-                    tool_calls=tool_call_log,
-                    iterations=iterations,
-                    total_input_tokens=total_input_tokens,
-                    total_output_tokens=total_output_tokens,
-                    error=(
-                        f"Unexpected stop_reason: {response.stop_reason}. "
-                        "Response may be incomplete."
-                    ),
-                )
-
-        # Max iterations reached without a final response
-        logger.warning(
-            "Planner agent hit max iterations (%d) without completing.",
-            self._max_iterations,
+        loop_result = await run_agent_loop(
+            transport=self._transport,
+            model=self._model,
+            max_tokens=16384,
+            system_prompt=PLANNER_SYSTEM_PROMPT,
+            tools=self._registry.get_anthropic_tools(),
+            messages=messages,
+            registry=self._registry,
+            max_iterations=self._max_iterations,
+            logger_name="Planner",
         )
-        return PlannerResult(
-            plan_text="",
-            tool_calls=tool_call_log,
-            iterations=iterations,
-            total_input_tokens=total_input_tokens,
-            total_output_tokens=total_output_tokens,
-            error=(
+
+        # Map stop_reason to error message
+        error: str | None = None
+        if loop_result.stop_reason == "max_iterations":
+            error = (
                 f"Agent did not complete within {self._max_iterations} iterations. "
                 "Plan generation was capped to prevent infinite loops."
-            ),
+            )
+        elif loop_result.stop_reason not in ("end_turn",):
+            error = (
+                f"Unexpected stop_reason: {loop_result.stop_reason}. "
+                "Response may be incomplete."
+            )
+
+        return PlannerResult(
+            plan_text=loop_result.final_text,
+            tool_calls=loop_result.tool_calls,
+            iterations=loop_result.iterations,
+            total_input_tokens=loop_result.total_input_tokens,
+            total_output_tokens=loop_result.total_output_tokens,
+            error=error,
         )
+
+    @staticmethod
+    def _classify_athlete_level(athlete: AthleteProfile) -> str:
+        """Classify athlete as beginner, intermediate, or advanced.
+
+        Uses VDOT and weekly mileage base to determine level, which informs
+        what workout types and intensities are appropriate.
+
+        Args:
+            athlete: The athlete profile to classify.
+
+        Returns:
+            One of "beginner", "intermediate", or "advanced".
+        """
+        vdot = athlete.vdot
+        base = athlete.weekly_mileage_base
+
+        # Advanced requires BOTH high base AND acceptable VDOT (or no VDOT data).
+        # A runner with high VDOT but low base is undertrained, not advanced.
+        if base > 60 and (vdot is None or vdot > 50):
+            return "advanced"
+        # Beginner if EITHER signal indicates low level — err on the side of safety.
+        # Low base alone is enough; low VDOT with moderate base is still beginner.
+        if base < 25 or (vdot is not None and vdot < 35):
+            return "beginner"
+        return "intermediate"
 
     @staticmethod
     def _build_user_message(athlete: AthleteProfile) -> str:
         """Build the initial user message from an athlete profile.
 
         Serializes the athlete profile into a structured prompt that gives
-        Claude all the information needed to design a training plan.
+        Claude all the information needed to design a training plan. Includes
+        athlete level classification and explicit safety constraints.
 
         Args:
             athlete: The athlete profile to serialize.
@@ -351,16 +292,36 @@ class PlannerAgent:
         """
         profile_data = athlete.model_dump(exclude_none=True)
         profile_json = json.dumps(profile_data, indent=2)
+        level = PlannerAgent._classify_athlete_level(athlete)
+
+        # Build injury context with nuance
+        injury_section = ""
+        if athlete.injury_history:
+            injury_section = (
+                f"- Injury history: {athlete.injury_history}\n"
+                f"  Apply the injury guidelines from your system prompt — "
+                f"past healed injuries need strengthening notes, not blanket "
+                f"restrictions. Only reduce training for recent/current issues.\n"
+            )
 
         return (
             f"Please generate a periodized training plan for this athlete.\n\n"
             f"## Athlete Profile\n"
             f"```json\n{profile_json}\n```\n\n"
+            f"## Athlete Level: {level.upper()}\n"
+            f"Refer to the '{level}' section of your Athlete-Level Coaching "
+            f"Guidelines for appropriate workout types and intensity.\n\n"
+            f"## Safety Constraints (HARD LIMITS)\n"
+            f"- Max weekly load increase: {athlete.max_weekly_increase_pct:.0%} "
+            f"(athlete's max_weekly_increase_pct = {athlete.max_weekly_increase_pct})\n"
+            f"- Risk tolerance: {athlete.risk_tolerance.value}\n"
+            f"- Recovery weeks MUST appear every 3-4 building weeks\n"
+            f"- Validate progression at least twice (mid-plan and final) with "
+            f"validate_progression_constraints\n\n"
             f"## Instructions\n"
             f"- Design a multi-week plan targeting the {athlete.goal_distance} distance.\n"
             f"- The athlete trains {athlete.training_days_per_week} days per week.\n"
             f"- Current weekly mileage baseline: {athlete.weekly_mileage_base} km.\n"
-            f"- Risk tolerance: {athlete.risk_tolerance.value}.\n"
             + (
                 f"- Goal finish time: {athlete.goal_time_minutes} minutes.\n"
                 if athlete.goal_time_minutes
@@ -376,15 +337,13 @@ class PlannerAgent:
                 if athlete.vo2max
                 else ""
             )
-            + (
-                f"- Injury history: {athlete.injury_history}\n"
-                if athlete.injury_history
-                else ""
-            )
+            + injury_section
             + (
                 f"\nUse compute_training_stress for every workout, "
-                f"validate_progression_constraints for the weekly load sequence, "
+                f"validate_progression_constraints at least twice (mid-plan and final) "
+                f"(not just at the end), "
                 f"and simulate_race_outcomes if VDOT data is available. "
+                f"Use Zone 1-6 pace zones in your plan. "
                 f"Return the complete plan as a JSON block."
             )
         )
@@ -410,6 +369,24 @@ class PlannerAgent:
         Returns:
             A formatted revision request message.
         """
+        # W11: Size guard — truncate oversized inputs to prevent token blowout
+        _MAX_PLAN_CHARS = 50_000
+        _MAX_CRITIQUE_CHARS = 10_000
+
+        if len(prior_plan_text) > _MAX_PLAN_CHARS:
+            logger.warning(
+                "Truncating prior_plan_text from %d to %d chars",
+                len(prior_plan_text), _MAX_PLAN_CHARS,
+            )
+            prior_plan_text = prior_plan_text[:_MAX_PLAN_CHARS] + "\n[...TRUNCATED]"
+
+        if len(reviewer_critique) > _MAX_CRITIQUE_CHARS:
+            logger.warning(
+                "Truncating reviewer_critique from %d to %d chars",
+                len(reviewer_critique), _MAX_CRITIQUE_CHARS,
+            )
+            reviewer_critique = reviewer_critique[:_MAX_CRITIQUE_CHARS] + "\n[...TRUNCATED]"
+
         profile_data = athlete.model_dump(exclude_none=True)
         profile_json = json.dumps(profile_data, indent=2)
 
@@ -417,11 +394,18 @@ class PlannerAgent:
         if not issues_text:
             issues_text = "  (no specific issues listed)"
 
+        level = PlannerAgent._classify_athlete_level(athlete)
+
         return (
             f"Your previous training plan was REJECTED by the reviewer. "
             f"Please revise it to address the issues below.\n\n"
             f"## Athlete Profile\n"
             f"```json\n{profile_json}\n```\n\n"
+            f"## Athlete Level: {level.upper()}\n\n"
+            f"## Safety Constraints (HARD LIMITS — most common rejection reasons)\n"
+            f"- Max weekly load increase: {athlete.max_weekly_increase_pct:.0%}\n"
+            f"- Recovery weeks MUST appear every 3-4 building weeks\n"
+            f"- Risk tolerance: {athlete.risk_tolerance.value}\n\n"
             f"## Previous Plan (REJECTED)\n"
             f"{prior_plan_text}\n\n"
             f"## Reviewer Critique\n"
@@ -432,7 +416,8 @@ class PlannerAgent:
             f"- Address EVERY issue listed above.\n"
             f"- Re-run compute_training_stress for any workouts you modify.\n"
             f"- Re-run validate_progression_constraints on the revised weekly "
-            f"load sequence.\n"
+            f"load sequence — validate at least twice (mid-plan and final).\n"
+            f"- Use Zone 1-6 pace zones.\n"
             f"- Return the complete revised plan as a ```json block.\n"
             f"- Do NOT just patch the old plan — regenerate with corrections.\n"
         )

@@ -142,7 +142,7 @@ class TestWorkoutEntryValidation:
         from src.tools.reallocate_week_load import WorkoutEntry
         we = WorkoutEntry(**entry)
         assert we.day == 1
-        assert we.workout_type == "easy"
+        assert we.workout_type == WorkoutType.EASY
 
     def test_invalid_workout_type_raises(self) -> None:
         from src.tools.reallocate_week_load import WorkoutEntry
@@ -738,10 +738,20 @@ class TestEdgeCases:
         parsed = ReallocateWeekOutput(**raw)
         assert parsed.validation_passed is True
 
-    def test_handler_raises_on_missing_required_field(self) -> None:
-        with pytest.raises(ValidationError):
-            reallocate_week_load_handler({
+    def test_registry_rejects_missing_required_field(self) -> None:
+        """Input validation for missing required fields is enforced by the ToolRegistry,
+        not the handler directly.  Calling the registry with a missing swap_day must
+        return a failure result rather than raising.
+        """
+        registry = ToolRegistry()
+        register(registry)
+        result = registry.execute(
+            "reallocate_week_load",
+            {
                 "workouts": [_make_workout(1)],
                 # swap_day missing
                 "new_workout_type": "easy",
-            })
+            },
+        )
+        assert result.success is False
+        assert "error" in result.output

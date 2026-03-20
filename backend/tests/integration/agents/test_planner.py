@@ -15,7 +15,6 @@ pipeline without API costs or network dependencies.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,25 +26,16 @@ from src.agents.prompts import PLANNER_SYSTEM_PROMPT
 from src.agents.validation import ValidationResult, validate_plan_output
 from src.models.athlete import AthleteProfile, RiskTolerance
 from src.tools.registry import ToolRegistry
+from tests.helpers import (
+    MockContentBlock,
+    MockResponse,
+    MockUsage,
+    make_end_turn_response,
+    make_tool_use_response,
+)
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def sample_athlete() -> AthleteProfile:
-    """A simple beginner athlete for testing."""
-    return AthleteProfile(
-        name="Test Runner",
-        age=30,
-        weekly_mileage_base=30.0,
-        goal_distance="5K",
-        goal_time_minutes=25.0,
-        vdot=40.0,
-        risk_tolerance=RiskTolerance.MODERATE,
-        training_days_per_week=4,
-    )
+# sample_athlete fixture is provided by tests/conftest.py
 
 
 @pytest.fixture
@@ -55,88 +45,14 @@ def registry() -> ToolRegistry:
 
 
 # ---------------------------------------------------------------------------
-# Mock helpers
-# ---------------------------------------------------------------------------
-
-@dataclass
-class MockContentBlock:
-    """Simulates a Claude API content block."""
-
-    type: str
-    text: str = ""
-    name: str = ""
-    input: dict[str, Any] | None = None
-    id: str = ""
-
-
-@dataclass
-class MockUsage:
-    """Simulates Claude API usage."""
-
-    input_tokens: int = 100
-    output_tokens: int = 200
-
-
-@dataclass
-class MockResponse:
-    """Simulates a Claude API response."""
-
-    content: list[MockContentBlock]
-    stop_reason: str
-    usage: MockUsage
-
-
-def make_tool_use_response(
-    tool_calls: list[dict[str, Any]],
-    text_before: str = "",
-) -> MockResponse:
-    """Build a mock response with tool_use blocks.
-
-    Args:
-        tool_calls: List of dicts with name, input, and optionally id.
-        text_before: Optional text block before the tool calls.
-
-    Returns:
-        A MockResponse with stop_reason="tool_use".
-    """
-    blocks: list[MockContentBlock] = []
-    if text_before:
-        blocks.append(MockContentBlock(type="text", text=text_before))
-    for i, tc in enumerate(tool_calls):
-        blocks.append(MockContentBlock(
-            type="tool_use",
-            name=tc["name"],
-            input=tc["input"],
-            id=tc.get("id", f"toolu_{i:04d}"),
-        ))
-    return MockResponse(content=blocks, stop_reason="tool_use", usage=MockUsage())
-
-
-def make_end_turn_response(text: str) -> MockResponse:
-    """Build a mock response with final text.
-
-    Args:
-        text: The plan text to return.
-
-    Returns:
-        A MockResponse with stop_reason="end_turn".
-    """
-    return MockResponse(
-        content=[MockContentBlock(type="text", text=text)],
-        stop_reason="end_turn",
-        usage=MockUsage(),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Tests: Registry builds correctly
 # ---------------------------------------------------------------------------
 
 class TestBuildRegistry:
-    """Verify build_registry() creates a valid registry with all 5 tools."""
+    """Verify build_registry() creates a valid registry with all 6 tools."""
 
     def test_registry_has_five_tools(self, registry: ToolRegistry) -> None:
-        assert len(registry.tool_names) == 5
+        assert len(registry.tool_names) == 6
 
     def test_expected_tool_names(self, registry: ToolRegistry) -> None:
         expected = {
@@ -145,12 +61,13 @@ class TestBuildRegistry:
             "validate_progression_constraints",
             "simulate_race_outcomes",
             "reallocate_week_load",
+            "project_taper",
         }
         assert set(registry.tool_names) == expected
 
     def test_anthropic_tools_format(self, registry: ToolRegistry) -> None:
         tools = registry.get_anthropic_tools()
-        assert len(tools) == 5
+        assert len(tools) == 6
         for tool in tools:
             assert "name" in tool
             assert "description" in tool
@@ -561,6 +478,7 @@ class TestSystemPrompt:
             "simulate_race_outcomes",
             "evaluate_fatigue_state",
             "reallocate_week_load",
+            "project_taper",
         ]:
             assert tool in PLANNER_SYSTEM_PROMPT
 

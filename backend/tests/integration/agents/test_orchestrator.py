@@ -20,23 +20,7 @@ from src.models.decision_log import ReviewerScores, ReviewOutcome
 from src.models.plan_change import PlanChangeType
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def sample_athlete() -> AthleteProfile:
-    """A simple athlete for testing."""
-    return AthleteProfile(
-        name="Test Runner",
-        age=30,
-        weekly_mileage_base=30.0,
-        goal_distance="5K",
-        goal_time_minutes=25.0,
-        vdot=40.0,
-        risk_tolerance=RiskTolerance.MODERATE,
-        training_days_per_week=4,
-    )
+# sample_athlete fixture is provided by tests/conftest.py
 
 
 def _make_planner_result(
@@ -418,7 +402,74 @@ class TestOrchestratorValidation:
 
         assert result.approved is False
         assert result.warning is not None
-        assert "1 attempts" in result.warning
+        assert "1 attempt" in result.warning
+
+
+class TestOrchestratorScoreThresholdGuard:
+    """Tests for the server-side score threshold override."""
+
+    @pytest.mark.asyncio
+    async def test_override_approval_when_scores_fail(self, sample_athlete: AthleteProfile) -> None:
+        """Reviewer says approved=True but safety score fails threshold → overridden to rejected."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Revised"))
+
+        # Reviewer says approved but safety=50 (below 70 threshold) → all_pass is False
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(side_effect=[
+            _make_reviewer_result(
+                approved=True,
+                scores={"safety": 50, "progression": 80, "specificity": 80, "feasibility": 75},
+            ),
+            _make_reviewer_result(approved=True),  # second attempt passes
+        ])
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
+        result = await orch.generate_plan(sample_athlete)
+
+        # First attempt: overridden to REJECTED because safety=50 fails threshold
+        assert result.decision_log[0].outcome == ReviewOutcome.REJECTED
+        # Second attempt: approved normally
+        assert result.approved is True
+        assert len(result.decision_log) == 2
+
+    @pytest.mark.asyncio
+    async def test_no_override_when_scores_pass(self, sample_athlete: AthleteProfile) -> None:
+        """Reviewer says approved=True and all scores pass → stays approved."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
+            approved=True,
+            scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 75},
+        ))
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer)
+        result = await orch.generate_plan(sample_athlete)
+
+        assert result.approved is True
+        assert result.decision_log[0].outcome == ReviewOutcome.APPROVED
+
+    @pytest.mark.asyncio
+    async def test_override_exhausts_retries(self, sample_athlete: AthleteProfile) -> None:
+        """Score override on every attempt exhausts retries with warning."""
+        planner = MagicMock(spec=PlannerAgent)
+        planner.generate_plan = AsyncMock(return_value=_make_planner_result())
+        planner.revise_plan = AsyncMock(return_value=_make_planner_result())
+
+        reviewer = MagicMock(spec=ReviewerAgent)
+        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
+            approved=True,
+            scores={"safety": 40, "progression": 80, "specificity": 80, "feasibility": 75},
+        ))
+
+        orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=2)
+        result = await orch.generate_plan(sample_athlete)
+
+        assert result.approved is False
+        assert result.warning is not None
+        assert all(e.outcome == ReviewOutcome.REJECTED for e in result.decision_log)
 
 
 class TestOrchestratorExceptionHandling:
