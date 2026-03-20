@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import anthropic
 
 from src.agents.prompts import REVIEWER_SYSTEM_PROMPT
-from src.agents.shared import build_registry, run_agent_loop
+from src.agents.shared import build_registry, run_agent_loop, sanitize_prompt_text
 from src.agents.transport import AnthropicTransport, MessageTransport
 from src.models.athlete import AthleteProfile
 from src.models.decision_log import REVIEW_PASS_THRESHOLD, ReviewerScores
@@ -336,12 +336,16 @@ class ReviewerAgent:
             tool_summary_lines.append(f"  - {tc['name']} [{status}]")
         tool_summary = "\n".join(tool_summary_lines) if tool_summary_lines else "  (none)"
 
+        # Sanitize plan text (LLM-generated, but could carry indirect injection
+        # if user input flowed through the planner into plan output)
+        sanitized_plan = sanitize_prompt_text(plan_text)
+
         return (
             f"Please review the following training plan.\n\n"
             f"## Athlete Profile\n"
             f"```json\n{profile_json}\n```\n\n"
             f"## Training Plan to Review\n"
-            f"{plan_text}\n\n"
+            f"{sanitized_plan}\n\n"
             f"## Planner Tool Usage Summary\n"
             f"The planner made {len(planner_tool_calls)} tool call(s):\n"
             f"{tool_summary}\n\n"

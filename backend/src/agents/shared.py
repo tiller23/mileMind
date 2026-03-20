@@ -1,21 +1,87 @@
 """Shared utilities for planner and reviewer agents.
 
 Extracts duplicated code: tool registry construction, text extraction
-from Claude API response content blocks, and the generic agent loop.
+from Claude API response content blocks, the generic agent loop, and
+prompt sanitization for defense-in-depth against injection attacks.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from src.agents.transport import MessageTransport
 from src.tools.registry import ToolRegistry
 
-__all__ = ["AgentLoopResult", "build_registry", "extract_text", "run_agent_loop"]
+__all__ = [
+    "AgentLoopResult",
+    "build_registry",
+    "extract_text",
+    "run_agent_loop",
+    "sanitize_prompt_text",
+]
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Prompt sanitization (shared by planner and reviewer)
+# ---------------------------------------------------------------------------
+
+# Known injection patterns. re.UNICODE ensures \s/\w match Cyrillic etc.
+_INJECTION_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions)"
+    r"|(?:you\s+are\s+now\s+)"
+    r"|(?:system\s*:\s*)"
+    r"|(?:NEVER\s+(?:reject|fail|penalize))"
+    r"|(?:always\s+approve)"
+    r"|(?:override\s+(?:safety|constraints|rules))"
+    r"|(?:disregard\s+(?:all\s+)?(?:previous|above|prior))"
+    r"|(?:new\s+instructions?\s*:)"
+    r"|(?:forget\s+(?:all\s+)?(?:previous|prior|everything))"
+    r"|(?:act\s+as\s+(?:a\s+)?(?:different|new))"
+    r"|(?:do\s+not\s+(?:follow|obey|listen))",
+    re.UNICODE,
+)
+
+# Allowlist: letters, digits, basic punctuation, whitespace, medical symbols,
+# JSON structural chars ({}[]), backticks (for code fences), comparison
+# operators (<>), equals, pipe, tilde, caret, asterisk, underscore.
+_ALLOWED_CHARS = re.compile(
+    r"[^\w\s.,;:!?'\"()\-/+#%&@°\n\r\t{}\[\]`<>=|~^*_]",
+    re.UNICODE,
+)
+
+# XML/HTML tag pattern — requires a letter after < to avoid matching
+# comparison operators like "pace < 5:00" or "HR > 160".
+_XML_TAG_PATTERN = re.compile(r"</?[a-zA-Z][^>]*>")
+
+
+def sanitize_prompt_text(text: str) -> str:
+    """Sanitize text before embedding in LLM prompts.
+
+    Three-layer defense:
+    1. Denylist: Known injection patterns replaced with [FILTERED].
+    2. Tag stripping: XML/HTML tags removed (requires letter after <,
+       so comparison operators like "< 5:00" are preserved).
+    3. Allowlist: Only permitted characters survive.
+
+    Used for user free-text (injury_history) and inter-agent text
+    (reviewer critique flowing to planner, plan text flowing to reviewer).
+
+    Args:
+        text: Text to sanitize.
+
+    Returns:
+        Sanitized text.
+    """
+    sanitized = _INJECTION_PATTERNS.sub("[FILTERED]", text)
+    sanitized = _XML_TAG_PATTERN.sub("", sanitized)
+    sanitized = _ALLOWED_CHARS.sub("", sanitized)
+    return sanitized.strip()
 
 
 # ---------------------------------------------------------------------------
