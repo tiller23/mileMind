@@ -8,7 +8,7 @@ const LABELS: Record<keyof ReviewerScores, string> = {
   overall: "Overall",
 };
 
-function scoreColor(score: number): string {
+export function scoreColor(score: number): string {
   if (score >= 80) return "bg-green-100 text-green-800";
   if (score >= 70) return "bg-yellow-100 text-yellow-800";
   return "bg-red-100 text-red-800";

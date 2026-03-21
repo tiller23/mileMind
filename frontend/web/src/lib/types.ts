@@ -69,11 +69,16 @@ export interface PlanSummary {
   created_at: string;
 }
 
+export interface PlanData {
+  text?: string;
+  [key: string]: unknown;
+}
+
 export interface PlanDetail {
   id: string;
   user_id: string;
   athlete_snapshot: Record<string, unknown>;
-  plan_data: Record<string, unknown>;
+  plan_data: PlanData;
   decision_log: DecisionLogEntry[];
   scores: ReviewerScores | null;
   approved: boolean;

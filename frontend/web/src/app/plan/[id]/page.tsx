@@ -4,16 +4,20 @@ import Link from "next/link";
 import { use } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ScoreBadgeGroup } from "@/components/ScoreBadge";
-import { useArchivePlan, usePlan } from "@/lib/hooks";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useArchivePlan, useAuthGuard, usePlan } from "@/lib/hooks";
 
 interface PlanPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function PlanPage({ params }: PlanPageProps) {
+  const { isAuthenticated } = useAuthGuard();
   const { id } = use(params);
   const { data: plan, isLoading, error } = usePlan(id);
   const archivePlan = useArchivePlan();
+
+  if (!isAuthenticated) return null;
 
   if (isLoading) {
     return (
@@ -42,8 +46,7 @@ export default function PlanPage({ params }: PlanPageProps) {
     );
   }
 
-  const rawText = plan.plan_data?.text;
-  const planText = typeof rawText === "string" ? rawText : "";
+  const planText = plan.plan_data?.text ?? "";
 
   return (
     <>
@@ -65,7 +68,7 @@ export default function PlanPage({ params }: PlanPageProps) {
           <div className="flex items-center gap-3">
             <Link
               href={`/plan/${id}/debug`}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50"
             >
               Debug View
             </Link>
@@ -73,7 +76,7 @@ export default function PlanPage({ params }: PlanPageProps) {
               <button
                 onClick={() => archivePlan.mutate(id)}
                 disabled={archivePlan.isPending}
-                className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-xl hover:bg-red-50 disabled:opacity-50"
               >
                 Archive
               </button>
@@ -82,17 +85,9 @@ export default function PlanPage({ params }: PlanPageProps) {
         </div>
 
         {/* Status & Scores */}
-        <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
           <div className="flex items-center gap-4 mb-4">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                plan.approved
-                  ? "bg-green-100 text-green-800"
-                  : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {plan.approved ? "Approved" : "Unapproved"}
-            </span>
+            <StatusBadge variant={plan.approved ? "approved" : "unapproved"} label={plan.approved ? "Approved" : "Unapproved"} pill />
             <span className="text-sm text-gray-500">
               {plan.total_tokens.toLocaleString()} tokens &middot; $
               {plan.estimated_cost_usd.toFixed(2)}
@@ -102,7 +97,7 @@ export default function PlanPage({ params }: PlanPageProps) {
         </div>
 
         {/* Plan Content */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Plan</h2>
           <div className="prose prose-sm max-w-none whitespace-pre-wrap font-mono text-sm leading-relaxed text-gray-700">
             {planText || "No plan text available."}

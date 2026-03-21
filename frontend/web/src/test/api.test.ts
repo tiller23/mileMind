@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
+import { scoreColor } from "@/components/ScoreBadge";
 
 describe("ApiError", () => {
   it("has status and detail", () => {
@@ -16,18 +17,19 @@ describe("ApiError", () => {
   });
 });
 
-describe("ScoreBadge color logic", () => {
+describe("scoreColor", () => {
   it("returns green for scores >= 80", () => {
-    // Testing the color logic directly
-    function scoreColor(score: number): string {
-      if (score >= 80) return "bg-green-100 text-green-800";
-      if (score >= 70) return "bg-yellow-100 text-yellow-800";
-      return "bg-red-100 text-red-800";
-    }
     expect(scoreColor(90)).toContain("green");
     expect(scoreColor(80)).toContain("green");
+  });
+
+  it("returns yellow for scores 70-79", () => {
     expect(scoreColor(75)).toContain("yellow");
     expect(scoreColor(70)).toContain("yellow");
+  });
+
+  it("returns red for scores < 70", () => {
     expect(scoreColor(60)).toContain("red");
+    expect(scoreColor(0)).toContain("red");
   });
 });

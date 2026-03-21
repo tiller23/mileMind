@@ -132,13 +132,13 @@ class TestPlannerSystemPrompt:
         # Check for strong language about recovery weeks
         assert "mandatory" in PLANNER_SYSTEM_PROMPT.lower() or "WILL be rejected" in PLANNER_SYSTEM_PROMPT
 
-    def test_contains_per_phase_validation(self) -> None:
-        """PLANNER_SYSTEM_PROMPT instructs validation after each phase.
+    def test_contains_validation_instruction(self) -> None:
+        """PLANNER_SYSTEM_PROMPT instructs calling validate_progression_constraints.
 
-        WHY: The eval plan validated only at the end, by which point errors
-        had compounded. Per-phase validation catches violations early.
+        WHY: Safety validation is mandatory before finalizing any plan.
         """
-        assert "at least twice" in PLANNER_SYSTEM_PROMPT
+        assert "validate_progression_constraints" in PLANNER_SYSTEM_PROMPT
+        assert "at least once" in PLANNER_SYSTEM_PROMPT
 
     def test_contains_injury_nuance_guidelines(self) -> None:
         """PLANNER_SYSTEM_PROMPT includes nuanced injury handling.

@@ -26,7 +26,6 @@ class TestValidatePlanOutput:
     """Tests for validate_plan_output function."""
 
     VALID_TOOL_CALLS = [
-        {"name": "compute_training_stress", "input": {}, "output": {"tss": 30}, "success": True},
         {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
     ]
 
@@ -45,13 +44,13 @@ class TestValidatePlanOutput:
         assert result.passed is False
         assert any("empty" in issue.lower() for issue in result.issues)
 
-    def test_missing_compute_training_stress_fails(self) -> None:
+    def test_compute_training_stress_not_required(self) -> None:
+        """compute_training_stress is no longer required — TSS is computed post-hoc."""
         tool_calls = [
             {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
         ]
         result = validate_plan_output("Plan text.", tool_calls)
-        assert result.passed is False
-        assert any("compute_training_stress" in issue for issue in result.issues)
+        assert result.passed is True
 
     def test_missing_validate_progression_fails(self) -> None:
         tool_calls = [
@@ -63,7 +62,6 @@ class TestValidatePlanOutput:
 
     def test_failed_tool_call_fails(self) -> None:
         tool_calls = [
-            {"name": "compute_training_stress", "input": {}, "output": {}, "success": True},
             {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": False},
         ]
         result = validate_plan_output("Plan text.", tool_calls)
@@ -81,9 +79,9 @@ class TestValidatePlanOutput:
     def test_no_tool_calls_fails(self) -> None:
         result = validate_plan_output("Plan text.", [])
         assert result.passed is False
-        assert len(result.issues) == 2  # missing both required tools
+        assert len(result.issues) == 1  # missing validate_progression_constraints
 
     def test_multiple_issues_accumulated(self) -> None:
         result = validate_plan_output("", [])
         assert result.passed is False
-        assert len(result.issues) == 3  # empty text + 2 missing tools
+        assert len(result.issues) == 2  # empty text + missing validate_progression

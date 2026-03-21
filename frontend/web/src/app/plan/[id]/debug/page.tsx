@@ -4,15 +4,19 @@ import Link from "next/link";
 import { use } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ScoreBadgeGroup } from "@/components/ScoreBadge";
-import { usePlanDebug } from "@/lib/hooks";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useAuthGuard, usePlanDebug } from "@/lib/hooks";
 
 interface DebugPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function PlanDebugPage({ params }: DebugPageProps) {
+  const { isAuthenticated } = useAuthGuard();
   const { id } = use(params);
   const { data: debug, isLoading, error } = usePlanDebug(id);
+
+  if (!isAuthenticated) return null;
 
   if (isLoading) {
     return (
@@ -68,23 +72,13 @@ export default function PlanDebugPage({ params }: DebugPageProps) {
           {debug.decision_log.map((entry, i) => (
             <div
               key={i}
-              className="bg-white border border-gray-200 rounded-lg p-5"
+              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm"
             >
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-sm font-mono text-gray-400">
                   Iteration {entry.iteration}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    entry.outcome === "approved"
-                      ? "bg-green-100 text-green-800"
-                      : entry.outcome === "rejected"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {entry.outcome}
-                </span>
+                <StatusBadge variant={entry.outcome} />
                 <span className="text-xs text-gray-400">
                   {new Date(entry.timestamp).toLocaleTimeString()}
                 </span>

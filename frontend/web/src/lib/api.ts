@@ -30,6 +30,20 @@ export class ApiError extends Error {
   }
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+async function doRefresh(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -44,6 +58,18 @@ async function request<T>(
       ...(headers as Record<string, string>),
     },
   });
+
+  if (res.status === 401 && path !== "/auth/refresh") {
+    if (!refreshPromise) {
+      refreshPromise = doRefresh().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      return request<T>(path, options);
+    }
+  }
 
   if (!res.ok) {
     let detail = `Request failed: ${res.status}`;
@@ -69,11 +95,6 @@ export const auth = {
   /** Get the current authenticated user. */
   me(): Promise<UserResponse> {
     return request<UserResponse>("/auth/me");
-  },
-
-  /** Get Google OAuth redirect URL. */
-  googleRedirectUrl(): string {
-    return `${API_BASE}/auth/google`;
   },
 
   /** Refresh the access token using the refresh cookie. */

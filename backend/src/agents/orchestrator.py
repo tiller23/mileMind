@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.agents.plan_postprocess import enrich_plan_with_tss
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.reviewer import ReviewerAgent, ReviewerResult
 from src.models.athlete import AthleteProfile
@@ -355,7 +356,17 @@ class Orchestrator:
                     last_planner_result = planner_result
                     continue
 
-                # Plan passed structural validation
+                # Plan passed structural validation — enrich with computed TSS
+                enriched_text = enrich_plan_with_tss(planner_result.plan_text)
+                planner_result = PlannerResult(
+                    plan_text=enriched_text,
+                    tool_calls=planner_result.tool_calls,
+                    iterations=planner_result.iterations,
+                    total_input_tokens=planner_result.total_input_tokens,
+                    total_output_tokens=planner_result.total_output_tokens,
+                    validation=planner_result.validation,
+                    error=planner_result.error,
+                )
                 last_valid_plan = planner_result.plan_text
                 last_planner_result = planner_result
 

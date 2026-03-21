@@ -416,13 +416,13 @@ class TestOutputValidation:
         assert result.passed is False
         assert any("empty" in i.lower() for i in result.issues)
 
-    def test_no_stress_call_fails(self) -> None:
+    def test_no_stress_call_passes(self) -> None:
+        """compute_training_stress is no longer required — TSS is computed post-hoc."""
         tool_calls = [
             {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
         ]
         result = validate_plan_output("Plan text.", tool_calls)
-        assert result.passed is False
-        assert any("compute_training_stress" in i for i in result.issues)
+        assert result.passed is True
 
     def test_no_validation_call_fails(self) -> None:
         tool_calls = [
@@ -441,10 +441,10 @@ class TestOutputValidation:
         assert result.passed is False
         assert any("failed" in i.lower() for i in result.issues)
 
-    def test_no_tool_calls_fails_both_checks(self) -> None:
+    def test_no_tool_calls_fails(self) -> None:
         result = validate_plan_output("Plan text.", [])
         assert result.passed is False
-        assert len(result.issues) == 2
+        assert len(result.issues) == 1  # missing validate_progression_constraints
 
     def test_extra_tools_dont_cause_failure(self) -> None:
         """Extra tool calls beyond the required ones are fine."""

@@ -42,11 +42,12 @@ def _set_auth_cookies(response: Response, user: User, settings: Settings) -> Tok
     access_token = create_access_token(user.id, settings)
     refresh_token = create_refresh_token(user.id, settings)
 
+    is_secure = settings.frontend_url.startswith("https")
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=is_secure,
         samesite="lax",
         max_age=settings.jwt_access_token_expire_minutes * 60,
     )
@@ -54,7 +55,7 @@ def _set_auth_cookies(response: Response, user: User, settings: Settings) -> Tok
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=is_secure,
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
@@ -134,16 +135,22 @@ async def google_login(settings: Settings = Depends(get_settings)) -> dict:
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Google OAuth not configured",
         )
-    redirect_uri = f"{settings.frontend_url}/auth/callback?provider=google"
+    redirect_uri = f"{settings.frontend_url}/auth/callback/google"
+
+    import secrets
+    from urllib.parse import quote
+
+    state = secrets.token_urlsafe(32)
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={settings.google_client_id}"
-        f"&redirect_uri={redirect_uri}"
+        f"client_id={quote(settings.google_client_id)}"
+        f"&redirect_uri={quote(redirect_uri)}"
         "&response_type=code"
         "&scope=openid%20email%20profile"
         "&access_type=offline"
+        f"&state={quote(state)}"
     )
-    return {"auth_url": auth_url}
+    return {"auth_url": auth_url, "state": state}
 
 
 @router.post("/google/callback")
@@ -172,33 +179,42 @@ async def google_callback(
     # Exchange code for Google tokens
     import httpx
 
-    redirect_uri = f"{settings.frontend_url}/auth/callback?provider=google"
-    async with httpx.AsyncClient() as client:
-        token_resp = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "code": code,
-                "client_id": settings.google_client_id,
-                "client_secret": settings.google_client_secret,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
+    redirect_uri = f"{settings.frontend_url}/auth/callback/google"
+    try:
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+            if token_resp.status_code != 200:
+                logger.error("Google token exchange failed: %s", token_resp.text)
+                raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
+
+            tokens = token_resp.json()
+
+            # Get user info
+            userinfo_resp = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            )
+            if userinfo_resp.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to get user info")
+
+            userinfo = userinfo_resp.json()
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Network error during Google OAuth token exchange")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to communicate with Google. Please try again.",
         )
-        if token_resp.status_code != 200:
-            logger.error("Google token exchange failed: %s", token_resp.text)
-            raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
-
-        tokens = token_resp.json()
-
-        # Get user info
-        userinfo_resp = await client.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {tokens['access_token']}"},
-        )
-        if userinfo_resp.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to get user info")
-
-        userinfo = userinfo_resp.json()
 
     if not userinfo.get("verified_email", False):
         raise HTTPException(
@@ -219,6 +235,12 @@ async def google_callback(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
+        )
+    except Exception:
+        logger.exception("Database error during Google OAuth user lookup/create")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error during authentication. Please try again.",
         )
 
     return _set_auth_cookies(response, user, settings)

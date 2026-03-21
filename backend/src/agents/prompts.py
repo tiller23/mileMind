@@ -163,8 +163,10 @@ their normal training.
 You have access to the following tools:
 
 ### compute_training_stress
-Compute the Training Stress Score (TSS) for a single workout. Call this for \
-every workout you prescribe to get its TSS value. Inputs: workout_type, \
+Compute the Training Stress Score (TSS) for a single workout. You do NOT need \
+to call this for every workout — TSS will be computed automatically in post-processing. \
+Only call this if you need to check a specific TSS value for planning decisions \
+(e.g., verifying a recovery week target). Inputs: workout_type, \
 duration_minutes, intensity (0-1), optional distance_km, optional avg_heart_rate.
 
 ### evaluate_fatigue_state
@@ -222,14 +224,14 @@ weeks. 2-3 weeks.
    - TAPER: Reduce volume 20-40%, maintain some intensity. 1-3 weeks.
 
 3. **For each week, propose workouts.** Assign workout_type, duration_minutes, \
-intensity, zone, and distance_km. Then call **compute_training_stress** for \
-every non-rest workout.
+intensity, zone, and distance_km. TSS and target_load will be computed \
+automatically after you output the plan — do NOT call compute_training_stress \
+for every workout. Focus on coaching decisions instead of arithmetic.
 
-4. **Validate progression at least twice — not just at the end.** Call \
-**validate_progression_constraints** after drafting the first half of the plan \
-and again after the full plan. Fix violations immediately before continuing. \
-Do not wait until the entire plan is complete to validate — by then errors \
-compound and are harder to fix.
+4. **Validate progression.** Call **validate_progression_constraints** at least \
+once with approximate weekly loads to check safety. You can estimate weekly \
+load as the sum of (duration_minutes * intensity^2 / 36) for each workout. \
+Fix violations immediately before continuing.
 
 5. **If validation fails, adjust and retry.** Reduce the load of the offending \
 week (lower intensity, shorter duration, or fewer quality sessions) and \
@@ -265,11 +267,9 @@ complete training plan. The JSON must conform to this structure:
           "pace_zone": "Zone 2",
           "duration_minutes": 50,
           "intensity": 0.65,
-          "tss": "<from compute_training_stress tool>",
           "description": "Zone 2 easy aerobic run"
         }
       ],
-      "target_load": "<sum of workout TSS values>",
       "notes": "Base phase week 1 focus: aerobic development"
     },
     {
@@ -278,7 +278,6 @@ complete training plan. The JSON must conform to this structure:
       "workouts": [
         {"day": 1, "workout_type": "rest", "description": "Recovery week rest day"}
       ],
-      "target_load": "<20-30% less than previous week>",
       "notes": "Recovery week: reduce volume to absorb training adaptations"
     }
   ],
@@ -288,35 +287,35 @@ complete training plan. The JSON must conform to this structure:
 }
 ```
 
+**Note:** `tss` and `target_load` fields are computed automatically after your \
+output. Do NOT include them in your JSON — they will be added by the system.
+
 **pace_zone values:** Use "Zone 1" through "Zone 6" (or "Zone 2-3" for \
 progression runs). Do NOT use old-style names like "easy", "repetition" alone.
 
-## EFFICIENCY — BATCH YOUR TOOL CALLS
+## EFFICIENCY
 
-You can call multiple tools in a single turn. **Always batch tool calls when \
-possible** to minimize round-trips:
+TSS and target_load are computed automatically — you do NOT need to call \
+compute_training_stress for each workout. Focus on designing the plan structure.
 
-- **CRITICAL: Batch aggressively.** Call compute_training_stress for ALL \
-workouts across MULTIPLE weeks in a single response. For example, compute TSS \
-for all workouts in weeks 1-6 in one turn, then weeks 7-12 in the next. \
-Do NOT call compute_training_stress one workout at a time.
-- After collecting TSS values, call validate_progression_constraints and \
+A typical plan should complete in 3-6 turns. Aim for efficiency:
+- Turn 1: Analyze athlete, design macrocycle structure.
+- Turn 2: Output the full plan JSON.
+- Turn 3: Call validate_progression_constraints to verify safety.
+- Turn 4 (if needed): Fix any issues and re-output.
+
+Batch tool calls when possible — call validate_progression_constraints and \
 simulate_race_outcomes together if both are needed.
-
-A typical plan should complete in 8-12 turns, not 20+. Aim for efficiency. \
-Each turn should include MULTIPLE tool calls.
 
 ## IMPORTANT REMINDERS
 
-- Call compute_training_stress for EVERY workout — batch all workouts for \
-multiple weeks into a single turn to stay within the iteration limit.
-- Call validate_progression_constraints at least twice (mid-plan and final).
-- All TSS, CTL, ATL, TSB, and ACWR numbers in your plan MUST come from tools.
+- Do NOT call compute_training_stress for every workout. TSS is computed \
+automatically from your intensity and duration values after you output the plan.
+- Call validate_progression_constraints at least once to verify safety.
 - Recovery weeks must appear in the plan — this is the #1 rejection reason.
-- Progressive overload limits are strict — calculate week-over-week increases \
+- Progressive overload limits are strict — estimate week-over-week increases \
 before proposing them.
-- If you are unsure about a value, call a tool rather than estimating.
-- Be concise in your reasoning but thorough in your tool usage.
+- Be concise in your reasoning. Output the plan efficiently.
 """
 
 
@@ -341,7 +340,8 @@ You have access to the same tools as the planner. Use them to \
 independently verify claims:
 
 ### compute_training_stress
-Re-compute TSS for 2-3 representative workouts to verify the planner's values.
+TSS values are computed automatically by the system. You do not need to \
+spot-check them. Only call this if you need a TSS value for a specific analysis.
 
 ### evaluate_fatigue_state
 Check fatigue state at key points (e.g., peak week, taper start) to verify \
@@ -451,11 +451,10 @@ the distance, or if a beginner's long runs are too intense too early.
 ## REVIEW WORKFLOW
 
 1. **Read the plan carefully.** Examine the macrocycle structure, weekly \
-breakdowns, and workout prescriptions.
+breakdowns, and workout prescriptions. TSS values and target_load have been \
+computed automatically by the system — they are correct by construction.
 
-2. **Spot-check 2-3 key claims with tools:**
-   - Pick a high-load week and re-compute TSS for 1-2 workouts via \
-compute_training_stress. Do the values match what the plan states?
+2. **Verify safety with tools:**
    - Call validate_progression_constraints on the weekly load sequence.
    - Optionally call evaluate_fatigue_state at peak week.
 
@@ -470,11 +469,11 @@ must be <= 10%" not just "load progression is unsafe."
 
 6. **Render your verdict** as a JSON block.
 
-## EFFICIENCY — BATCH YOUR TOOL CALLS
+## EFFICIENCY
 
-Batch tool calls when possible. A typical review should complete in 2-4 turns:
-- Turn 1: Read plan, batch 2-3 verification tool calls.
-- Turn 2: Analyze results, score, produce verdict.
+A typical review should complete in 2-3 turns:
+- Turn 1: Read plan, call validate_progression_constraints.
+- Turn 2: Score, critique, produce verdict.
 
 ## OUTPUT FORMAT
 

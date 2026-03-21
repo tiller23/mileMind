@@ -2,10 +2,13 @@
  * React Query hooks for MileMind API.
  */
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { auth, plans, profile } from "./api";
+import { ApiError, auth, plans, profile } from "./api";
 import type {
   PlanGenerateRequest,
+  ProfileResponse,
   ProfileUpdate,
 } from "./types";
 
@@ -21,14 +24,41 @@ export function useUser() {
   });
 }
 
+/** Redirect to /login if the user is not authenticated. */
+export function useAuthGuard() {
+  const { error, isLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && error) {
+      router.push("/login");
+    }
+  }, [isLoading, error, router]);
+
+  return { isLoading, isAuthenticated: !isLoading && !error };
+}
+
 // ---------------------------------------------------------------------------
 // Profile
 // ---------------------------------------------------------------------------
 
+/**
+ * Fetch the user's profile. Returns `data: null` on 404 (no profile yet)
+ * instead of throwing, so callers can distinguish "no profile" from errors.
+ */
 export function useProfile() {
-  return useQuery({
+  return useQuery<ProfileResponse | null>({
     queryKey: ["profile"],
-    queryFn: () => profile.get(),
+    queryFn: async () => {
+      try {
+        return await profile.get();
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
     retry: false,
   });
 }
@@ -51,6 +81,7 @@ export function usePlans() {
   return useQuery({
     queryKey: ["plans"],
     queryFn: () => plans.list(),
+    staleTime: 60_000,
   });
 }
 

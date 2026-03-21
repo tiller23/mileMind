@@ -5,15 +5,38 @@ import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
 import { ScoreBadgeGroup } from "@/components/ScoreBadge";
-import { useGeneratePlan, usePlans, useProfile } from "@/lib/hooks";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useAuthGuard, useGeneratePlan, usePlans, useProfile } from "@/lib/hooks";
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-pulse">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-20 bg-gray-200 rounded" />
+          <div className="h-5 w-16 bg-gray-200 rounded" />
+        </div>
+        <div className="h-4 w-24 bg-gray-100 rounded" />
+      </div>
+      <div className="flex gap-2">
+        <div className="h-6 w-24 bg-gray-100 rounded-full" />
+        <div className="h-6 w-24 bg-gray-100 rounded-full" />
+        <div className="h-6 w-24 bg-gray-100 rounded-full" />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
-  const { data: profileData, isLoading: profileLoading, error: profileError } = useProfile();
+  const { isAuthenticated } = useAuthGuard();
+  const { data: profileData, isLoading: profileLoading } = useProfile();
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const generatePlan = useGeneratePlan();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
-  const needsOnboarding = profileError && "status" in profileError && profileError.status === 404;
+  const needsOnboarding = !profileLoading && profileData === null;
+
+  if (!isAuthenticated) return null;
 
   async function handleGenerate() {
     const result = await generatePlan.mutateAsync({ change_type: "full" });
@@ -30,7 +53,7 @@ export default function DashboardPage() {
             <button
               onClick={handleGenerate}
               disabled={generatePlan.isPending}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               {generatePlan.isPending ? "Starting..." : "Generate Plan"}
             </button>
@@ -38,26 +61,28 @@ export default function DashboardPage() {
         </div>
 
         {needsOnboarding && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <h2 className="text-lg font-semibold text-yellow-800 mb-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center shadow-sm">
+            <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-4 text-2xl">
+              👟
+            </div>
+            <h2 className="text-lg font-semibold text-amber-800 mb-2">
               Complete Your Profile
             </h2>
-            <p className="text-yellow-700 mb-4">
-              We need a few details about your running background to generate
-              your training plan.
+            <p className="text-amber-700 mb-5 text-sm">
+              Tell us about your running so we can build a plan that fits.
             </p>
             <Link
               href="/onboarding"
-              className="inline-block px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700"
+              className="inline-block px-5 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors"
             >
-              Start Onboarding
+              Get Started
             </Link>
           </div>
         )}
 
         {generatePlan.isError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 shadow-sm">
+            <p className="text-red-800 text-sm">
               {generatePlan.error instanceof Error
                 ? generatePlan.error.message
                 : "Failed to start plan generation"}
@@ -66,13 +91,17 @@ export default function DashboardPage() {
         )}
 
         {activeJobId && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
             <PlanGenerationLoader jobId={activeJobId} />
           </div>
         )}
 
         {profileLoading || plansLoading ? (
-          <div className="text-gray-400 text-center py-12">Loading...</div>
+          <div className="space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         ) : (
           <div className="space-y-4">
             {plansData && plansData.length > 0 ? (
@@ -80,28 +109,12 @@ export default function DashboardPage() {
                 <Link
                   key={plan.id}
                   href={`/plan/${plan.id}`}
-                  className="block bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-300 transition-colors"
+                  className="block bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          plan.approved
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {plan.approved ? "Approved" : "Unapproved"}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          plan.status === "active"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {plan.status}
-                      </span>
+                      <StatusBadge variant={plan.approved ? "approved" : "unapproved"} label={plan.approved ? "Approved" : "Unapproved"} />
+                      <StatusBadge variant={plan.status === "active" ? "active" : "archived"} label={plan.status} />
                     </div>
                     <span className="text-sm text-gray-400">
                       {new Date(plan.created_at).toLocaleDateString()}
@@ -114,9 +127,23 @@ export default function DashboardPage() {
               !needsOnboarding &&
               profileData &&
               !activeJobId && (
-                <div className="text-center py-12 text-gray-400">
-                  No plans yet. Click &quot;Generate Plan&quot; to create your
-                  first training plan.
+                <div className="text-center py-16">
+                  <div className="mx-auto w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-4 text-2xl">
+                    🏃
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                    Ready to start training
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Generate your first AI-powered training plan.
+                  </p>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generatePlan.isPending}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    Generate My Plan
+                  </button>
                 </div>
               )
             )}
