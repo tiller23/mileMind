@@ -66,10 +66,12 @@ generates physiological numbers directly.
 - **Phase 4: Evaluation Harness** — 7 synthetic personas (5 edge cases + 2 normal), HarnessRunner, BatchCoordinator (50% cost savings), markdown/PDF reports, CLI with --dry-run/--batch/--compare. Prompt injection sanitization, security hardening. 1747 tests total. Multiple code reviews + security audit.
 
 - **Phase 5a: Database + API Foundation** — SQLAlchemy ORM (7 tables), async sessions, FastAPI routes (auth, profile, plans), JWT auth (httpOnly cookies), Google OAuth, Pydantic schemas, Alembic migrations. 1783 tests total.
+- **Phase 5b: Plan Generation + SSE** — JobManager, SSE streaming, orchestrator on_progress callback, concurrent job limit, differentiated cost estimates. 1814 backend tests.
+- **Phase 5c: Next.js Frontend** — App Router, TypeScript, Tailwind, TanStack Query. Landing, login (Google OAuth), onboarding, dashboard, plan detail, debug view, SSE progress loader. 15 frontend tests. frontend-reviewer agent.
 
 ### Next Up
-- **Phase 5b: Plan Generation + SSE** — Job manager, SSE streaming, orchestrator on_progress callback.
-- **Phase 5c-5h** — Chat negotiation, Strava integration, Frontend, Deployment. See `HANDOFF.md`.
+- **Phase 5d** — Strava integration. See `HANDOFF.md`.
+- **Phase 5e** — Deployment (Docker, managed Postgres, Vercel).
 
 ## When Compacting
 Always preserve: list of modified files, current phase, test results, and any failing test details.
