@@ -60,12 +60,14 @@ def create_app() -> FastAPI:
 
     # Register routes
     from src.api.routes.auth import router as auth_router
+    from src.api.routes.jobs import router as jobs_router
     from src.api.routes.plans import router as plans_router
     from src.api.routes.profile import router as profile_router
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(profile_router, prefix="/api/v1")
     app.include_router(plans_router, prefix="/api/v1")
+    app.include_router(jobs_router, prefix="/api/v1")
 
     @app.get("/health")
     async def health() -> dict:

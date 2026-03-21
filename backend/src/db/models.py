@@ -325,7 +325,7 @@ class Job(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=_new_uuid)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id"), nullable=False
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     plan_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("training_plans.id"), nullable=True
@@ -339,6 +339,10 @@ class Job(Base):
     )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("idx_jobs_user", "user_id"),
     )
 
 

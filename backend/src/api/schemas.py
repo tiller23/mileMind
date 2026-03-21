@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -160,7 +161,7 @@ class PlanSummary(BaseModel):
     id: uuid.UUID
     approved: bool
     status: str
-    scores: dict | None = None
+    scores: dict[str, Any] | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -185,10 +186,10 @@ class PlanDetail(BaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID
-    athlete_snapshot: dict
-    plan_data: dict
-    decision_log: list
-    scores: dict | None = None
+    athlete_snapshot: dict[str, Any]
+    plan_data: dict[str, Any]
+    decision_log: list[dict[str, Any]]
+    scores: dict[str, Any] | None = None
     approved: bool
     status: str
     total_tokens: int
@@ -211,8 +212,8 @@ class PlanDebug(BaseModel):
     """
 
     id: uuid.UUID
-    decision_log: list
-    scores: dict | None = None
+    decision_log: list[dict[str, Any]]
+    scores: dict[str, Any] | None = None
     approved: bool
     total_tokens: int
     estimated_cost_usd: float
@@ -221,8 +222,39 @@ class PlanDebug(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Common
+# ---------------------------------------------------------------------------
+
+class MessageResponse(BaseModel):
+    """Simple message response for operations without complex return data.
+
+    Attributes:
+        detail: Human-readable message.
+    """
+
+    detail: str
+
+
+# ---------------------------------------------------------------------------
 # Jobs
 # ---------------------------------------------------------------------------
+
+class PlanGenerateRequest(BaseModel):
+    """Request body for triggering plan generation.
+
+    Uses the user's saved profile by default. Optional change_type
+    controls reviewer involvement.
+
+    Attributes:
+        change_type: Plan change scope (full/adaptation/tweak).
+    """
+
+    change_type: str = Field(
+        default="full",
+        pattern=r"^(full|adaptation|tweak)$",
+        description="Plan change type: full, adaptation, or tweak",
+    )
+
 
 class JobResponse(BaseModel):
     """Job status response.
@@ -234,3 +266,25 @@ class JobResponse(BaseModel):
 
     job_id: uuid.UUID
     status: str
+
+
+class JobDetailResponse(BaseModel):
+    """Detailed job status with plan_id and error.
+
+    Attributes:
+        job_id: Job identifier.
+        status: Current status (pending/running/complete/failed).
+        plan_id: Associated plan ID (set on completion).
+        error: Error message if failed.
+        progress: List of progress events.
+        created_at: Job creation time.
+        completed_at: Job completion time.
+    """
+
+    job_id: uuid.UUID
+    status: str
+    plan_id: uuid.UUID | None = None
+    error: str | None = None
+    progress: list[dict[str, Any]] = Field(default_factory=list)
+    created_at: datetime
+    completed_at: datetime | None = None

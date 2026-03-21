@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from src.config import get_settings
 
@@ -36,7 +36,7 @@ def _get_engine():
     return _engine
 
 
-def _get_session_factory():
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Get or create the session factory (lazy singleton).
 
     Returns:
@@ -58,7 +58,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession for database operations.
     """
-    factory = _get_session_factory()
+    factory = get_session_factory()
     async with factory() as session:
         yield session
 
@@ -74,7 +74,7 @@ def reset_engine() -> None:
     _session_factory = None
 
 
-def set_engine(engine: "AsyncEngine") -> None:
+def set_engine(engine: AsyncEngine) -> None:
     """Override the engine directly. Used in tests with SQLite.
 
     Args:

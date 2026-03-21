@@ -1,6 +1,6 @@
-"""Plan routes — list, get, debug, archive.
+"""Plan routes — list, get, generate, debug, archive.
 
-Plan generation (POST + SSE) will be added in Phase 5b.
+Includes async plan generation via POST /plans/generate.
 """
 
 from __future__ import annotations
@@ -12,10 +12,84 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
-from src.api.schemas import PlanDebug, PlanDetail, PlanSummary
-from src.db.models import TrainingPlan, User
+from src.api.jobs import get_job_manager
+from src.api.schemas import (
+    JobResponse,
+    MessageResponse,
+    PlanDebug,
+    PlanDetail,
+    PlanGenerateRequest,
+    PlanSummary,
+)
+from src.config import get_settings
+from src.db.models import DBAthleteProfile, TrainingPlan, User
+from src.db.session import get_session_factory
+from src.models.plan_change import PlanChangeType
 
 router = APIRouter(prefix="/plans", tags=["plans"])
+
+
+@router.post(
+    "/generate",
+    response_model=JobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def generate_plan(
+    body: PlanGenerateRequest = PlanGenerateRequest(),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> JobResponse:
+    """Trigger async plan generation.
+
+    Reads the user's saved athlete profile, starts a background orchestrator
+    job, and returns immediately with a job ID for polling/streaming.
+
+    Args:
+        body: Generation options (change_type).
+        user: Authenticated user.
+        session: Database session.
+
+    Returns:
+        JobResponse with job_id and status='pending'.
+
+    Raises:
+        HTTPException: 404 if user has no profile.
+    """
+    # Load athlete profile from DB
+    result = await session.execute(
+        select(DBAthleteProfile).where(DBAthleteProfile.user_id == user.id)
+    )
+    db_profile = result.scalar_one_or_none()
+    if db_profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found. Complete onboarding first.",
+        )
+
+    # Convert DB profile to domain model
+    athlete = db_profile.to_athlete_profile()
+
+    settings = get_settings()
+    manager = get_job_manager()
+    session_factory = get_session_factory()
+
+    change_type = PlanChangeType(body.change_type)
+
+    try:
+        job_id = await manager.start_plan_generation(
+            user=user,
+            athlete=athlete,
+            session_factory=session_factory,
+            api_key=settings.anthropic_api_key or None,
+            change_type=change_type,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+
+    return JobResponse(job_id=job_id, status="pending")
 
 
 @router.get("", response_model=list[PlanSummary])
@@ -111,12 +185,16 @@ async def get_plan_debug(
     return PlanDebug.model_validate(plan)
 
 
-@router.post("/{plan_id}/archive", status_code=status.HTTP_200_OK)
+@router.post(
+    "/{plan_id}/archive",
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK,
+)
 async def archive_plan(
     plan_id: uuid.UUID,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
-) -> dict:
+) -> MessageResponse:
     """Archive a training plan.
 
     Args:
@@ -125,7 +203,7 @@ async def archive_plan(
         session: Database session.
 
     Returns:
-        Success message.
+        MessageResponse confirming archival.
 
     Raises:
         HTTPException: 404 if plan not found.
@@ -144,4 +222,4 @@ async def archive_plan(
         )
     plan.status = "archived"
     await session.commit()
-    return {"detail": "Plan archived"}
+    return MessageResponse(detail="Plan archived")

@@ -104,10 +104,7 @@ async def _find_or_create_user(
     result = await session.execute(select(User).where(User.email == email))
     existing = result.scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered with another provider",
-        )
+        raise ValueError("Email already registered with another provider")
 
     user = User(
         email=email,
@@ -209,14 +206,20 @@ async def google_callback(
             detail="Email not verified with Google",
         )
 
-    user = await _find_or_create_user(
-        session=session,
-        email=userinfo["email"],
-        name=userinfo.get("name", userinfo["email"]),
-        auth_provider="google",
-        auth_provider_id=userinfo["id"],
-        avatar_url=userinfo.get("picture"),
-    )
+    try:
+        user = await _find_or_create_user(
+            session=session,
+            email=userinfo["email"],
+            name=userinfo.get("name", userinfo["email"]),
+            auth_provider="google",
+            auth_provider_id=userinfo["id"],
+            avatar_url=userinfo.get("picture"),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
 
     return _set_auth_cookies(response, user, settings)
 

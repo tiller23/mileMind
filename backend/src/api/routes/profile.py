@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.shared import sanitize_prompt_text
 from src.api.deps import get_current_user, get_db
 from src.api.schemas import ProfileResponse, ProfileUpdate
 from src.db.models import DBAthleteProfile, User
@@ -64,16 +65,21 @@ async def upsert_profile(
     Returns:
         ProfileResponse with the saved profile.
     """
+    # Sanitize free-text fields at the API boundary (defense-in-depth)
+    sanitized = data.model_dump()
+    sanitized["name"] = sanitize_prompt_text(sanitized["name"])
+    sanitized["injury_history"] = sanitize_prompt_text(sanitized["injury_history"])
+
     result = await session.execute(
         select(DBAthleteProfile).where(DBAthleteProfile.user_id == user.id)
     )
     profile = result.scalar_one_or_none()
 
     if profile is None:
-        profile = DBAthleteProfile(user_id=user.id, **data.model_dump())
+        profile = DBAthleteProfile(user_id=user.id, **sanitized)
         session.add(profile)
     else:
-        for field_name, value in data.model_dump().items():
+        for field_name, value in sanitized.items():
             setattr(profile, field_name, value)
 
     await session.commit()
