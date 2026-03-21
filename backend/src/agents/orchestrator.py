@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,6 +29,7 @@ from src.models.decision_log import (
     ReviewOutcome,
 )
 from src.models.plan_change import PlanChangeType
+from src.models.progress import ProgressEvent, ProgressEventType
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +142,7 @@ class Orchestrator:
         reviewer_model: str = "claude-opus-4-20250514",
         max_iterations: int | None = None,
         max_total_tokens: int = 1_000_000,
+        on_progress: Callable[[ProgressEvent], None] | None = None,
     ) -> None:
         if max_retries < 1:
             raise ValueError("max_retries must be >= 1")
@@ -161,6 +164,26 @@ class Orchestrator:
         self._reviewer = reviewer or ReviewerAgent(**reviewer_kwargs)
         self._max_retries = max_retries
         self._max_total_tokens = max_total_tokens
+        self._on_progress = on_progress
+
+    def _emit(self, event_type: str, message: str, **data: Any) -> None:
+        """Emit a progress event if a callback is registered.
+
+        Args:
+            event_type: Event type string (must be a valid ProgressEventType value).
+            message: Human-readable message.
+            **data: Additional event data.
+
+        Raises:
+            ValueError: If event_type is not a valid ProgressEventType value.
+        """
+        if self._on_progress is not None:
+            evt_type = ProgressEventType(event_type)
+            self._on_progress(ProgressEvent(
+                event_type=evt_type,
+                message=message,
+                data=data if data else {},
+            ))
 
     @property
     def planner(self) -> PlannerAgent:
@@ -236,6 +259,12 @@ class Orchestrator:
 
             try:
                 # --- Step 1: Generate or revise plan ---
+                self._emit(
+                    "planner_started",
+                    f"Planner starting attempt {attempt}/{effective_max_retries}",
+                    attempt=attempt,
+                    max_attempts=effective_max_retries,
+                )
                 if attempt == 1 or not last_valid_plan:
                     if attempt > 1:
                         logger.warning(
@@ -257,6 +286,14 @@ class Orchestrator:
                 result.total_planner_output_tokens += planner_result.total_output_tokens
                 result.total_iterations += planner_result.iterations
 
+                self._emit(
+                    "planner_complete",
+                    f"Planner finished attempt {attempt} ({planner_result.iterations} iterations)",
+                    attempt=attempt,
+                    iterations=planner_result.iterations,
+                    tokens=planner_result.total_input_tokens + planner_result.total_output_tokens,
+                )
+
                 # --- Token budget check ---
                 total_tokens = (
                     result.total_planner_input_tokens + result.total_planner_output_tokens
@@ -268,6 +305,12 @@ class Orchestrator:
                     total_tokens / self._max_total_tokens * 100,
                 )
                 if total_tokens > self._max_total_tokens:
+                    self._emit(
+                        "token_budget",
+                        f"Token budget exceeded ({total_tokens:,}/{self._max_total_tokens:,})",
+                        total_tokens=total_tokens,
+                        budget=self._max_total_tokens,
+                    )
                     logger.warning(
                         "Token budget exceeded (%d > %d). Aborting orchestration.",
                         total_tokens, self._max_total_tokens,
@@ -297,6 +340,12 @@ class Orchestrator:
                         planner_tool_calls=len(planner_result.tool_calls),
                     )
                     result.decision_log.append(entry)
+                    self._emit(
+                        "validation_result",
+                        f"Validation failed: {len(planner_result.validation.issues)} issues",
+                        passed=False,
+                        issues=planner_result.validation.issues,
+                    )
 
                     # Use whatever critique we have for next revision
                     last_reviewer_critique = planner_result.error or "Phase 2 validation failed."
@@ -330,6 +379,11 @@ class Orchestrator:
                     result.total_elapsed_seconds = time.monotonic() - start_time
                     return result
 
+                self._emit(
+                    "reviewer_started",
+                    f"Reviewer evaluating plan (attempt {attempt})",
+                    attempt=attempt,
+                )
                 reviewer_result = await self._reviewer.review_plan(
                     athlete,
                     planner_result.plan_text,
@@ -339,6 +393,19 @@ class Orchestrator:
                 result.total_reviewer_input_tokens += reviewer_result.total_input_tokens
                 result.total_reviewer_output_tokens += reviewer_result.total_output_tokens
                 result.total_iterations += reviewer_result.iterations
+
+                scores_data = (
+                    reviewer_result.scores.model_dump()
+                    if reviewer_result.scores else None
+                )
+                self._emit(
+                    "reviewer_complete",
+                    f"Reviewer finished: {'approved' if reviewer_result.approved else 'rejected'}",
+                    attempt=attempt,
+                    approved=reviewer_result.approved,
+                    scores=scores_data,
+                    critique=reviewer_result.critique[:200] if reviewer_result.critique else "",
+                )
 
                 # --- Token budget re-check after reviewer ---
                 total_tokens = (
@@ -414,6 +481,14 @@ class Orchestrator:
                     return result
 
                 # Rejected or error — prepare for next revision
+                if attempt < effective_max_retries:
+                    self._emit(
+                        "retry",
+                        f"Plan rejected, retrying ({attempt}/{effective_max_retries})",
+                        attempt=attempt,
+                        max_attempts=effective_max_retries,
+                        issues=reviewer_result.issues[:5],
+                    )
                 last_reviewer_critique = reviewer_result.critique or reviewer_result.error or ""
                 last_reviewer_issues = reviewer_result.issues
 

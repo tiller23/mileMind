@@ -61,7 +61,8 @@ class TestEvaluationCLI:
         """Running without API key and without --dry-run exits with error."""
         import os
         env = os.environ.copy()
-        env.pop("ANTHROPIC_API_KEY", None)
+        # Set to empty string so load_dotenv() won't fill it from .env file
+        env["ANTHROPIC_API_KEY"] = ""
 
         result = subprocess.run(
             [sys.executable, "-m", "src.evaluation.run"],
