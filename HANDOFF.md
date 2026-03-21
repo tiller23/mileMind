@@ -35,6 +35,10 @@ cd frontend/web && npm run dev
 
 Requires: PostgreSQL with `milemind` database, Google OAuth creds in `backend/.env`
 
+## Fix First (next session)
+1. **Google OAuth redirect URI mismatch** — Backend generates `redirect_uri=http://localhost:3000/auth/callback?provider=google` but frontend callback page is at `/auth/callback/google`. Either update the backend route to use the frontend's path, or move the frontend callback page to match. Also update the Google Cloud Console authorized redirect URI to match whichever path is chosen.
+2. **End-to-end login test** — After fixing the redirect, verify the full flow: login → Google → callback → JWT cookies set → dashboard.
+
 ## Next Up
 - **Phase 5d:** Strava integration (OAuth, activity sync, baseline estimation)
 - **Phase 5e:** Deployment (Docker, managed Postgres, Vercel, CI/CD)
