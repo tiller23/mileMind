@@ -1,69 +1,75 @@
-# Session Handoff — 2026-03-23
+# Session Handoff — 2026-03-24
 
 **Branch:** `feature/phase-5c-frontend`
-**Tests:** 1830 backend + 48 frontend = 1878 total
-**Date:** 2026-03-23
+**Tests:** 1703 backend + 48 frontend = 1751 total
+**Date:** 2026-03-24
 
 ## What Got Done This Session
 
-### Calendar View (Core Product View)
-- `PlanCalendar` component — weeks as rows, days as columns, color-coded workout cells
-- Click-to-expand workout details (description, distance, duration, TSS, intensity)
-- Color legend, phase badges, week notes, row/column dividers
-- Workout display names: "Fartlek" → "Mixed Pace", "Repetition" → "Speed Work"
+### Plan Duration & Start Date
+- `plan_duration_weeks` field on profile (8-24 weeks, default 12)
+- `plan_start_date` on plan generation request (defaults to next Monday)
+- Adjustable start date on existing plans via PATCH endpoint + dashboard UI
+- "This Week" card uses plan_start_date for accurate week calculation
+- Alembic migration for new column
 
-### Backend: Structured Plan Storage
-- Plans now stored as structured JSON (weeks/workouts) instead of `{"text": "..."}`
-- `extract_structured_plan()` parses JSON from planner output
-- `all_text` field on `AgentLoopResult` — captures text from ALL LLM turns (fixed bug where JSON block in earlier turn was lost)
+### Pre-Generation Confirmation Panel
+- Clicking "New Plan" shows profile summary (goal, mileage, duration, days, approach)
+- Start date picker inline
+- "Need to update your profile first?" link
+- Cancel/Generate buttons — no more accidental API calls
 
-### Miles/Km Unit Preference
-- `preferred_units` field added to profile (domain model, DB model, API schemas, migration)
-- Miles/Kilometers toggle on onboarding form
-- `formatDistance()` utility converts km → mi for display
-- Calendar, plan detail, dashboard all respect user's preference
-- Planner prompt tells LLM to use preferred units in workout descriptions
-- `distance_km` stays in km internally (deterministic engine consistency)
+### Plan Generation State Management
+- `GET /jobs/active` endpoint — detects running jobs
+- Dashboard resumes loader when navigating away and back
+- Loader shows "Click here if not redirected" fallback
+- `onComplete` clears job state + refreshes plan list
+- Unapproved plans show "Draft Plan" warning with regenerate link
 
-### Logo & Icons
-- `Logo` component with M lettermark (size + variant props)
-- `Icons.tsx` — SVG icon set (ShieldCheck, Beaker, Target, Eye, Runner, Shoe)
-- Replaced all emoji usage across the app
+### Prompt Overhaul
+- STOP safety checkpoint gates in planning workflow (structure → distance → safety)
+- Distance differentiation rules: long run ≥1.5x easy, varied easy run distances, work-only quality distances
+- Recovery week bounce-back exception: 10% rule applies building→building only
+- Reviewer scoring rubric (90-100 excellent → 0-39 broken)
+- Critique length uncapped for better revision feedback
+- Critical rules reinforced in user message, not just system prompt
+- Better output examples showing proper differentiation
+- Max retries 3→4
 
-### Design Polish
-- Landing page: dark slate hero, gradient text, pill badge, gradient fade, proper icon cards
-- Dashboard: "This Week" card with current week preview, welcome greeting, cleaner plan cards (removed scores/badges)
-- Navbar: Logo component integrated
-- All copy audit: 25+ changes across all pages (approved by user one-by-one)
+### Frontend Polish
+- Today highlight on dashboard "This Week" card and full plan calendar
+- Tappable workout cells on dashboard — shows full description, zone, distance, duration
+- Current week highlighted on full plan calendar with "Current" label
+- Mobile responsive: horizontal scroll calendar, stacking grids, responsive headers
+- Removed tokens/cost from plan detail (debug view only)
+- Number inputs clear properly (no stuck 0 on mileage/training days)
+- Miles/km conversion on profile save/load (stores km, displays miles when imperial)
 
-### Prompt Fixes
-- Single zones enforced (no "Zone 3-4")
-- Restricted workout types (no fartlek/repetition)
-- Removed stale `compute_training_stress` references from user message
-- Added preferred units instruction to planner
-
-### Cost Results
-- First run with new prompts: $0.93 / 92K tokens (vs $5.37 / 960K before)
-- Second run: $3.12 (variation expected, still well below old $5.37)
+### Infrastructure
+- JWT access token 15→60 min (prevents logout during SSE plan generation)
+- CORS allows PATCH method
+- Updated `docs/prompts.md` reference doc
 
 ## Test Counts
-- Backend: 1830
+- Backend: 1703
 - Frontend: 48 (5 test files)
 
 ## Next Session
 
 ### Should Do
-1. **Test plan generation with miles preference** — verify descriptions come back in miles
-2. **Plan duration control** — let users pick 8/12/16 week plans
-3. **Plan start date** — explicit field so "This Week" is more accurate than created_at estimate
-4. **Remove token/cost from plan detail** — only show in debug view
-5. **Mobile responsiveness check**
+1. **Mobile responsiveness testing** — changes are in, needs real-device verification
+2. **Better error/404 pages** — generic pages for route misses
+3. **Test plan generation end-to-end** — verify prompt changes produce better plans (varied distances, proper long runs, quality workout descriptions)
 
 ### Feature Backlog
-6. Miles/km also for weekly mileage input (convert on save)
-7. Better error/404 pages
-8. Phase 5d — Strava integration
-9. Phase 5e — Deployment
+4. Phase 5d — Strava integration
+5. Phase 5e — Deployment (Docker, managed Postgres, Vercel)
+
+### Prompt Tuning Backlog (from external audit)
+6. Recovery week load reduction tied to athlete level (currently flat 20-30%)
+7. Zone 3 "easy" classification nuance for standalone marathon-pace workouts
+8. Workout variety enforcement in reviewer (rotation check across weeks)
+9. User-selectable experience level (currently auto-classified)
 
 ## Local Dev Setup
 ```bash
