@@ -19,7 +19,7 @@ _engine = None
 _session_factory = None
 
 
-def _get_engine():
+def _get_engine() -> AsyncEngine:
     """Get or create the async engine (lazy singleton).
 
     Returns:

@@ -532,7 +532,7 @@ export default function DashboardPage() {
 
   // Find the active plan for "This Week" card
   const activePlanSummary = plansData?.find((p) => p.status === "active");
-  const { data: activePlanDetail } = usePlan(activePlanSummary?.id ?? "");
+  const { data: activePlanDetail } = usePlan(activePlanSummary?.id);
 
   if (!isAuthenticated) return null;
 

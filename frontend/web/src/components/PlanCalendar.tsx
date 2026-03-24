@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { PlanWeek, PlanWorkout, PreferredUnits } from "@/lib/types";
 import { formatDistance } from "@/lib/units";
 
@@ -58,7 +58,7 @@ function formatWorkoutType(type: string): string {
   return DISPLAY_NAMES[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function WorkoutCell({ workout, onClick, units }: { workout: PlanWorkout | null; onClick?: () => void; units: PreferredUnits }) {
+const WorkoutCell = memo(function WorkoutCell({ workout, onClick, units }: { workout: PlanWorkout | null; onClick?: () => void; units: PreferredUnits }) {
   if (!workout) {
     return (
       <div className="h-full min-h-[68px] border border-gray-100 rounded-lg bg-gray-50/30" />
@@ -101,7 +101,7 @@ function WorkoutCell({ workout, onClick, units }: { workout: PlanWorkout | null;
       )}
     </button>
   );
-}
+});
 
 function WorkoutDetail({ workout, onClose, units }: { workout: PlanWorkout; onClose: () => void; units: PreferredUnits }) {
   const colors = WORKOUT_COLORS[workout.workout_type] ?? DEFAULT_COLOR;

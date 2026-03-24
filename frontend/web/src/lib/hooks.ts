@@ -86,10 +86,10 @@ export function usePlans() {
   });
 }
 
-export function usePlan(planId: string) {
+export function usePlan(planId: string | undefined) {
   return useQuery({
     queryKey: ["plan", planId],
-    queryFn: () => plans.get(planId),
+    queryFn: () => plans.get(planId!),
     enabled: !!planId,
     staleTime: Infinity,
   });
