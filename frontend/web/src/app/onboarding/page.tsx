@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
-import type { ProfileUpdate, RiskTolerance } from "@/lib/types";
+import type { PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
 
 const GOAL_OPTIONS: { value: string; label: string }[] = [
   { value: "general_fitness", label: "General fitness (no specific race)" },
@@ -19,12 +19,12 @@ const RISK_OPTIONS: { value: RiskTolerance; label: string; desc: string }[] = [
   {
     value: "conservative",
     label: "Conservative",
-    desc: "Slow, steady progression. Lower injury risk.",
+    desc: "Build gradually. Prioritizes staying healthy.",
   },
   {
     value: "moderate",
     label: "Moderate",
-    desc: "Balanced progression. Standard approach.",
+    desc: "Steady progress with a good balance of challenge and recovery.",
   },
   {
     value: "aggressive",
@@ -48,6 +48,7 @@ const DEFAULTS: ProfileUpdate = {
   goal_time_minutes: null,
   training_days_per_week: 4,
   long_run_cap_pct: 0.3,
+  preferred_units: "imperial",
 };
 
 const inputClass =
@@ -86,12 +87,12 @@ export default function OnboardingPage() {
       <Navbar />
       <main className="max-w-xl mx-auto px-4 py-8 w-full">
         <h1 className="text-2xl font-bold mb-2">
-          {existing ? "Update Profile" : "Athlete Profile"}
+          {existing ? "Update Profile" : "Your Running Profile"}
         </h1>
         <p className="text-sm text-gray-500 mb-8">
           {existing
             ? "Update your running details anytime."
-            : "Tell us about your running so we can build the right plan."}
+            : "Help us understand your running so we can build the right plan."}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -117,6 +118,28 @@ export default function OnboardingPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred units
+                </label>
+                <div className="flex rounded-xl border border-gray-300 overflow-hidden">
+                  {(["imperial", "metric"] as const).map((unit) => (
+                    <button
+                      key={unit}
+                      type="button"
+                      onClick={() => update("preferred_units", unit)}
+                      className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+                        form.preferred_units === unit
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {unit === "imperial" ? "Miles" : "Kilometers"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
                   Age
                 </label>
@@ -136,10 +159,10 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            {/* Section: Your Running */}
+            {/* Section: Running Background */}
             <div className="p-6 space-y-5">
               <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                Your Running
+                Running Background
               </h2>
 
               <div>
@@ -184,7 +207,7 @@ export default function OnboardingPage() {
 
               <div>
                 <label htmlFor="weekly_mileage" className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Weekly Mileage (km)
+                  Current weekly mileage ({form.preferred_units === "imperial" ? "miles" : "km"})
                 </label>
                 <input
                   id="weekly_mileage"
@@ -202,7 +225,7 @@ export default function OnboardingPage() {
 
               <div>
                 <label htmlFor="training_days" className="block text-sm font-medium text-gray-700 mb-1">
-                  Training Days Per Week
+                  How many days per week do you want to train?
                 </label>
                 <input
                   id="training_days"
@@ -227,7 +250,7 @@ export default function OnboardingPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Risk Tolerance
+                  Training approach
                 </label>
                 <div className="space-y-2">
                   {RISK_OPTIONS.map((opt) => (
@@ -266,7 +289,7 @@ export default function OnboardingPage() {
                   onChange={(e) => update("injury_history", e.target.value)}
                   maxLength={500}
                   rows={3}
-                  placeholder="Any past or current injuries the AI should know about"
+                  placeholder="Anything we should know about — past or current"
                   className={inputClass}
                 />
               </div>
@@ -285,7 +308,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     update("vdot", e.target.value ? Number(e.target.value) : null)
                   }
-                  placeholder="If you know your VDOT score"
+                  placeholder="Leave blank if unsure"
                   className={inputClass}
                 />
               </div>

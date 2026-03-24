@@ -231,7 +231,7 @@ export function PlanGenerationLoader({ jobId }: PlanGenerationLoaderProps) {
       {/* Time info */}
       {status === "running" && (
         <p className="text-sm text-gray-500">
-          {formatElapsed(elapsed)} elapsed &middot; This usually takes under 10 minutes
+          {formatElapsed(elapsed)} elapsed &middot; Hang tight — this takes a few minutes
         </p>
       )}
 
@@ -251,7 +251,7 @@ export function PlanGenerationLoader({ jobId }: PlanGenerationLoaderProps) {
       {status === "running" && (
         <div className="max-w-sm text-center mt-4">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">
-            Did you know?
+            While you wait...
           </p>
           <p className="text-sm text-gray-500 italic leading-relaxed">
             &ldquo;{TIPS[tipIndex]}&rdquo;

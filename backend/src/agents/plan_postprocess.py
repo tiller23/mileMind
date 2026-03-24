@@ -32,7 +32,7 @@ def _extract_plan_json(plan_text: str) -> tuple[dict[str, Any] | None, str | Non
     Returns:
         Tuple of (parsed dict, raw JSON string) or (None, None) if not found.
     """
-    match = re.search(r"```json\s*\n(.*?)\n\s*```", plan_text, re.DOTALL)
+    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", plan_text, re.DOTALL)
     if not match:
         return None, None
     raw_json = match.group(1)
@@ -121,3 +121,22 @@ def enrich_plan_with_tss(plan_text: str) -> str:
     enriched_json = json.dumps(plan_data, indent=2)
     enriched_text = plan_text.replace(raw_json, enriched_json)
     return enriched_text
+
+
+def extract_structured_plan(plan_text: str) -> dict[str, Any]:
+    """Extract and return the structured plan data from planner output.
+
+    Returns the parsed JSON plan dict (with TSS already computed if
+    enrich_plan_with_tss was called first). Falls back to {"text": plan_text}
+    if no JSON block is found.
+
+    Args:
+        plan_text: Planner output text (should already be enriched with TSS).
+
+    Returns:
+        Structured plan dict with weeks, workouts, etc.
+    """
+    plan_data, _ = _extract_plan_json(plan_text)
+    if plan_data is None:
+        return {"text": plan_text}
+    return plan_data

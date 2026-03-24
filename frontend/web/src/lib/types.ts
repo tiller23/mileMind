@@ -25,6 +25,8 @@ export interface UserResponse {
 
 export type RiskTolerance = "conservative" | "moderate" | "aggressive";
 
+export type PreferredUnits = "metric" | "imperial";
+
 export interface ProfileUpdate {
   name: string;
   age: number;
@@ -40,6 +42,7 @@ export interface ProfileUpdate {
   goal_time_minutes: number | null;
   training_days_per_week: number;
   long_run_cap_pct: number;
+  preferred_units: PreferredUnits;
 }
 
 export interface ProfileResponse extends ProfileUpdate {
@@ -66,11 +69,40 @@ export interface PlanSummary {
   approved: boolean;
   status: string;
   scores: ReviewerScores | null;
+  goal_event: string | null;
+  week_count: number | null;
   created_at: string;
 }
 
+export interface PlanWorkout {
+  day: number;
+  workout_type: string;
+  distance_km?: number;
+  pace_zone?: string;
+  duration_minutes?: number;
+  intensity?: number;
+  tss?: number;
+  description?: string;
+}
+
+export interface PlanWeek {
+  week_number: number;
+  phase: string;
+  workouts: PlanWorkout[];
+  target_load?: number;
+  notes?: string;
+}
+
 export interface PlanData {
+  athlete_name?: string;
+  goal_event?: string;
+  goal_date?: string | null;
+  weeks?: PlanWeek[];
+  predicted_finish_time_minutes?: number | null;
+  supplementary_notes?: string;
+  notes?: string;
   text?: string;
+  _raw_text?: string;
   [key: string]: unknown;
 }
 

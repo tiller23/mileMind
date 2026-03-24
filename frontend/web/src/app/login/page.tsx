@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { API_BASE } from "@/lib/api";
+import { Logo } from "@/components/Logo";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -27,8 +28,8 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-gray-50 to-white">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <Link href="/" className="text-4xl font-bold tracking-tight">
-            Mile<span className="text-blue-600">Mind</span>
+          <Link href="/" className="inline-block">
+            <Logo size="lg" />
           </Link>
           <p className="mt-3 text-gray-500">Sign in to start training</p>
         </div>
@@ -61,7 +62,7 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-xs text-center text-gray-400">
-            By signing in, you agree to let MileMind create training plans for you.
+            By continuing, you agree to let MileMind build training plans for you.
           </p>
         </div>
       </div>

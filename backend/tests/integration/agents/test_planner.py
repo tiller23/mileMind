@@ -507,7 +507,7 @@ class TestUserMessageBuilding:
 
     def test_message_mentions_tools(self, sample_athlete: AthleteProfile) -> None:
         msg = PlannerAgent._build_user_message(sample_athlete)
-        assert "compute_training_stress" in msg
+        assert "validate_progression_constraints" in msg
 
     def test_message_includes_vdot_when_set(self, sample_athlete: AthleteProfile) -> None:
         msg = PlannerAgent._build_user_message(sample_athlete)

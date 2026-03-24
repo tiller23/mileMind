@@ -260,9 +260,9 @@ class TestBuildUserMessage:
         assert "- VO2max:" not in msg
 
     def test_mandatory_tool_reference_present(self, sample_athlete: AthleteProfile) -> None:
-        """compute_training_stress is mentioned by name in every user message."""
+        """validate_progression_constraints is mentioned by name in every user message."""
         msg = PlannerAgent._build_user_message(sample_athlete)
-        assert "compute_training_stress" in msg
+        assert "validate_progression_constraints" in msg
 
     def test_validate_progression_reference_present(self, sample_athlete: AthleteProfile) -> None:
         """validate_progression_constraints is explicitly requested."""

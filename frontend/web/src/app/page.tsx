@@ -1,158 +1,179 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
+import { ShieldCheckIcon, BeakerIcon, TargetIcon, EyeIcon } from "@/components/Icons";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
       {/* Hero */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/15 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
+
         <nav className="relative max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
-          <span className="text-2xl font-bold text-white tracking-tight">
-            Mile<span className="text-blue-200">Mind</span>
-          </span>
+          <Logo size="md" variant="light" />
           <Link
             href="/login"
-            className="text-sm font-medium text-blue-100 hover:text-white transition-colors"
+            className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
           >
             Sign In
           </Link>
         </nav>
 
-        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-24 text-center">
+        <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-28 text-center">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-sm text-blue-300 mb-6">
+            Personalized running plans
+          </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-white tracking-tight leading-tight">
-            Train smarter with
+            Train smarter.
             <br />
-            AI-powered plans
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              Run stronger.
+            </span>
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            Two AI agents collaborate to build your personalized running plan.
-            Every workout is grounded in exercise science — not guesswork.
+          <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            AI designs your plan. A second AI reviews it for safety.
+            Every decision transparent, every workout backed by science.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/login"
-              className="px-8 py-3.5 bg-white text-blue-700 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg shadow-blue-900/20"
+              className="px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30"
             >
               Get Started Free
             </Link>
             <a
               href="#how-it-works"
-              className="px-8 py-3.5 border border-blue-300/40 text-white rounded-lg font-medium hover:bg-white/10 transition-colors"
+              className="px-8 py-3.5 border border-slate-600 text-slate-300 rounded-xl font-medium hover:bg-white/5 transition-colors"
             >
-              See How It Works
+              How It Works
             </a>
           </div>
         </div>
+
+        {/* Gradient fade to white */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f8fafc] to-transparent" />
       </header>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-20 bg-white">
+      <section id="how-it-works" className="py-20">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            How MileMind works
+            Three steps to your plan
           </h2>
           <p className="text-center text-gray-500 mb-16 max-w-xl mx-auto">
-            A unique multi-agent approach ensures your plan is both creative and safe.
+            From profile to plan in minutes. No spreadsheets, no guesswork.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="relative p-6 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mb-4">
-                1
+            {[
+              {
+                step: "1",
+                title: "Share your background",
+                desc: "Quick questions about your running — weekly mileage, goals, injury history, and how hard you want to push.",
+              },
+              {
+                step: "2",
+                title: "AI builds your plan",
+                desc: "One AI designs your training block, another independently reviews it for safety and balance. You can see exactly how every decision was made.",
+              },
+              {
+                step: "3",
+                title: "Start training",
+                desc: "A clear week-by-week calendar with every run laid out — distance, effort, and why it matters.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="relative">
+                <div className="flex items-start gap-4 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+                    {item.step}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1.5">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Tell us about you
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Your weekly mileage, goal race, experience level, and injury
-                history. Takes about 2 minutes.
-              </p>
-            </div>
-
-            <div className="relative p-6 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mb-4">
-                2
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                AI designs your plan
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                A Planner agent builds your training block. A Reviewer agent
-                scores it on safety, progression, and specificity. They
-                iterate until it passes.
-              </p>
-            </div>
-
-            <div className="relative p-6 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mb-4">
-                3
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Start training
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Get a week-by-week plan with every workout prescribed —
-                distance, pace zone, and purpose. Backed by real physiology.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gradient-to-b from-transparent via-slate-50 to-transparent">
         <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
+            Why runners trust MileMind
+          </h2>
+          <p className="text-center text-gray-500 mb-16 max-w-xl mx-auto">
+            Not another cookie-cutter plan.
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-              <div className="text-3xl mb-3">🤖</div>
-              <div className="font-semibold text-gray-900 mb-1">2 AI Agents</div>
-              <p className="text-sm text-gray-500">
-                Planner + Reviewer negotiate until your plan scores 70+ across
-                all safety dimensions.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-              <div className="text-3xl mb-3">📐</div>
-              <div className="font-semibold text-gray-900 mb-1">Real Math</div>
-              <p className="text-sm text-gray-500">
-                TSS, VO2max, ACWR — computed by deterministic models. The AI
-                never fabricates a number.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-              <div className="text-3xl mb-3">🏃</div>
-              <div className="font-semibold text-gray-900 mb-1">Any Level</div>
-              <p className="text-sm text-gray-500">
-                From first-time runners to experienced marathoners. Plans adapt
-                to your fitness and goals.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-              <div className="text-3xl mb-3">🔬</div>
-              <div className="font-semibold text-gray-900 mb-1">Transparent</div>
-              <p className="text-sm text-gray-500">
-                See exactly how your plan was built. Full agent reasoning and
-                scores visible in the debug view.
-              </p>
-            </div>
+            {[
+              {
+                icon: <ShieldCheckIcon className="w-6 h-6" />,
+                title: "Reviewed for safety",
+                desc: "Every plan is independently checked for safe progression and injury risk before you see it.",
+                accent: "from-emerald-500 to-emerald-600",
+                iconBg: "bg-emerald-50 text-emerald-600",
+              },
+              {
+                icon: <BeakerIcon className="w-6 h-6" />,
+                title: "Science-backed",
+                desc: "Your training load, recovery, and pacing are calculated by proven models — never guesswork.",
+                accent: "from-blue-500 to-blue-600",
+                iconBg: "bg-blue-50 text-blue-600",
+              },
+              {
+                icon: <TargetIcon className="w-6 h-6" />,
+                title: "Built for you",
+                desc: "From first-time runners to experienced marathoners. Your plan adapts to your fitness, schedule, and goals.",
+                accent: "from-amber-500 to-amber-600",
+                iconBg: "bg-amber-50 text-amber-600",
+              },
+              {
+                icon: <EyeIcon className="w-6 h-6" />,
+                title: "See the reasoning",
+                desc: "Curious why a workout is there? You can see the full decision-making process.",
+                accent: "from-violet-500 to-violet-600",
+                iconBg: "bg-violet-50 text-violet-600",
+              },
+            ].map((f) => (
+              <div
+                key={f.title}
+                className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group"
+              >
+                <div className={`w-11 h-11 rounded-xl ${f.iconBg} flex items-center justify-center mb-4`}>
+                  {f.icon}
+                </div>
+                <div className="font-semibold text-gray-900 mb-1.5">{f.title}</div>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  {f.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-white">
+      <section className="py-24">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Ready to train smarter?
           </h2>
           <p className="text-gray-500 mb-8">
-            Create your free account and generate your first AI-powered
-            training plan in minutes.
+            Sign up and get your first personalized plan in minutes.
           </p>
           <Link
             href="/login"
-            className="inline-block px-8 py-3.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            className="inline-block px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
           >
             Get Started Free
           </Link>
@@ -160,10 +181,10 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-gray-50 py-8">
+      <footer className="border-t border-gray-200 py-8">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between text-sm text-gray-400">
-          <span>Mile<span className="text-blue-500">Mind</span></span>
-          <span>&copy; {new Date().getFullYear()}</span>
+          <Logo size="sm" />
+          <span>&copy; {new Date().getFullYear()} MileMind</span>
         </div>
       </footer>
     </div>

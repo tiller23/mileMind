@@ -1,81 +1,77 @@
-# Session Handoff — 2026-03-21
+# Session Handoff — 2026-03-23
 
 **Branch:** `feature/phase-5c-frontend`
-**Tests:** 1824 backend + 37 frontend = 1861 total
-**Status:** Phase 5c polish + cost optimization complete, pending commit
+**Tests:** 1830 backend + 48 frontend = 1878 total
+**Date:** 2026-03-23
 
 ## What Got Done This Session
 
-### OAuth & Auth Fixes
-- Fixed OAuth redirect URI mismatch (backend → `/auth/callback/google`)
-- Fixed login flow — was navigating to JSON API endpoint, now fetches auth URL then redirects
-- Fixed `secure=True` cookies blocking localhost — now conditional on HTTPS
-- Added CSRF state parameter (generate → sessionStorage → validate on callback)
-- Added error handling in auth callback (502 for Google errors, 500 for DB errors)
-- Added auth guard hook (`useAuthGuard`) on all protected pages
-- Added Next.js `proxy.ts` for server-side auth redirects
-- Added 401 → automatic token refresh in API client
+### Calendar View (Core Product View)
+- `PlanCalendar` component — weeks as rows, days as columns, color-coded workout cells
+- Click-to-expand workout details (description, distance, duration, TSS, intensity)
+- Color legend, phase badges, week notes, row/column dividers
+- Workout display names: "Fartlek" → "Mixed Pace", "Repetition" → "Speed Work"
 
-### SSE Resilience
-- SSE connection drops now fall back to polling job status every 5 seconds
-- Only shows "failed" if the job itself has failed status
-- Fixed false "Generation failed" when plan actually completed (SSE timeout)
+### Backend: Structured Plan Storage
+- Plans now stored as structured JSON (weeks/workouts) instead of `{"text": "..."}`
+- `extract_structured_plan()` parses JSON from planner output
+- `all_text` field on `AgentLoopResult` — captures text from ALL LLM turns (fixed bug where JSON block in earlier turn was lost)
 
-### Cost Optimization (Big One)
-- **Post-processing**: New `plan_postprocess.py` computes TSS and target_load deterministically after LLM outputs plan — removes ~48 `compute_training_stress` tool calls per iteration
-- **Prompt changes**: Planner no longer instructed to call compute_training_stress per workout. TSS fields removed from required output format. Reviewer no longer spot-checks TSS.
-- **Validation update**: `compute_training_stress` no longer required in validation (TSS computed post-hoc)
-- **Expected impact**: ~50% fewer tokens per plan generation, ~3-6 LLM turns instead of 8-12+
+### Miles/Km Unit Preference
+- `preferred_units` field added to profile (domain model, DB model, API schemas, migration)
+- Miles/Kilometers toggle on onboarding form
+- `formatDistance()` utility converts km → mi for display
+- Calendar, plan detail, dashboard all respect user's preference
+- Planner prompt tells LLM to use preferred units in workout descriptions
+- `distance_km` stays in km internally (deterministic engine consistency)
 
-### Frontend Design
-- Navbar: user dropdown menu with settings/logout, active link highlighting, sticky with backdrop blur
-- Landing page: full redesign with gradient hero, how-it-works steps, feature cards, CTA, footer
-- Login page: card design with gradient background
-- Onboarding: sectioned form (About You / Your Running / Preferences) in white card
-- Dashboard: skeleton loaders, better empty state with CTA, card shadows
-- All cards: `rounded-xl` + `shadow-sm` + hover effects
-- Geist font fix (was overridden by Arial)
-- Running goal: added "General fitness" option, conditional goal time field
-- Age field: no longer shows 0 when clearing
-- Progress bar: darker track, static time estimate ("under 10 minutes"), tips rotation
-- StatusBadge component for reusable badge patterns
-- Exported `scoreColor` for testability
+### Logo & Icons
+- `Logo` component with M lettermark (size + variant props)
+- `Icons.tsx` — SVG icon set (ShieldCheck, Beaker, Target, Eye, Runner, Shoe)
+- Replaced all emoji usage across the app
 
-### Code Review Fixes
-- OAuth CSRF state validation
-- SSE JSON.parse guard (try/catch)
-- Profile 404 returns null instead of throwing
-- Typed `PlanData` interface
-- Removed broken dark mode CSS vars
-- Aria labels on spinners/status icons
-- `usePlans` staleTime set to 60s
+### Design Polish
+- Landing page: dark slate hero, gradient text, pill badge, gradient fade, proper icon cards
+- Dashboard: "This Week" card with current week preview, welcome greeting, cleaner plan cards (removed scores/badges)
+- Navbar: Logo component integrated
+- All copy audit: 25+ changes across all pages (approved by user one-by-one)
 
-### Database
-- Generated and ran initial Alembic migration (7 tables)
+### Prompt Fixes
+- Single zones enforced (no "Zone 3-4")
+- Restricted workout types (no fartlek/repetition)
+- Removed stale `compute_training_stress` references from user message
+- Added preferred units instruction to planner
+
+### Cost Results
+- First run with new prompts: $0.93 / 92K tokens (vs $5.37 / 960K before)
+- Second run: $3.12 (variation expected, still well below old $5.37)
 
 ## Test Counts
-- Backend: 1824 (was 1814, +10 for plan_postprocess tests + validation updates)
-- Frontend: 37 (was 15, +22 for component/hook tests)
+- Backend: 1830
+- Frontend: 48 (5 test files)
 
 ## Next Session
 
-### Must Do
-1. **Plan detail page redesign** — Parse structured JSON from `plan_data.text` and render week-by-week with expandable workout cards. Currently shows raw JSON dump. This is the core product view.
-2. **Test the cost optimization** — Generate a plan and verify reduced token usage and cost vs the $5.37 plan from this session.
-
 ### Should Do
-3. **Structured plan storage** — Store parsed plan JSON directly in `plan_data` instead of wrapping in `{"text": "..."}`. Backend change.
-4. **Plan duration control** — Add `plan_weeks` field so users can request 8/12/16 week plans.
+1. **Test plan generation with miles preference** — verify descriptions come back in miles
+2. **Plan duration control** — let users pick 8/12/16 week plans
+3. **Plan start date** — explicit field so "This Week" is more accurate than created_at estimate
+4. **Remove token/cost from plan detail** — only show in debug view
+5. **Mobile responsiveness check**
 
-### Design Backlog
-5. Score badges as mini progress bars on plan detail page
-6. Dark navbar option (reviewer suggested, user hasn't weighed in)
-7. Login split layout for desktop (branding panel + form panel)
+### Feature Backlog
+6. Miles/km also for weekly mileage input (convert on save)
+7. Better error/404 pages
+8. Phase 5d — Strava integration
+9. Phase 5e — Deployment
 
-### Phase 5d: Strava Integration
-- Strava OAuth connect
-- Activity sync + import history
-- Baseline estimation from real data
+## Local Dev Setup
+```bash
+# Backend (terminal 1)
+cd backend && uvicorn src.api.main:create_app --factory --reload
 
-### Phase 5e: Deployment
-- Docker, managed Postgres, Vercel, CI/CD
+# Frontend (terminal 2)
+cd frontend/web && npm run dev
+```
+
+Requires: PostgreSQL with `milemind` database, Google OAuth creds in `backend/.env`

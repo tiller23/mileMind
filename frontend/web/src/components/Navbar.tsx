@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/api";
 import { useUser } from "@/lib/hooks";
+import { Logo } from "@/components/Logo";
 
 function UserMenu({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
@@ -87,8 +88,8 @@ export function Navbar() {
   return (
     <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href={user ? "/dashboard" : "/"} className="text-xl font-bold tracking-tight">
-          Mile<span className="text-blue-600">Mind</span>
+        <Link href={user ? "/dashboard" : "/"}>
+          <Logo size="sm" />
         </Link>
 
         {user && (

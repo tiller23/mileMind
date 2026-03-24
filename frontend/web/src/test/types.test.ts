@@ -31,6 +31,7 @@ describe("TypeScript types", () => {
       goal_time_minutes: 25,
       training_days_per_week: 4,
       long_run_cap_pct: 0.3,
+      preferred_units: "imperial",
     };
     expect(profile.name).toBe("Test Runner");
   });
@@ -60,6 +61,8 @@ describe("TypeScript types", () => {
       approved: true,
       status: "active",
       scores: { safety: 90, progression: 85, specificity: 80, feasibility: 82 },
+      goal_event: "10K",
+      week_count: 12,
       created_at: "2026-03-20T00:00:00Z",
     };
     expect(plan.approved).toBe(true);
@@ -122,6 +125,7 @@ describe("TypeScript types", () => {
       goal_time_minutes: null,
       training_days_per_week: 4,
       long_run_cap_pct: 0.3,
+      preferred_units: "metric",
       created_at: "2026-03-20T00:00:00Z",
       updated_at: "2026-03-20T00:00:00Z",
     };

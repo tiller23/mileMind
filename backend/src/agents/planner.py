@@ -244,8 +244,11 @@ class PlannerAgent:
                 "Response may be incomplete."
             )
 
+        # Use all_text to find the JSON plan block — it may be in an earlier
+        # turn, not the final response (which is often just a summary).
+        plan_text = loop_result.all_text if loop_result.all_text else loop_result.final_text
         return PlannerResult(
-            plan_text=loop_result.final_text,
+            plan_text=plan_text,
             tool_calls=loop_result.tool_calls,
             iterations=loop_result.iterations,
             total_input_tokens=loop_result.total_input_tokens,
@@ -329,6 +332,10 @@ class PlannerAgent:
             f"- Design a multi-week plan targeting the {athlete.goal_distance} distance.\n"
             f"- The athlete trains {athlete.training_days_per_week} days per week.\n"
             f"- Current weekly mileage baseline: {athlete.weekly_mileage_base} km.\n"
+            f"- Preferred units: {'miles' if athlete.preferred_units == 'imperial' else 'kilometers'}. "
+            f"Use {'miles' if athlete.preferred_units == 'imperial' else 'km'} in workout descriptions "
+            f"(e.g., '{'5 mile easy run' if athlete.preferred_units == 'imperial' else '8 km easy run'}'). "
+            f"The distance_km field in the JSON must ALWAYS be in kilometers regardless.\n"
             + (
                 f"- Goal finish time: {athlete.goal_time_minutes} minutes.\n"
                 if athlete.goal_time_minutes
@@ -346,10 +353,8 @@ class PlannerAgent:
             )
             + injury_section
             + (
-                f"\nUse compute_training_stress for every workout, "
-                f"validate_progression_constraints at least twice (mid-plan and final) "
-                f"(not just at the end), "
-                f"and simulate_race_outcomes if VDOT data is available. "
+                f"\nCall validate_progression_constraints at least once to verify safety. "
+                f"Use simulate_race_outcomes if VDOT data is available. "
                 f"Use Zone 1-6 pace zones in your plan. "
                 f"Return the complete plan as a JSON block."
             )

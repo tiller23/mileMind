@@ -290,8 +290,16 @@ complete training plan. The JSON must conform to this structure:
 **Note:** `tss` and `target_load` fields are computed automatically after your \
 output. Do NOT include them in your JSON — they will be added by the system.
 
-**pace_zone values:** Use "Zone 1" through "Zone 6" (or "Zone 2-3" for \
-progression runs). Do NOT use old-style names like "easy", "repetition" alone.
+**pace_zone values:** Use a SINGLE zone number: "Zone 1", "Zone 2", "Zone 3", \
+"Zone 4", "Zone 5", or "Zone 6". Do NOT use ranges like "Zone 2-3" or \
+"Zone 3-4" — pick the PRIMARY zone for the workout. For progression runs \
+that change zones, use the starting zone and describe the progression in the \
+description field.
+
+**workout_type values:** Use these exact values: "easy", "recovery", \
+"long_run", "tempo", "interval", "hill", "rest". Do NOT use "fartlek" — \
+use "tempo" or "interval" with a descriptive explanation instead. Do NOT \
+use "repetition" — use "interval" instead.
 
 ## EFFICIENCY
 

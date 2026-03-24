@@ -79,6 +79,11 @@ class AthleteProfile(BaseModel):
         default=0.30, ge=0.15, le=0.50,
         description="Max fraction of weekly mileage in a single long run",
     )
+    preferred_units: str = Field(
+        default="metric",
+        pattern=r"^(metric|imperial)$",
+        description="Distance units preference: metric (km) or imperial (miles)",
+    )
 
     def cache_key(self, *, salt: str = "") -> str:
         """Deterministic SHA-256 hash for same-profile deduplication.

@@ -148,6 +148,7 @@ class DBAthleteProfile(Base):
     goal_time_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
     training_days_per_week: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     long_run_cap_pct: Mapped[float] = mapped_column(Float, default=0.30, nullable=False)
+    preferred_units: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -193,6 +194,7 @@ class DBAthleteProfile(Base):
             goal_time_minutes=self.goal_time_minutes,
             training_days_per_week=self.training_days_per_week,
             long_run_cap_pct=self.long_run_cap_pct,
+            preferred_units=self.preferred_units,
         )
 
 

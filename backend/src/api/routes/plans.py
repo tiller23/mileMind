@@ -114,7 +114,20 @@ async def list_plans(
         .order_by(TrainingPlan.created_at.desc())
     )
     plans = result.scalars().all()
-    return [PlanSummary.model_validate(p) for p in plans]
+    summaries = []
+    for p in plans:
+        plan_data = p.plan_data or {}
+        weeks = plan_data.get("weeks", [])
+        summaries.append(PlanSummary(
+            id=p.id,
+            approved=p.approved,
+            status=p.status,
+            scores=p.scores,
+            goal_event=plan_data.get("goal_event"),
+            week_count=len(weeks) if weeks else None,
+            created_at=p.created_at,
+        ))
+    return summaries
 
 
 @router.get("/{plan_id}", response_model=PlanDetail)

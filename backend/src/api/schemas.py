@@ -95,6 +95,7 @@ class ProfileUpdate(BaseModel):
     goal_time_minutes: float | None = Field(default=None, ge=1.0)
     training_days_per_week: int = Field(default=5, ge=3, le=7)
     long_run_cap_pct: float = Field(default=0.30, ge=0.15, le=0.50)
+    preferred_units: str = Field(default="metric", pattern=r"^(metric|imperial)$")
 
 
 class ProfileResponse(BaseModel):
@@ -137,6 +138,7 @@ class ProfileResponse(BaseModel):
     goal_time_minutes: float | None
     training_days_per_week: int
     long_run_cap_pct: float
+    preferred_units: str
     created_at: datetime
     updated_at: datetime
 
@@ -162,9 +164,9 @@ class PlanSummary(BaseModel):
     approved: bool
     status: str
     scores: dict[str, Any] | None = None
+    goal_event: str | None = None
+    week_count: int | None = None
     created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class PlanDetail(BaseModel):

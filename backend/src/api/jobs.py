@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.agents.orchestrator import Orchestrator, OrchestrationResult
+from src.agents.plan_postprocess import extract_structured_plan
 from src.db.models import Job, TrainingPlan, User
 from src.models.athlete import AthleteProfile
 from src.models.plan_change import PlanChangeType
@@ -252,7 +253,7 @@ class JobManager:
             plan = TrainingPlan(
                 user_id=active.user_id,
                 athlete_snapshot=athlete.model_dump(),
-                plan_data={"text": result.plan_text},
+                plan_data=extract_structured_plan(result.plan_text),
                 decision_log=[
                     entry.model_dump(mode="json") for entry in result.decision_log
                 ],

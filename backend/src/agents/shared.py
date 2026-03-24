@@ -94,6 +94,9 @@ class AgentLoopResult:
 
     Attributes:
         final_text: Concatenated text from the final Claude response.
+        all_text: Concatenated text from ALL Claude responses across the loop.
+            Use this to find structured output (e.g., JSON blocks) that may
+            have been generated in earlier turns.
         tool_calls: Log of every tool call made during the run. Each entry
             is a dict with keys: name, input, output, success.
         iterations: Number of API round-trips (message.create calls) made.
@@ -104,6 +107,7 @@ class AgentLoopResult:
     """
 
     final_text: str
+    all_text: str = ""
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     iterations: int = 0
     total_input_tokens: int = 0
@@ -221,6 +225,7 @@ async def run_agent_loop(
     """
     loop_logger = logging.getLogger(logger_name)
     tool_call_log: list[dict[str, Any]] = []
+    all_text_parts: list[str] = []
     total_input_tokens = 0
     total_output_tokens = 0
     iterations = 0
@@ -255,11 +260,16 @@ async def run_agent_loop(
             response.usage.output_tokens,
         )
 
+        # Collect text from every response
+        iter_text = extract_text(response.content)
+        if iter_text:
+            all_text_parts.append(iter_text)
+
         # If Claude is done (no more tool calls), extract final text
         if response.stop_reason == "end_turn":
-            final_text = extract_text(response.content)
             return AgentLoopResult(
-                final_text=final_text,
+                final_text=iter_text,
+                all_text="\n\n".join(all_text_parts),
                 tool_calls=tool_call_log,
                 iterations=iterations,
                 total_input_tokens=total_input_tokens,
@@ -312,9 +322,9 @@ async def run_agent_loop(
             messages.append({"role": "user", "content": tool_result_blocks})
         else:
             # Unexpected stop reason (e.g., max_tokens hit)
-            final_text = extract_text(response.content)
             return AgentLoopResult(
-                final_text=final_text,
+                final_text=iter_text,
+                all_text="\n\n".join(all_text_parts),
                 tool_calls=tool_call_log,
                 iterations=iterations,
                 total_input_tokens=total_input_tokens,
@@ -329,6 +339,7 @@ async def run_agent_loop(
     )
     return AgentLoopResult(
         final_text="",
+        all_text="\n\n".join(all_text_parts),
         tool_calls=tool_call_log,
         iterations=iterations,
         total_input_tokens=total_input_tokens,
