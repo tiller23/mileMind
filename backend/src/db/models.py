@@ -149,6 +149,7 @@ class DBAthleteProfile(Base):
     training_days_per_week: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     long_run_cap_pct: Mapped[float] = mapped_column(Float, default=0.30, nullable=False)
     preferred_units: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
+    plan_duration_weeks: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -195,6 +196,7 @@ class DBAthleteProfile(Base):
             training_days_per_week=self.training_days_per_week,
             long_run_cap_pct=self.long_run_cap_pct,
             preferred_units=self.preferred_units,
+            plan_duration_weeks=self.plan_duration_weeks,
         )
 
 

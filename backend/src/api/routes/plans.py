@@ -6,10 +6,12 @@ Includes async plan generation via POST /plans/generate.
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from src.api.deps import get_current_user, get_db
 from src.api.jobs import get_job_manager
@@ -20,6 +22,7 @@ from src.api.schemas import (
     PlanDetail,
     PlanGenerateRequest,
     PlanSummary,
+    PlanUpdateStartDate,
 )
 from src.config import get_settings
 from src.db.models import DBAthleteProfile, TrainingPlan, User
@@ -75,6 +78,13 @@ async def generate_plan(
 
     change_type = PlanChangeType(body.change_type)
 
+    # Default plan_start_date to next Monday if not provided
+    plan_start_date = body.plan_start_date
+    if plan_start_date is None:
+        today = date.today()
+        days_until_monday = (7 - today.weekday()) % 7 or 7
+        plan_start_date = today + timedelta(days=days_until_monday)
+
     try:
         job_id = await manager.start_plan_generation(
             user=user,
@@ -82,6 +92,7 @@ async def generate_plan(
             session_factory=session_factory,
             api_key=settings.anthropic_api_key or None,
             change_type=change_type,
+            plan_start_date=plan_start_date,
         )
     except ValueError as e:
         raise HTTPException(
@@ -196,6 +207,56 @@ async def get_plan_debug(
             detail="Plan not found",
         )
     return PlanDebug.model_validate(plan)
+
+
+@router.patch(
+    "/{plan_id}/start-date",
+    response_model=PlanDetail,
+    status_code=status.HTTP_200_OK,
+)
+async def update_plan_start_date(
+    plan_id: uuid.UUID,
+    body: PlanUpdateStartDate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> PlanDetail:
+    """Update a plan's start date to shift the training timeline.
+
+    Adjusts when Week 1 begins without changing the plan content.
+    Use this when a user needs to delay or advance their plan
+    (e.g., vacation, missed days).
+
+    Args:
+        plan_id: Plan ID.
+        body: New start date.
+        user: Authenticated user.
+        session: Database session.
+
+    Returns:
+        Updated PlanDetail.
+
+    Raises:
+        HTTPException: 404 if plan not found.
+    """
+    result = await session.execute(
+        select(TrainingPlan).where(
+            TrainingPlan.id == plan_id,
+            TrainingPlan.user_id == user.id,
+        )
+    )
+    plan = result.scalar_one_or_none()
+    if plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plan not found",
+        )
+    updated_data = dict(plan.plan_data) if plan.plan_data else {}
+    updated_data["plan_start_date"] = body.plan_start_date.isoformat()
+    plan.plan_data = updated_data
+    flag_modified(plan, "plan_data")
+    await session.commit()
+    await session.refresh(plan)
+    return PlanDetail.model_validate(plan)
 
 
 @router.post(

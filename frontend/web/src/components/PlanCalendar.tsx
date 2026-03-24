@@ -181,9 +181,12 @@ function Legend() {
 interface PlanCalendarProps {
   weeks: PlanWeek[];
   units?: PreferredUnits;
+  currentWeekNumber?: number;
 }
 
-export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
+export function PlanCalendar({ weeks, units = "metric", currentWeekNumber }: PlanCalendarProps) {
+  // Mon=0..Sun=6
+  const todayDayIndex = (new Date().getDay() + 6) % 7;
   const [selectedWorkout, setSelectedWorkout] = useState<{
     week: number;
     workout: PlanWorkout;
@@ -196,15 +199,24 @@ export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
         <Legend />
       </div>
 
+      <div className="overflow-x-auto -mx-2 px-2 pb-2">
+      <div className="min-w-[640px]">
       {/* Day headers */}
-      <div className="grid grid-cols-[80px_repeat(7,1fr)] gap-1.5">
+      <div className="grid grid-cols-[60px_repeat(7,1fr)] sm:grid-cols-[80px_repeat(7,1fr)] gap-1.5">
         <div />
-        {DAY_LABELS.map((day) => (
+        {DAY_LABELS.map((day, i) => (
           <div
-            key={day}
-            className="text-center text-xs font-semibold text-gray-500 py-2 border-b border-gray-200"
+            key={`${day}-${i}`}
+            className={`text-center text-xs font-semibold py-2 border-b ${
+              currentWeekNumber && i === todayDayIndex
+                ? "text-blue-600 border-blue-300"
+                : "text-gray-500 border-gray-200"
+            }`}
           >
             {day}
+            {currentWeekNumber && i === todayDayIndex && (
+              <span className="block text-[9px] font-semibold text-blue-500">Today</span>
+            )}
           </div>
         ))}
       </div>
@@ -212,17 +224,19 @@ export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
       {/* Week rows */}
       {weeks.map((week) => {
         const phaseClass = PHASE_COLORS[week.phase] ?? "bg-gray-100 text-gray-600";
+        const isCurrentWeek = currentWeekNumber === week.week_number;
         const workoutsByDay: (PlanWorkout | null)[] = Array.from({ length: 7 }, (_, i) => {
           return week.workouts.find((w) => w.day != null && w.day === i + 1) ?? null;
         });
 
         return (
-          <div key={week.week_number} className="group">
-            <div className="grid grid-cols-[80px_repeat(7,1fr)] gap-1.5 py-1.5">
+          <div key={week.week_number} className={`group ${isCurrentWeek ? "bg-blue-50/50 rounded-lg -mx-2 px-2" : ""}`}>
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] sm:grid-cols-[80px_repeat(7,1fr)] gap-1.5 py-1.5">
               {/* Week label */}
               <div className="flex flex-col justify-center items-start gap-1.5 pr-2 border-r border-gray-200">
-                <span className="text-xs font-bold text-gray-700">
+                <span className={`text-xs font-bold ${isCurrentWeek ? "text-blue-700" : "text-gray-700"}`}>
                   Wk {week.week_number}
+                  {isCurrentWeek && <span className="block text-[9px] text-blue-500 font-semibold">Current</span>}
                 </span>
                 <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${phaseClass}`}>
                   {week.phase}
@@ -250,7 +264,7 @@ export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
 
             {/* Expanded workout detail */}
             {selectedWorkout?.week === week.week_number && (
-              <div className="mt-1.5 ml-[88px]">
+              <div className="mt-1.5 ml-[68px] sm:ml-[88px]">
                 <WorkoutDetail
                   workout={selectedWorkout.workout}
                   units={units}
@@ -261,7 +275,7 @@ export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
 
             {/* Week notes */}
             {week.notes && (
-              <div className="ml-[88px] mt-1 mb-1 text-[11px] text-gray-400 italic line-clamp-1">
+              <div className="ml-[68px] sm:ml-[88px] mt-1 mb-1 text-[11px] text-gray-400 italic line-clamp-1">
                 {week.notes}
               </div>
             )}
@@ -271,6 +285,8 @@ export function PlanCalendar({ weeks, units = "metric" }: PlanCalendarProps) {
           </div>
         );
       })}
+      </div>
+      </div>
     </div>
   );
 }

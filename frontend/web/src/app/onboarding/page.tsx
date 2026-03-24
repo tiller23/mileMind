@@ -6,6 +6,9 @@ import { Navbar } from "@/components/Navbar";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
 import type { PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
 
+const KM_TO_MILES = 0.621371;
+const MILES_TO_KM = 1.60934;
+
 const GOAL_OPTIONS: { value: string; label: string }[] = [
   { value: "general_fitness", label: "General fitness (no specific race)" },
   { value: "5K", label: "5K" },
@@ -33,6 +36,15 @@ const RISK_OPTIONS: { value: RiskTolerance; label: string; desc: string }[] = [
   },
 ];
 
+const DURATION_OPTIONS: { value: number; label: string }[] = [
+  { value: 8, label: "8 weeks" },
+  { value: 10, label: "10 weeks" },
+  { value: 12, label: "12 weeks" },
+  { value: 16, label: "16 weeks" },
+  { value: 20, label: "20 weeks" },
+  { value: 24, label: "24 weeks" },
+];
+
 const DEFAULTS: ProfileUpdate = {
   name: "",
   age: 30,
@@ -49,6 +61,7 @@ const DEFAULTS: ProfileUpdate = {
   training_days_per_week: 4,
   long_run_cap_pct: 0.3,
   preferred_units: "imperial",
+  plan_duration_weeks: 12,
 };
 
 const inputClass =
@@ -63,7 +76,11 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (existing) {
-      setForm(existing);
+      // DB stores km — convert to miles for display if imperial
+      const displayMileage = existing.preferred_units === "imperial"
+        ? Math.round(existing.weekly_mileage_base * KM_TO_MILES * 10) / 10
+        : existing.weekly_mileage_base;
+      setForm({ ...existing, weekly_mileage_base: displayMileage });
     }
   }, [existing]);
 
@@ -78,7 +95,12 @@ export default function OnboardingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await upsert.mutateAsync(form);
+    // Convert miles → km for storage if imperial
+    const payload = { ...form };
+    if (payload.preferred_units === "imperial") {
+      payload.weekly_mileage_base = Math.round(payload.weekly_mileage_base * MILES_TO_KM * 10) / 10;
+    }
+    await upsert.mutateAsync(payload);
     router.push("/dashboard");
   }
 
@@ -215,9 +237,9 @@ export default function OnboardingPage() {
                   required
                   min={0}
                   step={0.1}
-                  value={form.weekly_mileage_base}
+                  value={form.weekly_mileage_base || ""}
                   onChange={(e) =>
-                    update("weekly_mileage_base", Number(e.target.value))
+                    update("weekly_mileage_base", e.target.value ? Number(e.target.value) : 0)
                   }
                   className={inputClass}
                 />
@@ -233,12 +255,30 @@ export default function OnboardingPage() {
                   required
                   min={3}
                   max={7}
-                  value={form.training_days_per_week}
+                  value={form.training_days_per_week || ""}
                   onChange={(e) =>
-                    update("training_days_per_week", Number(e.target.value))
+                    update("training_days_per_week", e.target.value ? Number(e.target.value) : 0)
                   }
                   className={inputClass}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="plan_duration" className="block text-sm font-medium text-gray-700 mb-1">
+                  Plan duration
+                </label>
+                <select
+                  id="plan_duration"
+                  value={form.plan_duration_weeks}
+                  onChange={(e) => update("plan_duration_weeks", Number(e.target.value))}
+                  className={inputClass}
+                >
+                  {DURATION_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

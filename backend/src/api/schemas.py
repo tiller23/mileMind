@@ -6,7 +6,7 @@ Separate from domain models (src/models/) — these handle HTTP serialization.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -96,6 +96,7 @@ class ProfileUpdate(BaseModel):
     training_days_per_week: int = Field(default=5, ge=3, le=7)
     long_run_cap_pct: float = Field(default=0.30, ge=0.15, le=0.50)
     preferred_units: str = Field(default="metric", pattern=r"^(metric|imperial)$")
+    plan_duration_weeks: int = Field(default=12, ge=4, le=24)
 
 
 class ProfileResponse(BaseModel):
@@ -139,6 +140,7 @@ class ProfileResponse(BaseModel):
     training_days_per_week: int
     long_run_cap_pct: float
     preferred_units: str
+    plan_duration_weeks: int
     created_at: datetime
     updated_at: datetime
 
@@ -256,6 +258,20 @@ class PlanGenerateRequest(BaseModel):
         pattern=r"^(full|adaptation|tweak)$",
         description="Plan change type: full, adaptation, or tweak",
     )
+    plan_start_date: date | None = Field(
+        default=None,
+        description="Plan start date (YYYY-MM-DD). Defaults to next Monday if omitted.",
+    )
+
+
+class PlanUpdateStartDate(BaseModel):
+    """Request body for updating a plan's start date.
+
+    Attributes:
+        plan_start_date: New plan start date (YYYY-MM-DD).
+    """
+
+    plan_start_date: date = Field(description="New plan start date (YYYY-MM-DD)")
 
 
 class JobResponse(BaseModel):

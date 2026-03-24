@@ -16,7 +16,7 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -90,6 +90,7 @@ class JobManager:
         session_factory: async_sessionmaker[AsyncSession],
         api_key: str | None = None,
         change_type: PlanChangeType = PlanChangeType.FULL,
+        plan_start_date: date | None = None,
     ) -> uuid.UUID:
         """Start a background plan generation job.
 
@@ -102,6 +103,7 @@ class JobManager:
             session_factory: Async session factory for DB access in background.
             api_key: Anthropic API key (uses env default if None).
             change_type: Plan change scope (FULL/ADAPTATION/TWEAK).
+            plan_start_date: When the plan should start (YYYY-MM-DD).
 
         Returns:
             The job ID for status polling and SSE streaming.
@@ -133,6 +135,7 @@ class JobManager:
                 session_factory=session_factory,
                 api_key=api_key,
                 change_type=change_type,
+                plan_start_date=plan_start_date,
             ),
             name=f"plan-gen-{job_id}",
         )
@@ -146,6 +149,7 @@ class JobManager:
         session_factory: async_sessionmaker[AsyncSession],
         api_key: str | None,
         change_type: PlanChangeType = PlanChangeType.FULL,
+        plan_start_date: date | None = None,
     ) -> None:
         """Run the orchestrator with progress callbacks.
 
@@ -159,6 +163,7 @@ class JobManager:
             session_factory: Session factory for DB persistence.
             api_key: Anthropic API key.
             change_type: Plan change scope.
+            plan_start_date: When the plan should start.
         """
         job_id = active.job_id
 
@@ -184,7 +189,9 @@ class JobManager:
                 on_progress=on_progress,
             )
 
-            result = await orchestrator.generate_plan(athlete, change_type=change_type)
+            result = await orchestrator.generate_plan(
+                athlete, change_type=change_type, plan_start_date=plan_start_date,
+            )
 
             # Persist plan to database
             await self._persist_result(
@@ -192,6 +199,7 @@ class JobManager:
                 athlete=athlete,
                 result=result,
                 session_factory=session_factory,
+                plan_start_date=plan_start_date,
             )
 
         except Exception as e:
@@ -224,6 +232,7 @@ class JobManager:
         athlete: AthleteProfile,
         result: OrchestrationResult,
         session_factory: async_sessionmaker[AsyncSession],
+        plan_start_date: date | None = None,
     ) -> None:
         """Persist orchestration result to database.
 
@@ -234,6 +243,7 @@ class JobManager:
             athlete: Athlete profile (frozen snapshot).
             result: Orchestration result.
             session_factory: Session factory for DB access.
+            plan_start_date: When the plan should start.
         """
         total_tokens = (
             result.total_planner_input_tokens + result.total_planner_output_tokens
@@ -250,10 +260,13 @@ class JobManager:
         )
 
         async with session_factory() as session:
+            plan_data = extract_structured_plan(result.plan_text)
+            if plan_start_date:
+                plan_data["plan_start_date"] = plan_start_date.isoformat()
             plan = TrainingPlan(
                 user_id=active.user_id,
                 athlete_snapshot=athlete.model_dump(),
-                plan_data=extract_structured_plan(result.plan_text),
+                plan_data=plan_data,
                 decision_log=[
                     entry.model_dump(mode="json") for entry in result.decision_log
                 ],
@@ -294,6 +307,20 @@ class JobManager:
             },
         ))
         active.done_event.set()
+
+    def get_active_job_for_user(self, user_id: uuid.UUID) -> _ActiveJob | None:
+        """Get the running job for a user, if any.
+
+        Args:
+            user_id: The user's ID.
+
+        Returns:
+            Active job state, or None if the user has no running job.
+        """
+        for active in self._active_jobs.values():
+            if active.user_id == user_id and not active.done_event.is_set():
+                return active
+        return None
 
     def get_active_job(self, job_id: uuid.UUID) -> _ActiveJob | None:
         """Get in-memory state for an active job.

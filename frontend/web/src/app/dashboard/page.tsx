@@ -1,13 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
 import { ShoeIcon, RunnerIcon } from "@/components/Icons";
-import { useAuthGuard, useGeneratePlan, usePlans, usePlan, useProfile } from "@/lib/hooks";
-import type { PlanWeek, PlanWorkout, PreferredUnits } from "@/lib/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate } from "@/lib/hooks";
+import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse } from "@/lib/types";
 import { formatDistance } from "@/lib/units";
+
+const GOAL_LABELS: Record<string, string> = {
+  general_fitness: "General Fitness",
+  "5K": "5K",
+  "10K": "10K",
+  half_marathon: "Half Marathon",
+  marathon: "Marathon",
+  ultra: "Ultra",
+};
+
+const RISK_LABELS: Record<string, string> = {
+  conservative: "Conservative",
+  moderate: "Moderate",
+  aggressive: "Aggressive",
+};
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -29,16 +45,37 @@ function formatWorkoutType(type: string): string {
   return names[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units }: {
+function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, planStartDate, createdAt }: {
   week: PlanWeek;
   weekNumber: number;
   totalWeeks: number;
   phase: string;
   planId: string;
   units: PreferredUnits;
+  planStartDate: string | null | undefined;
+  createdAt: string;
 }) {
+  const updateStartDate = useUpdatePlanStartDate();
+  const [editingDate, setEditingDate] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // Default to plan_start_date, or derive from created_at for older plans
+  const effectiveStart = planStartDate ?? createdAt.split("T")[0];
+  const [newDate, setNewDate] = useState(effectiveStart);
+
   const workoutsByDay: (PlanWorkout | null)[] = Array.from({ length: 7 }, (_, i) => {
     return week.workouts.find((w) => w.day != null && w.day === i + 1) ?? null;
+  });
+
+  function handleSaveDate() {
+    if (!newDate) return;
+    updateStartDate.mutate(
+      { planId, data: { plan_start_date: newDate } },
+      { onSuccess: () => setEditingDate(false) },
+    );
+  }
+
+  const formattedStart = new Date(effectiveStart + "T00:00:00").toLocaleDateString(undefined, {
+    month: "short", day: "numeric",
   });
 
   return (
@@ -46,11 +83,52 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units }: {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-semibold text-gray-900">This Week</h2>
-          <p className="text-sm text-gray-500">
-            Week {weekNumber} of {totalWeeks}
-            <span className="mx-1.5 text-gray-300">&middot;</span>
-            <span className="capitalize">{phase}</span> phase
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-gray-500">
+              Week {weekNumber} of {totalWeeks}
+              <span className="mx-1.5 text-gray-300">&middot;</span>
+              <span className="capitalize">{phase}</span> phase
+              <span className="mx-1.5 text-gray-300">&middot;</span>
+              Started {formattedStart}
+            </p>
+            {!editingDate && (
+              <button
+                onClick={() => { setNewDate(effectiveStart); setEditingDate(true); }}
+                className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+              >
+                Adjust
+              </button>
+            )}
+          </div>
+          {editingDate && (
+            <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-2">
+                Shift your plan timeline. Your workouts stay the same &mdash;
+                only which week you&apos;re on changes.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  onClick={handleSaveDate}
+                  disabled={updateStartDate.isPending || !newDate}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updateStartDate.isPending ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => setEditingDate(false)}
+                  className="px-3 py-1.5 text-gray-500 hover:text-gray-700 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <Link
           href={`/plan/${planId}`}
@@ -67,29 +145,88 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units }: {
             ? WORKOUT_DOT_COLORS[workout.workout_type] ?? "bg-gray-300"
             : "bg-transparent";
           const isRest = !workout || workout.workout_type === "rest";
+          // JS getDay(): Sun=0..Sat=6 → Mon-indexed: Mon=0..Sun=6
+          const todayIndex = (new Date().getDay() + 6) % 7;
+          const isToday = i === todayIndex;
+
+          const isSelected = selectedDay === i;
+          const canTap = workout && !isRest;
 
           return (
             <div key={i} className="flex flex-col items-center gap-1.5">
-              <span className="text-[10px] font-medium text-gray-400">{day}</span>
-              <div className={`w-full rounded-lg border p-2 min-h-[56px] flex flex-col items-center justify-center gap-1 ${
-                isRest ? "border-gray-100 bg-gray-50/50" : "border-gray-200 bg-white"
-              }`}>
+              <span className={`text-[10px] font-medium ${
+                isToday ? "text-blue-600" : "text-gray-400"
+              }`}>{day}</span>
+              <button
+                type="button"
+                disabled={!canTap}
+                onClick={() => canTap && setSelectedDay(isSelected ? null : i)}
+                className={`w-full rounded-lg border p-2 min-h-[56px] flex flex-col items-center justify-center gap-1 transition-all ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                    : isToday
+                      ? "border-blue-400 bg-blue-50 ring-1 ring-blue-200"
+                      : isRest
+                        ? "border-gray-100 bg-gray-50/50"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                } ${canTap ? "cursor-pointer" : "cursor-default"}`}>
                 <span className={`w-2 h-2 rounded-full ${dot}`} />
                 <span className={`text-[10px] font-medium text-center leading-tight ${
-                  isRest ? "text-gray-300" : "text-gray-600"
+                  isToday ? "text-blue-700" : isRest ? "text-gray-300" : "text-gray-600"
                 }`}>
                   {workout ? formatWorkoutType(workout.workout_type) : ""}
                 </span>
                 {workout?.distance_km != null && !isRest && (
-                  <span className="text-[10px] text-gray-400">
+                  <span className={`text-[10px] ${isToday ? "text-blue-500" : "text-gray-400"}`}>
                     {formatDistance(workout.distance_km, units)}
                   </span>
                 )}
-              </div>
+              </button>
+              {isToday && (
+                <span className="text-[9px] font-semibold text-blue-500">Today</span>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Expanded workout detail */}
+      {selectedDay !== null && workoutsByDay[selectedDay] && (
+        (() => {
+          const w = workoutsByDay[selectedDay]!;
+          return (
+            <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {formatWorkoutType(w.workout_type)}
+                  </span>
+                  {w.pace_zone && (
+                    <span className="ml-2 text-xs text-gray-500">{w.pace_zone}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  &#10005;
+                </button>
+              </div>
+              {w.description && (
+                <p className="text-sm text-gray-700 leading-relaxed">{w.description}</p>
+              )}
+              <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                {w.distance_km != null && (
+                  <span>{formatDistance(w.distance_km, units)}</span>
+                )}
+                {w.duration_minutes != null && (
+                  <span>{w.duration_minutes} min</span>
+                )}
+              </div>
+            </div>
+          );
+        })()
+      )}
 
       {week.notes && (
         <p className="mt-3 text-xs text-gray-400 italic">{week.notes}</p>
@@ -117,12 +254,105 @@ function SkeletonCard() {
   );
 }
 
-function estimateCurrentWeek(createdAt: string, totalWeeks: number): number {
-  const created = new Date(createdAt);
+function ConfirmGeneratePanel({ profile, startDate, onStartDateChange, onConfirm, onCancel, isPending }: {
+  profile: ProfileResponse;
+  startDate: string;
+  onStartDateChange: (date: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const mileageDisplay = profile.preferred_units === "imperial"
+    ? `${(profile.weekly_mileage_base * 0.621371).toFixed(0)} mi/week`
+    : `${profile.weekly_mileage_base} km/week`;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-6">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">
+          Generate Your Plan
+        </h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Review your details before we build your plan. This takes 1-3 minutes once started.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-5">
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Goal</span>
+            <p className="text-sm text-gray-900 mt-0.5">
+              {GOAL_LABELS[profile.goal_distance] ?? profile.goal_distance}
+              {profile.goal_time_minutes ? ` in ${profile.goal_time_minutes} min` : ""}
+            </p>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Current Mileage</span>
+            <p className="text-sm text-gray-900 mt-0.5">{mileageDisplay}</p>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Plan Duration</span>
+            <p className="text-sm text-gray-900 mt-0.5">{profile.plan_duration_weeks} weeks</p>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Training Days</span>
+            <p className="text-sm text-gray-900 mt-0.5">{profile.training_days_per_week} days/week</p>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Approach</span>
+            <p className="text-sm text-gray-900 mt-0.5">{RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}</p>
+          </div>
+          <div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Start Date</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => onStartDateChange(e.target.value)}
+              className="mt-0.5 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+            />
+          </div>
+        </div>
+
+        <Link
+          href="/onboarding"
+          className="text-xs text-blue-600 hover:underline"
+        >
+          Need to update your profile first?
+        </Link>
+      </div>
+
+      <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={isPending}
+          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+        >
+          {isPending ? "Starting..." : "Generate Plan"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function estimateCurrentWeek(planStartDate: string | null | undefined, createdAt: string, totalWeeks: number): number {
+  const start = planStartDate ? new Date(planStartDate) : new Date(createdAt);
   const now = new Date();
-  const diffMs = now.getTime() - created.getTime();
+  const diffMs = now.getTime() - start.getTime();
   const diffWeeks = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
   return Math.min(Math.max(diffWeeks, 1), totalWeeks);
+}
+
+function getNextMonday(): string {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilMonday);
+  return nextMonday.toISOString().split("T")[0];
 }
 
 export default function DashboardPage() {
@@ -130,7 +360,18 @@ export default function DashboardPage() {
   const { data: profileData, isLoading: profileLoading } = useProfile();
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const generatePlan = useGeneratePlan();
+  const queryClient = useQueryClient();
+  const { data: existingActiveJob } = useActiveJob();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(getNextMonday);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Resume showing the loader if there's a running job (e.g., navigated away and back)
+  useEffect(() => {
+    if (existingActiveJob && !activeJobId) {
+      setActiveJobId(existingActiveJob.job_id);
+    }
+  }, [existingActiveJob, activeJobId]);
 
   const needsOnboarding = !profileLoading && profileData === null;
 
@@ -141,14 +382,22 @@ export default function DashboardPage() {
   if (!isAuthenticated) return null;
 
   async function handleGenerate() {
-    const result = await generatePlan.mutateAsync({ change_type: "full" });
+    const result = await generatePlan.mutateAsync({
+      change_type: "full",
+      plan_start_date: startDate,
+    });
+    setShowConfirm(false);
     setActiveJobId(result.job_id);
   }
 
   // Compute current week from active plan
   const activeWeeks = activePlanDetail?.plan_data?.weeks;
   const currentWeekNum = activePlanDetail
-    ? estimateCurrentWeek(activePlanDetail.created_at, activeWeeks?.length ?? 0)
+    ? estimateCurrentWeek(
+        activePlanDetail.plan_data?.plan_start_date,
+        activePlanDetail.created_at,
+        activeWeeks?.length ?? 0,
+      )
     : null;
   const currentWeek = activeWeeks && currentWeekNum
     ? activeWeeks.find((w) => w.week_number === currentWeekNum) ?? activeWeeks[0]
@@ -158,7 +407,7 @@ export default function DashboardPage() {
     <>
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-8 w-full">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
           <div>
             <h1 className="text-2xl font-bold">Dashboard</h1>
             {profileData && (
@@ -167,13 +416,12 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          {profileData && !activeJobId && (
+          {profileData && !activeJobId && !showConfirm && (
             <button
-              onClick={handleGenerate}
-              disabled={generatePlan.isPending}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+              onClick={() => setShowConfirm(true)}
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm"
             >
-              {generatePlan.isPending ? "Starting..." : "New Plan"}
+              New Plan
             </button>
           )}
         </div>
@@ -208,9 +456,27 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {showConfirm && profileData && !activeJobId && (
+          <ConfirmGeneratePanel
+            profile={profileData}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
+            onConfirm={handleGenerate}
+            onCancel={() => setShowConfirm(false)}
+            isPending={generatePlan.isPending}
+          />
+        )}
+
         {activeJobId && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-            <PlanGenerationLoader jobId={activeJobId} />
+            <PlanGenerationLoader
+              jobId={activeJobId}
+              onComplete={() => {
+                setActiveJobId(null);
+                queryClient.invalidateQueries({ queryKey: ["plans"] });
+                queryClient.invalidateQueries({ queryKey: ["active-job"] });
+              }}
+            />
           </div>
         )}
 
@@ -223,6 +489,8 @@ export default function DashboardPage() {
             phase={currentWeek.phase}
             planId={activePlanSummary.id}
             units={profileData?.preferred_units ?? "metric"}
+            planStartDate={activePlanDetail?.plan_data?.plan_start_date}
+            createdAt={activePlanDetail?.created_at ?? activePlanSummary.created_at}
           />
         )}
 
@@ -273,7 +541,8 @@ export default function DashboardPage() {
               ) : (
                 !needsOnboarding &&
                 profileData &&
-                !activeJobId && (
+                !activeJobId &&
+                !showConfirm && (
                   <div className="text-center py-16">
                     <div className="mx-auto w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-4">
                       <RunnerIcon className="w-7 h-7 text-blue-600" />
@@ -285,9 +554,8 @@ export default function DashboardPage() {
                       Create your first training plan to get started.
                     </p>
                     <button
-                      onClick={handleGenerate}
-                      disabled={generatePlan.isPending}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                      onClick={() => setShowConfirm(true)}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm"
                     >
                       Create My Plan
                     </button>

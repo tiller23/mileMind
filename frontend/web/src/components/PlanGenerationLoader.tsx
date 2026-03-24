@@ -60,13 +60,15 @@ function formatElapsed(seconds: number): string {
 
 interface PlanGenerationLoaderProps {
   jobId: string;
+  onComplete?: () => void;
 }
 
-export function PlanGenerationLoader({ jobId }: PlanGenerationLoaderProps) {
+export function PlanGenerationLoader({ jobId, onComplete }: PlanGenerationLoaderProps) {
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [status, setStatus] = useState<"running" | "complete" | "failed">(
     "running",
   );
+  const [completedPlanId, setCompletedPlanId] = useState<string | null>(null);
   const [tipIndex, setTipIndex] = useState(
     () => Math.floor(Math.random() * TIPS.length),
   );
@@ -81,10 +83,17 @@ export function PlanGenerationLoader({ jobId }: PlanGenerationLoaderProps) {
       setStatus("complete");
       setProgress(100);
       if (planId) {
-        setTimeout(() => router.push(`/plan/${planId}`), 1500);
+        setCompletedPlanId(planId);
+        setTimeout(() => {
+          onComplete?.();
+          router.push(`/plan/${planId}`);
+        }, 1500);
+      } else {
+        // No plan ID — just signal completion so dashboard can refresh
+        setTimeout(() => onComplete?.(), 1500);
       }
     },
-    [router],
+    [router, onComplete],
   );
 
   // Poll job status as fallback when SSE drops
@@ -236,9 +245,19 @@ export function PlanGenerationLoader({ jobId }: PlanGenerationLoaderProps) {
       )}
 
       {status === "complete" && (
-        <p className="text-sm text-green-600 font-medium">
-          Done in {formatElapsed(elapsed)}. Redirecting to your plan...
-        </p>
+        <div className="text-center">
+          <p className="text-sm text-green-600 font-medium">
+            Done in {formatElapsed(elapsed)}. Redirecting to your plan...
+          </p>
+          {completedPlanId && (
+            <a
+              href={`/plan/${completedPlanId}`}
+              className="text-sm text-blue-600 hover:underline mt-2 inline-block"
+            >
+              Click here if not redirected
+            </a>
+          )}
+        </div>
       )}
 
       {status === "failed" && (

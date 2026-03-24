@@ -540,9 +540,9 @@ class TestUserMessageNewElements:
         assert "Zone" in msg
 
     def test_per_phase_validation_instruction(self, sample_athlete: AthleteProfile) -> None:
-        """Instructions explicitly say to validate at least twice."""
+        """Instructions explicitly say to validate progression."""
         msg = PlannerAgent._build_user_message(sample_athlete)
-        assert "at least twice" in msg or "after each phase" in msg.lower()
+        assert "validate_progression_constraints" in msg.lower()
 
     def test_injury_nuance_instruction(self, sample_athlete: AthleteProfile) -> None:
         """Injury history section includes nuance guidance."""

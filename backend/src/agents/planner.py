@@ -17,6 +17,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -116,7 +117,11 @@ class PlannerAgent:
         """The tool registry used by this agent."""
         return self._registry
 
-    async def generate_plan(self, athlete: AthleteProfile) -> PlannerResult:
+    async def generate_plan(
+        self,
+        athlete: AthleteProfile,
+        plan_start_date: date | None = None,
+    ) -> PlannerResult:
         """Generate a training plan for the given athlete profile.
 
         Builds the initial user message from the athlete's profile data and
@@ -126,11 +131,12 @@ class PlannerAgent:
         Args:
             athlete: The athlete profile containing goals, fitness data, and
                 constraints.
+            plan_start_date: When the plan should start (YYYY-MM-DD).
 
         Returns:
             PlannerResult with the plan text, tool call log, and token usage.
         """
-        user_message = self._build_user_message(athlete)
+        user_message = self._build_user_message(athlete, plan_start_date)
         return await self._generate_with_message(user_message)
 
     async def revise_plan(
@@ -283,7 +289,7 @@ class PlannerAgent:
         return "intermediate"
 
     @staticmethod
-    def _build_user_message(athlete: AthleteProfile) -> str:
+    def _build_user_message(athlete: AthleteProfile, plan_start_date: date | None = None) -> str:
         """Build the initial user message from an athlete profile.
 
         Serializes the athlete profile into a structured prompt that gives
@@ -314,6 +320,20 @@ class PlannerAgent:
                 f"restrictions. Only reduce training for recent/current issues.\n"
             )
 
+        # Plan duration and start date instructions
+        duration_instruction = (
+            f"- The plan MUST be exactly {athlete.plan_duration_weeks} weeks long. "
+            f"Distribute phases accordingly within this duration.\n"
+        )
+        start_date_instruction = ""
+        if plan_start_date:
+            start_date_instruction = (
+                f"- Plan start date: {plan_start_date.isoformat()} "
+                f"({plan_start_date.strftime('%A, %B %d, %Y')}). "
+                f"Set goal_date in the output JSON to the start date. "
+                f"Week 1 begins on this date.\n"
+            )
+
         return (
             f"Please generate a periodized training plan for this athlete.\n\n"
             f"## Athlete Profile\n"
@@ -326,10 +346,20 @@ class PlannerAgent:
             f"(athlete's max_weekly_increase_pct = {athlete.max_weekly_increase_pct})\n"
             f"- Risk tolerance: {athlete.risk_tolerance.value}\n"
             f"- Recovery weeks MUST appear every 3-4 building weeks\n"
-            f"- Validate progression at least twice (mid-plan and final) with "
+            f"- Validate progression at least once with "
             f"validate_progression_constraints\n\n"
+            f"## Distance Rules (HARD LIMITS)\n"
+            f"- Long run MUST be the longest workout every week (at least 1.5x "
+            f"the average easy run distance)\n"
+            f"- Easy runs MUST vary in distance within each week — NOT all the "
+            f"same distance\n"
+            f"- Quality session (interval, tempo, hill) distance = work portion "
+            f"only. Do NOT inflate with warm-up/cool-down.\n"
+            f"- Distances MUST progress across building weeks, not stay flat\n\n"
             f"## Instructions\n"
-            f"- Design a multi-week plan targeting the {athlete.goal_distance} distance.\n"
+            + duration_instruction
+            + start_date_instruction
+            + f"- Design a plan targeting the {athlete.goal_distance} distance.\n"
             f"- The athlete trains {athlete.training_days_per_week} days per week.\n"
             f"- Current weekly mileage baseline: {athlete.weekly_mileage_base} km.\n"
             f"- Preferred units: {'miles' if athlete.preferred_units == 'imperial' else 'kilometers'}. "

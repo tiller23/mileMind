@@ -12,6 +12,7 @@ import type {
   PlanDetail,
   PlanGenerateRequest,
   PlanSummary,
+  PlanUpdateStartDate,
   ProfileResponse,
   ProfileUpdate,
   UserResponse,
@@ -147,6 +148,14 @@ export const plans = {
     return request<PlanDebug>(`/plans/${encodeURIComponent(planId)}/debug`);
   },
 
+  /** Update plan start date. */
+  updateStartDate(planId: string, data: PlanUpdateStartDate): Promise<PlanDetail> {
+    return request<PlanDetail>(`/plans/${encodeURIComponent(planId)}/start-date`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
   /** Archive a plan. */
   archive(planId: string): Promise<{ detail: string }> {
     return request(`/plans/${encodeURIComponent(planId)}/archive`, { method: "POST" });
@@ -168,6 +177,11 @@ export const plans = {
 // ---------------------------------------------------------------------------
 
 export const jobs = {
+  /** Get the current user's active (running) job, or null. */
+  active(): Promise<JobDetailResponse | null> {
+    return request<JobDetailResponse | null>("/jobs/active");
+  },
+
   /** Get job status. */
   get(jobId: string): Promise<JobDetailResponse> {
     return request<JobDetailResponse>(`/jobs/${encodeURIComponent(jobId)}`);

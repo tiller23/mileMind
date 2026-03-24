@@ -4,8 +4,6 @@ import Link from "next/link";
 import { use } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PlanCalendar } from "@/components/PlanCalendar";
-import { ScoreBadgeGroup } from "@/components/ScoreBadge";
-import { StatusBadge } from "@/components/StatusBadge";
 import { useArchivePlan, useAuthGuard, usePlan, useProfile } from "@/lib/hooks";
 
 interface PlanPageProps {
@@ -54,11 +52,20 @@ export default function PlanPage({ params }: PlanPageProps) {
   const planNotes = plan.plan_data?.notes;
   const supplementaryNotes = plan.plan_data?.supplementary_notes;
 
+  // Compute current week for highlighting
+  const planStartDate = plan.plan_data?.plan_start_date;
+  const startRef = planStartDate ? new Date(planStartDate) : new Date(plan.created_at);
+  const diffMs = Date.now() - startRef.getTime();
+  const rawWeek = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  const currentWeekNumber = hasCalendar
+    ? Math.min(Math.max(rawWeek, 1), weeks.length)
+    : undefined;
+
   return (
     <>
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 py-8 w-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <Link
               href="/dashboard"
@@ -66,7 +73,7 @@ export default function PlanPage({ params }: PlanPageProps) {
             >
               &larr; Dashboard
             </Link>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-xl sm:text-2xl font-bold">
               {plan.plan_data?.goal_event
                 ? `${plan.plan_data.goal_event} Training Plan`
                 : "Training Plan"}
@@ -76,7 +83,7 @@ export default function PlanPage({ params }: PlanPageProps) {
               {new Date(plan.created_at).toLocaleDateString()}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href={`/plan/${id}/debug`}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
@@ -95,21 +102,27 @@ export default function PlanPage({ params }: PlanPageProps) {
           </div>
         </div>
 
-        {/* Status & Scores */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <StatusBadge
-              variant={plan.approved ? "approved" : "unapproved"}
-              label={plan.approved ? "Approved" : "Unapproved"}
-              pill
-            />
-            <span className="text-sm text-gray-500">
-              {plan.total_tokens.toLocaleString()} tokens &middot; $
-              {plan.estimated_cost_usd.toFixed(2)}
-            </span>
+        {/* Unapproved warning */}
+        {!plan.approved && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-amber-500 text-lg mt-0.5">&#9888;</span>
+              <div>
+                <h3 className="font-semibold text-amber-800 text-sm">Draft Plan</h3>
+                <p className="text-sm text-amber-700 mt-1">
+                  This plan didn&apos;t pass all safety checks. You can review it below,
+                  but we recommend generating a new one for the best results.
+                </p>
+                <Link
+                  href="/dashboard"
+                  className="inline-block mt-3 px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-medium hover:bg-amber-700 transition-colors"
+                >
+                  Generate New Plan
+                </Link>
+              </div>
+            </div>
           </div>
-          {plan.scores && <ScoreBadgeGroup scores={plan.scores} />}
-        </div>
+        )}
 
         {/* Plan notes */}
         {planNotes && (
@@ -123,7 +136,7 @@ export default function PlanPage({ params }: PlanPageProps) {
         {hasCalendar ? (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">
             <h2 className="text-lg font-semibold mb-5">Training Schedule</h2>
-            <PlanCalendar weeks={weeks} units={units} />
+            <PlanCalendar weeks={weeks} units={units} currentWeekNumber={currentWeekNumber} />
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">

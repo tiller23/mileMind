@@ -43,6 +43,7 @@ export interface ProfileUpdate {
   training_days_per_week: number;
   long_run_cap_pct: number;
   preferred_units: PreferredUnits;
+  plan_duration_weeks: number;
 }
 
 export interface ProfileResponse extends ProfileUpdate {
@@ -97,6 +98,7 @@ export interface PlanData {
   athlete_name?: string;
   goal_event?: string;
   goal_date?: string | null;
+  plan_start_date?: string | null;
   weeks?: PlanWeek[];
   predicted_finish_time_minutes?: number | null;
   supplementary_notes?: string;
@@ -191,8 +193,13 @@ export interface ProgressEvent {
 
 export type ChangeType = "full" | "adaptation" | "tweak";
 
+export interface PlanUpdateStartDate {
+  plan_start_date: string;
+}
+
 export interface PlanGenerateRequest {
   change_type: ChangeType;
+  plan_start_date?: string;
 }
 
 // ---------------------------------------------------------------------------

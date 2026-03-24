@@ -5,9 +5,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, auth, plans, profile } from "./api";
+import { ApiError, auth, jobs, plans, profile } from "./api";
 import type {
   PlanGenerateRequest,
+  PlanUpdateStartDate,
   ProfileResponse,
   ProfileUpdate,
 } from "./types";
@@ -111,6 +112,27 @@ export function useGeneratePlan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] });
     },
+  });
+}
+
+export function useUpdatePlanStartDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, data }: { planId: string; data: PlanUpdateStartDate }) =>
+      plans.updateStartDate(planId, data),
+    onSuccess: (_result, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: ["plan", planId] });
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
+    },
+  });
+}
+
+export function useActiveJob() {
+  return useQuery({
+    queryKey: ["active-job"],
+    queryFn: () => jobs.active(),
+    refetchInterval: false,
+    staleTime: 0,
   });
 }
 

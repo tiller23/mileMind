@@ -18,6 +18,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 from src.agents.plan_postprocess import enrich_plan_with_tss
@@ -137,7 +138,7 @@ class Orchestrator:
         self,
         planner: PlannerAgent | None = None,
         reviewer: ReviewerAgent | None = None,
-        max_retries: int = 3,
+        max_retries: int = 4,
         api_key: str | None = None,
         planner_model: str = "claude-sonnet-4-20250514",
         reviewer_model: str = "claude-opus-4-20250514",
@@ -200,6 +201,7 @@ class Orchestrator:
         self,
         athlete: AthleteProfile,
         change_type: PlanChangeType = PlanChangeType.FULL,
+        plan_start_date: date | None = None,
     ) -> OrchestrationResult:
         """Run the planner-reviewer orchestration loop.
 
@@ -273,7 +275,9 @@ class Orchestrator:
                             "Previous critique will not be forwarded.",
                             attempt,
                         )
-                    planner_result = await self._planner.generate_plan(athlete)
+                    planner_result = await self._planner.generate_plan(
+                        athlete, plan_start_date=plan_start_date,
+                    )
                 else:
                     # We have reviewer feedback — revise
                     planner_result = await self._planner.revise_plan(

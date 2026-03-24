@@ -84,6 +84,10 @@ class AthleteProfile(BaseModel):
         pattern=r"^(metric|imperial)$",
         description="Distance units preference: metric (km) or imperial (miles)",
     )
+    plan_duration_weeks: int = Field(
+        default=12, ge=4, le=24,
+        description="Desired training plan length in weeks (4-24)",
+    )
 
     def cache_key(self, *, salt: str = "") -> str:
         """Deterministic SHA-256 hash for same-profile deduplication.

@@ -31,6 +31,37 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 _SSE_TIMEOUT_SECONDS = 300
 
 
+@router.get("/active", response_model=JobDetailResponse | None)
+async def get_active_job(
+    user: User = Depends(get_current_user),
+) -> JobDetailResponse | None:
+    """Get the current user's active (running) job, if any.
+
+    Returns None (as JSON null) if no job is currently running.
+
+    Args:
+        user: Authenticated user.
+
+    Returns:
+        JobDetailResponse for the running job, or None.
+    """
+    manager = get_job_manager()
+    active = manager.get_active_job_for_user(user.id)
+    if active is None:
+        return None
+    created_at = (
+        active.events[0].timestamp
+        if active.events
+        else datetime.now(timezone.utc)
+    )
+    return JobDetailResponse(
+        job_id=active.job_id,
+        status="running",
+        progress=[e.to_dict() for e in active.events],
+        created_at=created_at,
+    )
+
+
 @router.get("/{job_id}", response_model=JobDetailResponse)
 async def get_job_status(
     job_id: uuid.UUID,

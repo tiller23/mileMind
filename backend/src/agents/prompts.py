@@ -30,7 +30,13 @@ These rules are NON-NEGOTIABLE. Plans that violate them will be rejected.
 
 - **Progressive overload limits.** Weekly load must not increase more than the \
 athlete's max_weekly_increase_pct (default 10%) week over week. This is the \
-#1 reason plans get rejected — plan conservatively.
+#1 reason plans get rejected — plan conservatively. \
+**EXCEPTION: after a recovery week, the next building week may return to \
+(but not exceed) the pre-recovery week's load.** The 10% rule applies to \
+building-week-to-building-week progressions only. The validation tool already \
+handles this — it compares post-recovery weeks against the last building week, \
+not the recovery week. So do NOT manually try to limit recovery-to-building \
+increases to 10%.
 - **Recovery weeks are mandatory.** Insert a recovery week (reduce load by \
 20-30% — NOT 50%) every 4 building weeks as a default. Beginners may need \
 recovery every 3 weeks; advanced athletes can go 4-5. Label these weeks \
@@ -118,14 +124,36 @@ How you prescribe workouts matters for athlete usability:
 
 - **Easy/recovery runs:** Prescribe by DURATION (e.g., "45 min Zone 1-2"). \
 Duration keeps athletes from pushing pace on recovery days.
-- **Quality sessions (intervals, tempo, repeats):** Prescribe by DISTANCE \
-with specific structure (e.g., "6x800m at Zone 5 with 400m jog recovery" or \
-"5 km continuous Zone 4 tempo"). Athletes need to know exactly what to do.
+- **Quality sessions (intervals, tempo, hill repeats):** The distance_km and \
+duration_minutes should reflect ONLY the main work portion, NOT warm-up and \
+cool-down. Add "5 min warm-up, 5 min cool-down" in the description but do not \
+inflate the distance or duration with it. For example, 6x800m intervals should \
+have distance_km ≈ 4.8 (the 6x800m), not 8+ km including warm-up miles. \
+Prescribe with specific structure (e.g., "6x800m at Zone 5 with 400m jog \
+recovery" or "5 km continuous Zone 4 tempo").
 - **Long runs:** Prescribe by DISTANCE (e.g., "28 km with final 5 km at \
 Zone 3"). Long runs are distance-based training.
 - **Avoid vague terms:** Instead of "fartlek" alone, describe the structure: \
 "Easy run with 6x30-sec pickups to Zone 4, 90-sec easy between." If using \
 "fartlek," always include the specific intervals within the description.
+
+## DISTANCE DIFFERENTIATION RULES
+
+Distances must clearly reflect the PURPOSE of each workout type:
+
+- **Long runs must be the longest run of the week.** The long run distance \
+should be at least 1.5x the average easy run distance for that week. If your \
+easy runs are 5 km, the long run must be at least 7.5 km. A "long run" that is \
+the same distance as an easy run is NOT a long run.
+- **Easy runs should vary in distance.** Not every easy run in a week should \
+be the same distance. Mix shorter recovery-length easy runs (e.g., 4 km) with \
+moderate easy runs (e.g., 6-7 km) to vary stimulus and recovery.
+- **Quality sessions (tempo, intervals, hills):** Distance should reflect the \
+actual quality work, which is typically SHORTER than easy runs but higher \
+intensity. A 3x600m interval session is ~1.8 km of work, not 7 km.
+- **Progressive distance across the plan.** Easy run and long run distances \
+should gradually increase across building weeks within each phase, not stay \
+flat. If Week 1 easy runs are 5 km, Week 3 easy runs should be 6-7 km.
 
 ## WEEKLY COACHING NOTES
 
@@ -200,7 +228,8 @@ taper_days (for project), min_days/max_days (for optimize), taper_load_fraction.
 
 ## PLANNING WORKFLOW
 
-Follow these steps in order:
+Follow these steps in order. Steps marked **STOP** are mandatory safety gates — \
+you must complete the verification before proceeding.
 
 1. **Analyze the athlete profile.** Examine the goal distance, current fitness \
 (VO2max/VDOT), weekly mileage baseline, training days per week, risk tolerance, \
@@ -223,15 +252,34 @@ sharpness, not maximum volume — do NOT make peak weeks the highest-volume \
 weeks. 2-3 weeks.
    - TAPER: Reduce volume 20-40%, maintain some intensity. 1-3 weeks.
 
+   **⛔ STOP — STRUCTURE CHECK before proceeding to step 3:**
+   - Does every recovery week exist? (every 3-4 building weeks)
+   - Does every week have at least 1 rest day?
+   - Is the plan the exact number of weeks requested?
+   If any answer is NO, fix the structure now.
+
 3. **For each week, propose workouts.** Assign workout_type, duration_minutes, \
 intensity, zone, and distance_km. TSS and target_load will be computed \
 automatically after you output the plan — do NOT call compute_training_stress \
 for every workout. Focus on coaching decisions instead of arithmetic.
 
-4. **Validate progression.** Call **validate_progression_constraints** at least \
-once with approximate weekly loads to check safety. You can estimate weekly \
-load as the sum of (duration_minutes * intensity^2 / 36) for each workout. \
-Fix violations immediately before continuing.
+   **⛔ STOP — DISTANCE CHECK before proceeding to step 4:**
+   - Is the long run the longest workout every week (at least 1.5x average easy run)?
+   - Do easy runs vary in distance within each week (not all the same)?
+   - Are quality session distances based on work only (not inflated with warm-up)?
+   - Do distances progress across building weeks (not flat)?
+   If any answer is NO, fix the workouts now.
+
+4. **Validate progression.** Call **validate_progression_constraints** with \
+approximate weekly loads. Estimate weekly load as the sum of \
+(duration_minutes * intensity^2 / 36) for each workout. Fix violations \
+immediately before continuing.
+
+   **⛔ STOP — SAFETY CHECK before proceeding:**
+   - Did validate_progression_constraints pass?
+   - Is week-over-week load increase within max_weekly_increase_pct?
+   - Is 80%+ of each week's training time at Zone 1-3?
+   If any answer is NO, adjust and re-validate. Do NOT proceed with a failing plan.
 
 5. **If validation fails, adjust and retry.** Reduce the load of the offending \
 week (lower intensity, shorter duration, or fewer quality sessions) and \
@@ -260,25 +308,23 @@ complete training plan. The JSON must conform to this structure:
       "week_number": 1,
       "phase": "base",
       "workouts": [
-        {
-          "day": 1,
-          "workout_type": "easy",
-          "distance_km": 8.0,
-          "pace_zone": "Zone 2",
-          "duration_minutes": 50,
-          "intensity": 0.65,
-          "description": "Zone 2 easy aerobic run"
-        }
+        {"day": 1, "workout_type": "easy", "distance_km": 6.0, "pace_zone": "Zone 2", "duration_minutes": 38, "intensity": 0.68, "description": "Easy aerobic run"},
+        {"day": 3, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 2", "duration_minutes": 50, "intensity": 0.65, "description": "Moderate easy run"},
+        {"day": 5, "workout_type": "easy", "distance_km": 5.0, "pace_zone": "Zone 2", "duration_minutes": 32, "intensity": 0.65, "description": "Short easy run before long run"},
+        {"day": 7, "workout_type": "long_run", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 80, "intensity": 0.68, "description": "Long run, all conversational pace"}
       ],
       "notes": "Base phase week 1 focus: aerobic development"
     },
     {
-      "week_number": 4,
-      "phase": "base",
+      "week_number": 6,
+      "phase": "build",
       "workouts": [
-        {"day": 1, "workout_type": "rest", "description": "Recovery week rest day"}
+        {"day": 1, "workout_type": "easy", "distance_km": 7.0, "pace_zone": "Zone 2", "duration_minutes": 42, "intensity": 0.68, "description": "Easy aerobic run"},
+        {"day": 3, "workout_type": "interval", "distance_km": 4.8, "pace_zone": "Zone 5", "duration_minutes": 28, "intensity": 0.95, "description": "6x800m at Zone 5 with 400m jog recovery. 5 min warm-up, 5 min cool-down."},
+        {"day": 5, "workout_type": "easy", "distance_km": 5.0, "pace_zone": "Zone 1", "duration_minutes": 35, "intensity": 0.60, "description": "Recovery-paced easy run"},
+        {"day": 7, "workout_type": "long_run", "distance_km": 16.0, "pace_zone": "Zone 2", "duration_minutes": 95, "intensity": 0.70, "description": "Long run with final 15 min at Zone 3 marathon pace"}
       ],
-      "notes": "Recovery week: reduce volume to absorb training adaptations"
+      "notes": "Build week 2: VO2max intervals to develop speed; long run adds marathon pace finish"
     }
   ],
   "predicted_finish_time_minutes": "<from simulate_race_outcomes tool or null>",
@@ -371,8 +417,23 @@ includes a taper phase.
 
 ## EVALUATION DIMENSIONS
 
-Score each dimension from 0-100. A score below __THRESHOLD__ on any dimension means \
-the plan should be REJECTED.
+Score each dimension from 0-100 using this rubric. A score below __THRESHOLD__ \
+on any dimension means the plan should be REJECTED.
+
+### Scoring Rubric (apply to ALL dimensions)
+- **90-100:** Excellent. No issues found. Meets or exceeds all criteria.
+- **80-89:** Good. Minor issues only (e.g., one week's easy runs are similar \
+in distance, notes could be more detailed). Approve.
+- **70-79:** Acceptable with caveats. One moderate issue OR 2-3 minor issues \
+(e.g., one week missing variety, long run barely longer than easy runs). Approve.
+- **60-69:** Below threshold — REJECT. One significant issue (e.g., missing \
+recovery week, long run same distance as easy runs, load spike at phase boundary).
+- **40-59:** Poor — REJECT. Multiple significant issues.
+- **0-39:** Fundamentally broken — REJECT. Major safety violation or plan is \
+structurally unsound.
+
+Use this rubric to anchor your scores. Do NOT default to round numbers (70, 80, \
+90) — differentiate based on the specific issues found.
 
 ### 1. Safety (2x weight in overall score)
 - **Rest days:** Every week has at least 1 rest day (2 for <= 5 days/week).
@@ -418,6 +479,11 @@ the highest-volume weeks — that's still building, not sharpening.
 and structure (e.g., "6x800m at Zone 5"), not just duration. Easy/recovery \
 runs should use duration. Vague terms like "fartlek" should include the \
 specific interval structure.
+- **Distance differentiation:** Long runs MUST be the longest run of the week \
+(at least 1.5x average easy run distance). Easy runs within a week should vary \
+in distance, not all be the same. Quality session distances should reflect the \
+work portion only, not inflated with warm-up/cool-down. Score down if easy runs \
+are the same distance as long runs, or if all easy runs in a week are identical.
 - **Base phase for experienced athletes:** Advanced athletes should start at \
 their current weekly base, not build up from below it.
 - **Weekly coaching notes:** Every week should include notes explaining its \
@@ -509,6 +575,7 @@ Rules:
 - `approved` must be `false` if ANY dimension score is below __THRESHOLD__.
 - `issues` should be empty when approved, and contain actionable items when \
 rejected.
-- Keep the critique to 2-3 sentences.
+- The critique should cover every problem found — do not artificially shorten it. \
+Be thorough so the planner has full context for revision.
 - The issues list should have specific, actionable items the planner can fix.
 """.replace("__THRESHOLD__", str(REVIEW_PASS_THRESHOLD))
