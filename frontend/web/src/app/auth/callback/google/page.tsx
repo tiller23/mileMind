@@ -19,7 +19,9 @@ function GoogleCallbackInner() {
     }
 
     const savedState = sessionStorage.getItem("oauth_state");
+    const savedStateToken = sessionStorage.getItem("oauth_state_token");
     sessionStorage.removeItem("oauth_state");
+    sessionStorage.removeItem("oauth_state_token");
     if (!savedState || savedState !== returnedState) {
       setError("Invalid OAuth state. Please try logging in again.");
       return;
@@ -31,7 +33,7 @@ function GoogleCallbackInner() {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: authCode }),
+          body: JSON.stringify({ code: authCode, state: savedStateToken ?? "" }),
         });
 
         if (!res.ok) {

@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { jobs } from "@/lib/api";
 import type { ProgressEvent, ProgressEventType } from "@/lib/types";
+
+/** Ref-stable callback — avoids dependency churn in useEffect. */
+function useStableCallback<T extends (...args: never[]) => void>(fn: T | undefined): RefObject<T | undefined> {
+  const ref = useRef(fn);
+  ref.current = fn;
+  return ref;
+}
 
 // Friendly labels instead of technical jargon
 const EVENT_LABELS: Partial<Record<ProgressEventType, string>> = {
@@ -77,6 +84,7 @@ export function PlanGenerationLoader({ jobId, onComplete }: PlanGenerationLoader
   const [message, setMessage] = useState("Getting everything ready...");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
+  const onCompleteRef = useStableCallback(onComplete);
 
   const handleComplete = useCallback(
     (planId?: string) => {
@@ -85,15 +93,15 @@ export function PlanGenerationLoader({ jobId, onComplete }: PlanGenerationLoader
       if (planId) {
         setCompletedPlanId(planId);
         setTimeout(() => {
-          onComplete?.();
+          onCompleteRef.current?.();
           router.push(`/plan/${planId}`);
         }, 1500);
       } else {
         // No plan ID — just signal completion so dashboard can refresh
-        setTimeout(() => onComplete?.(), 1500);
+        setTimeout(() => onCompleteRef.current?.(), 1500);
       }
     },
-    [router, onComplete],
+    [router, onCompleteRef],
   );
 
   // Poll job status as fallback when SSE drops

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const protectedRoutes = ["/dashboard", "/onboarding", "/plan"];
 
-export function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   const isProtectedRoute = protectedRoutes.some(

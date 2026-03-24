@@ -21,9 +21,11 @@ class OAuthCallbackRequest(BaseModel):
 
     Attributes:
         code: Authorization code from OAuth provider.
+        state: CSRF state token for verification.
     """
 
     code: str = Field(min_length=1)
+    state: str = Field(min_length=1)
 
 
 class TokenResponse(BaseModel):
@@ -85,13 +87,17 @@ class ProfileUpdate(BaseModel):
     age: int = Field(ge=10, le=100)
     vo2max: float | None = Field(default=None, ge=15.0, le=90.0)
     vdot: float | None = Field(default=None, ge=15.0, le=85.0)
-    weekly_mileage_base: float = Field(ge=0.0)
+    weekly_mileage_base: float = Field(ge=0.0, le=500.0)
     hr_max: int | None = Field(default=None, ge=100, le=230)
     hr_rest: int | None = Field(default=None, ge=30, le=100)
     injury_history: str = Field(default="", max_length=500)
     risk_tolerance: str = Field(default="moderate", pattern=r"^(conservative|moderate|aggressive)$")
     max_weekly_increase_pct: float = Field(default=0.10, ge=0.01, le=0.20)
-    goal_distance: str = Field(max_length=50)
+    goal_distance: str = Field(
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9_ ]+$",
+        description="Race distance (alphanumeric, underscores, spaces only)",
+    )
     goal_time_minutes: float | None = Field(default=None, ge=1.0)
     training_days_per_week: int = Field(default=5, ge=3, le=7)
     long_run_cap_pct: float = Field(default=0.30, ge=0.15, le=0.50)
@@ -306,3 +312,107 @@ class JobDetailResponse(BaseModel):
     progress: list[dict[str, Any]] = Field(default_factory=list)
     created_at: datetime
     completed_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Strava
+# ---------------------------------------------------------------------------
+
+class StravaConnectResponse(BaseModel):
+    """Strava OAuth connect response.
+
+    Attributes:
+        auth_url: Strava authorization URL to redirect to.
+        state: Raw CSRF state nonce.
+        state_token: JWT-signed state token.
+    """
+
+    auth_url: str
+    state: str
+    state_token: str
+
+
+class StravaCallbackResponse(BaseModel):
+    """Strava OAuth callback response.
+
+    Attributes:
+        connected: Always True on success.
+        athlete_id: Strava athlete ID.
+    """
+
+    connected: bool
+    athlete_id: int
+
+
+class StravaCallbackRequest(BaseModel):
+    """Strava OAuth callback request body.
+
+    Attributes:
+        code: Authorization code from Strava.
+        state: JWT-signed CSRF state token.
+    """
+
+    code: str = Field(min_length=1)
+    state: str = Field(min_length=1)
+
+
+class StravaStatusResponse(BaseModel):
+    """Strava connection status.
+
+    Attributes:
+        connected: Whether Strava is connected.
+        athlete_id: Strava athlete ID (if connected).
+        last_sync: Last activity sync timestamp (if any).
+    """
+
+    connected: bool
+    athlete_id: int | None = None
+    last_sync: datetime | None = None
+
+
+class StravaSyncResponse(BaseModel):
+    """Result of a Strava activity sync.
+
+    Attributes:
+        imported_count: Number of newly imported activities.
+        total_activities: Total activities fetched from Strava.
+        suggested_weekly_mileage_km: Estimated avg weekly km (if enough data).
+    """
+
+    imported_count: int
+    total_activities: int
+    suggested_weekly_mileage_km: float | None = None
+
+
+class WorkoutLogResponse(BaseModel):
+    """A completed workout log entry.
+
+    Attributes:
+        id: Log entry ID.
+        user_id: Owning user.
+        plan_id: Associated plan (optional).
+        source: How logged ('manual' or 'strava').
+        strava_activity_id: Strava activity ID (if from Strava).
+        actual_distance_km: Distance in km.
+        actual_duration_minutes: Duration in minutes.
+        avg_heart_rate: Average HR (optional).
+        rpe: Rate of perceived exertion (optional).
+        notes: Notes or activity name.
+        completed_at: When the workout was done.
+        created_at: Record creation time.
+    """
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    plan_id: uuid.UUID | None = None
+    source: str
+    strava_activity_id: int | None = None
+    actual_distance_km: float
+    actual_duration_minutes: float
+    avg_heart_rate: int | None = None
+    rpe: int | None = None
+    notes: str
+    completed_at: datetime
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

@@ -1,11 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" fill="none">
-  <!-- Route/path icon -->
-  <path d="M8 38 C8 38 12 12 24 12 C36 12 32 36 20 36 C8 36 16 8 28 8 C40 8 36 38 36 38"
-        stroke="#2563EB" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <!-- Runner dot at end of path -->
-  <circle cx="36" cy="38" r="3.5" fill="#2563EB"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <!-- Mm icon mark -->
+  <rect width="32" height="32" y="4" rx="6" fill="#2563EB"/>
+  <path d="M8 24V14l5.2 7 3.5-7 5.2 7V14" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(0,0)"/>
   <!-- Wordmark -->
-  <text x="52" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="700" letter-spacing="-0.5" fill="#0f172a">
-    Mile<tspan fill="#2563EB">Mind</tspan>
-  </text>
+  <text x="42" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.5" fill="#0f172a">Mile<tspan fill="#2563EB">Mind</tspan></text>
 </svg>

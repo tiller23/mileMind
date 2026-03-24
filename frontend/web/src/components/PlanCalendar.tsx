@@ -75,9 +75,12 @@ function WorkoutCell({ workout, onClick, units }: { workout: PlanWorkout | null;
 
   const colors = WORKOUT_COLORS[workout.workout_type] ?? DEFAULT_COLOR;
 
+  const ariaLabel = `${formatWorkoutType(workout.workout_type)}${workout.distance_km != null ? ` - ${formatDistance(workout.distance_km, units)}` : ""}`;
+
   return (
     <button
       onClick={onClick}
+      aria-label={ariaLabel}
       className={`h-full min-h-[68px] w-full rounded-lg border p-2 text-left transition-all hover:shadow-md hover:scale-[1.02] ${colors.bg} ${colors.border}`}
     >
       <div className="flex items-center gap-1.5 mb-1">

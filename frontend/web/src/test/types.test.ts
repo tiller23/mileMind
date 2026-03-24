@@ -32,6 +32,7 @@ describe("TypeScript types", () => {
       training_days_per_week: 4,
       long_run_cap_pct: 0.3,
       preferred_units: "imperial",
+      plan_duration_weeks: 12,
     };
     expect(profile.name).toBe("Test Runner");
   });
@@ -126,6 +127,7 @@ describe("TypeScript types", () => {
       training_days_per_week: 4,
       long_run_cap_pct: 0.3,
       preferred_units: "metric",
+      plan_duration_weeks: 12,
       created_at: "2026-03-20T00:00:00Z",
       updated_at: "2026-03-20T00:00:00Z",
     };

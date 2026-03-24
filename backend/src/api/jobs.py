@@ -29,6 +29,15 @@ from src.models.progress import ProgressEvent, ProgressEventType
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Pricing constants (USD per token)
+# Update these when Anthropic changes pricing.
+# ---------------------------------------------------------------------------
+SONNET_INPUT_COST_PER_TOKEN = 3.0 / 1_000_000   # $3/M input
+SONNET_OUTPUT_COST_PER_TOKEN = 15.0 / 1_000_000  # $15/M output
+OPUS_INPUT_COST_PER_TOKEN = 15.0 / 1_000_000     # $15/M input
+OPUS_OUTPUT_COST_PER_TOKEN = 75.0 / 1_000_000    # $75/M output
+
 
 # ---------------------------------------------------------------------------
 # Active job state (in-memory)
@@ -250,13 +259,11 @@ class JobManager:
             + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
         )
         # Cost estimate using per-model, per-direction pricing (per token)
-        # Sonnet: $3/M input, $15/M output
-        # Opus: $15/M input, $75/M output
         estimated_cost = (
-            result.total_planner_input_tokens * 3.0 / 1_000_000
-            + result.total_planner_output_tokens * 15.0 / 1_000_000
-            + result.total_reviewer_input_tokens * 15.0 / 1_000_000
-            + result.total_reviewer_output_tokens * 75.0 / 1_000_000
+            result.total_planner_input_tokens * SONNET_INPUT_COST_PER_TOKEN
+            + result.total_planner_output_tokens * SONNET_OUTPUT_COST_PER_TOKEN
+            + result.total_reviewer_input_tokens * OPUS_INPUT_COST_PER_TOKEN
+            + result.total_reviewer_output_tokens * OPUS_OUTPUT_COST_PER_TOKEN
         )
 
         async with session_factory() as session:

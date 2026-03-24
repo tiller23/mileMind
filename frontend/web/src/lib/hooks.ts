@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, auth, jobs, plans, profile } from "./api";
+import { ApiError, auth, jobs, plans, profile, strava } from "./api";
 import type {
   PlanGenerateRequest,
   PlanUpdateStartDate,
@@ -143,5 +143,49 @@ export function useArchivePlan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] });
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Strava
+// ---------------------------------------------------------------------------
+
+export function useStravaStatus() {
+  return useQuery({
+    queryKey: ["strava-status"],
+    queryFn: () => strava.status(),
+    staleTime: 60_000,
+  });
+}
+
+export function useStravaSync() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => strava.sync(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strava-status"] });
+      queryClient.invalidateQueries({ queryKey: ["strava-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useStravaDisconnect() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => strava.disconnect(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strava-status"] });
+      queryClient.invalidateQueries({ queryKey: ["strava-activities"] });
+    },
+  });
+}
+
+export function useStravaActivities(limit = 50) {
+  return useQuery({
+    queryKey: ["strava-activities", limit],
+    queryFn: () => strava.activities(limit),
+    enabled: limit > 0,
+    staleTime: 60_000,
   });
 }

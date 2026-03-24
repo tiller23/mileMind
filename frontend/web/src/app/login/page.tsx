@@ -16,8 +16,9 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      const data: { auth_url: string; state: string } = await res.json();
+      const data: { auth_url: string; state: string; state_token: string } = await res.json();
       sessionStorage.setItem("oauth_state", data.state);
+      sessionStorage.setItem("oauth_state_token", data.state_token);
       window.location.href = data.auth_url;
     } catch {
       setLoading(false);

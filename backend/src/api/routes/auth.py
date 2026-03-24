@@ -141,6 +141,20 @@ async def google_login(settings: Settings = Depends(get_settings)) -> dict:
     from urllib.parse import quote
 
     state = secrets.token_urlsafe(32)
+
+    # Sign the state token as a short-lived JWT so the callback can verify it
+    # without server-side session storage.
+    from datetime import datetime, timedelta, timezone
+    state_token = jwt.encode(
+        {
+            "state": state,
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "type": "oauth_state",
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
         f"client_id={quote(settings.google_client_id)}"
@@ -150,7 +164,7 @@ async def google_login(settings: Settings = Depends(get_settings)) -> dict:
         "&access_type=offline"
         f"&state={quote(state)}"
     )
-    return {"auth_url": auth_url, "state": state}
+    return {"auth_url": auth_url, "state": state, "state_token": state_token}
 
 
 @router.post("/google/callback")
@@ -174,6 +188,22 @@ async def google_callback(
     Raises:
         HTTPException: 400 if code exchange fails.
     """
+    # Verify CSRF state token
+    try:
+        payload = jwt.decode(
+            data.state, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+        if payload.get("type") != "oauth_state":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OAuth state token",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state token",
+        )
+
     code = data.code
 
     # Exchange code for Google tokens

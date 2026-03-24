@@ -6,8 +6,8 @@ import { Navbar } from "@/components/Navbar";
 import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
 import { ShoeIcon, RunnerIcon } from "@/components/Icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate } from "@/lib/hooks";
-import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse } from "@/lib/types";
+import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate, useStravaStatus, useStravaActivities } from "@/lib/hooks";
+import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse, WorkoutLogResponse } from "@/lib/types";
 import { formatDistance } from "@/lib/units";
 
 const GOAL_LABELS: Record<string, string> = {
@@ -45,7 +45,21 @@ function formatWorkoutType(type: string): string {
   return names[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, planStartDate, createdAt }: {
+/** Compute the calendar date for a given week/day in the plan. */
+function getPlanDayDate(planStartDate: string, weekNumber: number, dayIndex: number): string {
+  const start = new Date(planStartDate + "T00:00:00");
+  const offset = (weekNumber - 1) * 7 + dayIndex;
+  const date = new Date(start);
+  date.setDate(start.getDate() + offset);
+  return date.toISOString().split("T")[0];
+}
+
+/** Find an actual workout log matching a specific calendar date. */
+function findActualForDate(actuals: WorkoutLogResponse[], dateStr: string): WorkoutLogResponse | undefined {
+  return actuals.find((a) => a.completed_at.split("T")[0] === dateStr);
+}
+
+function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, planStartDate, createdAt, actuals, isCurrentWeek = true, onPrevWeek, onNextWeek, onResetWeek }: {
   week: PlanWeek;
   weekNumber: number;
   totalWeeks: number;
@@ -54,6 +68,11 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
   units: PreferredUnits;
   planStartDate: string | null | undefined;
   createdAt: string;
+  actuals?: WorkoutLogResponse[];
+  isCurrentWeek?: boolean;
+  onPrevWeek?: () => void;
+  onNextWeek?: () => void;
+  onResetWeek?: () => void;
 }) {
   const updateStartDate = useUpdatePlanStartDate();
   const [editingDate, setEditingDate] = useState(false);
@@ -82,7 +101,41 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
     <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-semibold text-gray-900">This Week</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-gray-900">
+              {isCurrentWeek ? "This Week" : `Week ${weekNumber}`}
+            </h2>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={onPrevWeek}
+                disabled={!onPrevWeek}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default transition-colors"
+                aria-label="Previous week"
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={onNextWeek}
+                disabled={!onNextWeek}
+                className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default transition-colors"
+                aria-label="Next week"
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              {onResetWeek && (
+                <button
+                  onClick={onResetWeek}
+                  className="ml-1 px-2 py-0.5 text-[10px] font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-sm text-gray-500">
               Week {weekNumber} of {totalWeeks}
@@ -109,6 +162,7 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
               <div className="flex items-center gap-2">
                 <input
                   type="date"
+                  aria-label="Adjust plan start date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
                   className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -150,7 +204,13 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
           const isToday = i === todayIndex;
 
           const isSelected = selectedDay === i;
-          const canTap = workout && !isRest;
+          // Find actual Strava data for this day
+          const dayDate = actuals && effectiveStart
+            ? getPlanDayDate(effectiveStart, weekNumber, i)
+            : null;
+          const actual = dayDate ? findActualForDate(actuals ?? [], dayDate) : undefined;
+          const hasActual = !!actual;
+          const canTap = (workout && !isRest) || hasActual;
 
           return (
             <div key={i} className="flex flex-col items-center gap-1.5">
@@ -166,20 +226,41 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
                     ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
                     : isToday
                       ? "border-blue-400 bg-blue-50 ring-1 ring-blue-200"
-                      : isRest
+                      : isRest && !hasActual
                         ? "border-gray-100 bg-gray-50/50"
-                        : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                        : hasActual && isRest
+                          ? "border-green-200 bg-green-50/50 hover:border-green-300 hover:shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
                 } ${canTap ? "cursor-pointer" : "cursor-default"}`}>
-                <span className={`w-2 h-2 rounded-full ${dot}`} />
-                <span className={`text-[10px] font-medium text-center leading-tight ${
-                  isToday ? "text-blue-700" : isRest ? "text-gray-300" : "text-gray-600"
-                }`}>
-                  {workout ? formatWorkoutType(workout.workout_type) : ""}
-                </span>
-                {workout?.distance_km != null && !isRest && (
-                  <span className={`text-[10px] ${isToday ? "text-blue-500" : "text-gray-400"}`}>
-                    {formatDistance(workout.distance_km, units)}
-                  </span>
+                {hasActual && isRest ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                    <span className="text-[10px] font-medium text-green-700 text-center leading-tight">
+                      {actual.notes || "Run"}
+                    </span>
+                    <span className="text-[9px] font-medium text-green-600">
+                      {formatDistance(actual.actual_distance_km, units)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={`w-2 h-2 rounded-full ${dot}`} />
+                    <span className={`text-[10px] font-medium text-center leading-tight ${
+                      isToday ? "text-blue-700" : isRest ? "text-gray-300" : "text-gray-600"
+                    }`}>
+                      {workout ? formatWorkoutType(workout.workout_type) : ""}
+                    </span>
+                    {workout?.distance_km != null && !isRest && (
+                      <span className={`text-[10px] ${isToday ? "text-blue-500" : "text-gray-400"}`}>
+                        {formatDistance(workout.distance_km, units)}
+                      </span>
+                    )}
+                    {hasActual && (
+                      <span className="text-[9px] font-medium text-green-600">
+                        {formatDistance(actual.actual_distance_km, units)}
+                      </span>
+                    )}
+                  </>
                 )}
               </button>
               {isToday && (
@@ -191,42 +272,110 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
       </div>
 
       {/* Expanded workout detail */}
-      {selectedDay !== null && workoutsByDay[selectedDay] && (
-        (() => {
-          const w = workoutsByDay[selectedDay]!;
-          return (
-            <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {formatWorkoutType(w.workout_type)}
-                  </span>
-                  {w.pace_zone && (
-                    <span className="ml-2 text-xs text-gray-500">{w.pace_zone}</span>
+      {selectedDay !== null && (() => {
+        const w = workoutsByDay[selectedDay];
+        const dayDate = actuals && effectiveStart
+          ? getPlanDayDate(effectiveStart, weekNumber, selectedDay)
+          : null;
+        const actual = dayDate ? findActualForDate(actuals ?? [], dayDate) : undefined;
+        if (!w && !actual) return null;
+
+        return (
+          <div className="mt-3 space-y-2">
+            {/* Planned workout */}
+            {w && w.workout_type !== "rest" && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Planned</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatWorkoutType(w.workout_type)}
+                      </span>
+                      {w.pace_zone && (
+                        <span className="text-xs text-gray-500">{w.pace_zone}</span>
+                      )}
+                    </div>
+                  </div>
+                  {!actual && (
+                    <button
+                      onClick={() => setSelectedDay(null)}
+                      className="text-gray-400 hover:text-gray-600 text-sm"
+                    >
+                      &#10005;
+                    </button>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedDay(null)}
-                  className="text-gray-400 hover:text-gray-600 text-sm"
-                >
-                  &#10005;
-                </button>
-              </div>
-              {w.description && (
-                <p className="text-sm text-gray-700 leading-relaxed">{w.description}</p>
-              )}
-              <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                {w.distance_km != null && (
-                  <span>{formatDistance(w.distance_km, units)}</span>
+                {w.description && (
+                  <p className="text-sm text-gray-700 leading-relaxed">{w.description}</p>
                 )}
-                {w.duration_minutes != null && (
-                  <span>{w.duration_minutes} min</span>
-                )}
+                <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                  {w.distance_km != null && (
+                    <span>{formatDistance(w.distance_km, units)}</span>
+                  )}
+                  {w.duration_minutes != null && (
+                    <span>{w.duration_minutes} min</span>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })()
-      )}
+            )}
+
+            {/* Actual Strava data */}
+            {actual && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="text-[10px] font-medium text-green-600 uppercase tracking-wide">Actual (Strava)</span>
+                    <div className="mt-0.5">
+                      <span className="text-sm font-semibold text-green-800">
+                        {actual.notes || "Run"}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="text-gray-400 hover:text-gray-600 text-sm"
+                  >
+                    &#10005;
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-4 mt-1 text-xs text-green-700">
+                  <div>
+                    <span className="text-green-500 block">Distance</span>
+                    <span className="font-medium">{formatDistance(actual.actual_distance_km, units)}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-500 block">Duration</span>
+                    <span className="font-medium">{actual.actual_duration_minutes.toFixed(0)} min</span>
+                  </div>
+                  {actual.avg_heart_rate && (
+                    <div>
+                      <span className="text-green-500 block">Avg HR</span>
+                      <span className="font-medium">{actual.avg_heart_rate} bpm</span>
+                    </div>
+                  )}
+                  {actual.actual_distance_km > 0 && (
+                    <div>
+                      <span className="text-green-500 block">Pace</span>
+                      <span className="font-medium">
+                        {(() => {
+                          const dist = units === "imperial"
+                            ? actual.actual_distance_km * 0.621371
+                            : actual.actual_distance_km;
+                          const paceMin = actual.actual_duration_minutes / dist;
+                          const mins = Math.floor(paceMin);
+                          const secs = Math.round((paceMin - mins) * 60);
+                          return `${mins}:${secs.toString().padStart(2, "0")} /${units === "imperial" ? "mi" : "km"}`;
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {week.notes && (
         <p className="mt-3 text-xs text-gray-400 italic">{week.notes}</p>
@@ -301,8 +450,9 @@ function ConfirmGeneratePanel({ profile, startDate, onStartDateChange, onConfirm
             <p className="text-sm text-gray-900 mt-0.5">{RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}</p>
           </div>
           <div>
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Start Date</span>
+            <label htmlFor="plan-start-date" className="text-xs font-medium text-gray-400 uppercase tracking-wide">Start Date</label>
             <input
+              id="plan-start-date"
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
@@ -362,9 +512,14 @@ export default function DashboardPage() {
   const generatePlan = useGeneratePlan();
   const queryClient = useQueryClient();
   const { data: existingActiveJob } = useActiveJob();
+  const { data: stravaStatus } = useStravaStatus();
+  const { data: stravaActivities } = useStravaActivities(
+    stravaStatus?.connected ? 100 : 0,
+  );
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(getNextMonday);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // Resume showing the loader if there's a running job (e.g., navigated away and back)
   useEffect(() => {
@@ -392,15 +547,19 @@ export default function DashboardPage() {
 
   // Compute current week from active plan
   const activeWeeks = activePlanDetail?.plan_data?.weeks;
-  const currentWeekNum = activePlanDetail
+  const autoWeekNum = activePlanDetail
     ? estimateCurrentWeek(
         activePlanDetail.plan_data?.plan_start_date,
         activePlanDetail.created_at,
         activeWeeks?.length ?? 0,
       )
     : null;
-  const currentWeek = activeWeeks && currentWeekNum
-    ? activeWeeks.find((w) => w.week_number === currentWeekNum) ?? activeWeeks[0]
+  const viewWeekNum = autoWeekNum
+    ? Math.min(Math.max(autoWeekNum + weekOffset, 1), activeWeeks?.length ?? 1)
+    : null;
+  const isCurrentWeek = viewWeekNum === autoWeekNum;
+  const currentWeek = activeWeeks && viewWeekNum
+    ? activeWeeks.find((w) => w.week_number === viewWeekNum) ?? activeWeeks[0]
     : null;
 
   return (
@@ -481,16 +640,21 @@ export default function DashboardPage() {
         )}
 
         {/* This Week card */}
-        {currentWeek && activePlanSummary && activeWeeks && currentWeekNum && (
+        {currentWeek && activePlanSummary && activeWeeks && viewWeekNum && (
           <ThisWeekCard
             week={currentWeek}
-            weekNumber={currentWeekNum}
+            weekNumber={viewWeekNum}
             totalWeeks={activeWeeks.length}
             phase={currentWeek.phase}
             planId={activePlanSummary.id}
             units={profileData?.preferred_units ?? "metric"}
             planStartDate={activePlanDetail?.plan_data?.plan_start_date}
             createdAt={activePlanDetail?.created_at ?? activePlanSummary.created_at}
+            actuals={stravaActivities ?? undefined}
+            isCurrentWeek={isCurrentWeek}
+            onPrevWeek={viewWeekNum > 1 ? () => setWeekOffset((o) => o - 1) : undefined}
+            onNextWeek={viewWeekNum < activeWeeks.length ? () => setWeekOffset((o) => o + 1) : undefined}
+            onResetWeek={!isCurrentWeek ? () => setWeekOffset(0) : undefined}
           />
         )}
 

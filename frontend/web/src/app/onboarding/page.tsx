@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { StravaConnect } from "@/components/StravaConnect";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
 import type { PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
 
@@ -140,14 +141,20 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <span id="units-label" className="block text-sm font-medium text-gray-700 mb-2">
                   Preferred units
-                </label>
-                <div className="flex rounded-xl border border-gray-300 overflow-hidden">
+                </span>
+                <div
+                  className="flex rounded-xl border border-gray-300 overflow-hidden"
+                  role="radiogroup"
+                  aria-labelledby="units-label"
+                >
                   {(["imperial", "metric"] as const).map((unit) => (
                     <button
                       key={unit}
                       type="button"
+                      role="radio"
+                      aria-checked={form.preferred_units === unit}
                       onClick={() => update("preferred_units", unit)}
                       className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
                         form.preferred_units === unit
@@ -375,6 +382,23 @@ export default function OnboardingPage() {
             </p>
           )}
         </form>
+
+        {/* Connected Services */}
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Connected Services
+          </h2>
+          <StravaConnect
+            units={form.preferred_units}
+            onMileageSuggestion={(km) => {
+              const display =
+                form.preferred_units === "imperial"
+                  ? Math.round(km * KM_TO_MILES * 10) / 10
+                  : km;
+              update("weekly_mileage_base", display);
+            }}
+          />
+        </div>
       </main>
     </>
   );

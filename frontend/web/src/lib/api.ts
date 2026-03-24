@@ -8,6 +8,7 @@
 import type {
   JobDetailResponse,
   JobResponse,
+  MessageResponse,
   PlanDebug,
   PlanDetail,
   PlanGenerateRequest,
@@ -15,7 +16,10 @@ import type {
   PlanUpdateStartDate,
   ProfileResponse,
   ProfileUpdate,
+  StravaSyncResponse,
+  StravaStatusResponse,
   UserResponse,
+  WorkoutLogResponse,
 } from "./types";
 
 export const API_BASE =
@@ -191,5 +195,49 @@ export const jobs = {
   stream(jobId: string): EventSource {
     const url = `${API_BASE}/jobs/${encodeURIComponent(jobId)}/stream`;
     return new EventSource(url, { withCredentials: true });
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Strava
+// ---------------------------------------------------------------------------
+
+export const strava = {
+  /** Get Strava OAuth connect URL. */
+  connect(): Promise<{ auth_url: string; state: string; state_token: string }> {
+    return request("/strava/connect");
+  },
+
+  /** Exchange Strava authorization code. */
+  callback(data: {
+    code: string;
+    state: string;
+  }): Promise<{ connected: boolean; athlete_id: number }> {
+    return request("/strava/callback", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Get Strava connection status. */
+  status(): Promise<StravaStatusResponse> {
+    return request<StravaStatusResponse>("/strava/status");
+  },
+
+  /** Trigger Strava activity sync. */
+  sync(): Promise<StravaSyncResponse> {
+    return request<StravaSyncResponse>("/strava/sync", { method: "POST" });
+  },
+
+  /** Disconnect Strava. */
+  disconnect(): Promise<MessageResponse> {
+    return request<MessageResponse>("/strava/disconnect", { method: "POST" });
+  },
+
+  /** List imported Strava activities. */
+  activities(limit = 50, offset = 0): Promise<WorkoutLogResponse[]> {
+    return request<WorkoutLogResponse[]>(
+      `/strava/activities?limit=${limit}&offset=${offset}`,
+    );
   },
 };

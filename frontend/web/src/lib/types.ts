@@ -203,6 +203,37 @@ export interface PlanGenerateRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Strava
+// ---------------------------------------------------------------------------
+
+export interface StravaStatusResponse {
+  connected: boolean;
+  athlete_id: number | null;
+  last_sync: string | null;
+}
+
+export interface StravaSyncResponse {
+  imported_count: number;
+  total_activities: number;
+  suggested_weekly_mileage_km: number | null;
+}
+
+export interface WorkoutLogResponse {
+  id: string;
+  user_id: string;
+  plan_id: string | null;
+  source: "manual" | "strava";
+  strava_activity_id: number | null;
+  actual_distance_km: number;
+  actual_duration_minutes: number;
+  avg_heart_rate: number | null;
+  rpe: number | null;
+  notes: string;
+  completed_at: string;
+  created_at: string;
+}
+
+// ---------------------------------------------------------------------------
 // Common
 // ---------------------------------------------------------------------------
 
