@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useDemoPlan } from "@/lib/hooks";
 import { PlanCalendar } from "@/components/PlanCalendar";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import { ScoreBadge, ScoreBadgeGroup } from "@/components/ScoreBadge";
 import { Logo } from "@/components/Logo";
 
 export default function DemoPlanPage() {
@@ -35,6 +35,7 @@ export default function DemoPlanPage() {
 
   const planData = plan.plan_data;
   const snapshot = plan.athlete_snapshot as Record<string, unknown>;
+  const weeks = planData.weeks ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,7 +44,7 @@ export default function DemoPlanPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <Logo size={28} />
+              <Logo size="sm" />
               <span className="text-lg font-semibold text-gray-900">MileMind</span>
             </Link>
             <span className="text-gray-300">|</span>
@@ -87,7 +88,7 @@ export default function DemoPlanPage() {
               </h1>
               <p className="text-gray-500 mt-1">
                 {(snapshot.name as string) || "Athlete"} &bull;{" "}
-                {planData.weeks?.length || 0} weeks &bull;{" "}
+                {weeks.length} weeks &bull;{" "}
                 {planData.predicted_finish_time_minutes
                   ? `Target: ${Math.floor(planData.predicted_finish_time_minutes / 60)}h ${Math.round(planData.predicted_finish_time_minutes % 60)}m`
                   : ""}
@@ -95,8 +96,8 @@ export default function DemoPlanPage() {
             </div>
             {plan.scores && (
               <div className="flex gap-2">
-                <ScoreBadge label="Safety" value={plan.scores.safety} />
-                <ScoreBadge label="Overall" value={plan.scores.overall ?? 0} />
+                <ScoreBadge dimension="safety" score={plan.scores.safety} />
+                <ScoreBadge dimension="feasibility" score={plan.scores.feasibility} />
               </div>
             )}
           </div>
@@ -120,6 +121,13 @@ export default function DemoPlanPage() {
               <div className="font-medium">{snapshot.training_days_per_week as number}/week</div>
             </div>
           </div>
+
+          {/* Final scores */}
+          {plan.scores && (
+            <div className="mt-4">
+              <ScoreBadgeGroup scores={plan.scores} />
+            </div>
+          )}
         </div>
 
         {/* Plan notes */}
@@ -131,7 +139,7 @@ export default function DemoPlanPage() {
         )}
 
         {/* Calendar */}
-        <PlanCalendar planData={planData} preferredUnits={(snapshot.preferred_units as string) || "metric"} />
+        <PlanCalendar weeks={weeks} units={(snapshot.preferred_units as string) === "imperial" ? "imperial" : "metric"} />
       </main>
     </div>
   );

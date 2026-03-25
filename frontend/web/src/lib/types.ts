@@ -72,6 +72,7 @@ export interface PlanSummary {
   scores: ReviewerScores | null;
   goal_event: string | null;
   week_count: number | null;
+  estimated_cost_usd: number | null;
   created_at: string;
 }
 

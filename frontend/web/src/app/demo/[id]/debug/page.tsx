@@ -40,7 +40,7 @@ export default function DemoPlanDebugPage() {
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <Logo size={28} />
+              <Logo size="sm" />
               <span className="text-lg font-semibold text-gray-900">MileMind</span>
             </Link>
             <span className="text-gray-300">|</span>

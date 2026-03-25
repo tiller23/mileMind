@@ -174,6 +174,7 @@ class PlanSummary(BaseModel):
     scores: dict[str, Any] | None = None
     goal_event: str | None = None
     week_count: int | None = None
+    estimated_cost_usd: float | None = None
     created_at: datetime
 
 

@@ -34,7 +34,7 @@ export default function DemoPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Logo size={28} />
+            <Logo size="sm" />
             <span className="text-lg font-semibold text-gray-900">MileMind</span>
           </Link>
           <Link
@@ -94,9 +94,9 @@ export default function DemoPage() {
                       {info.description}
                     </p>
                     <div className="mt-4 flex items-center gap-4 text-xs text-gray-400">
-                      <span>{plan.weeks} weeks</span>
+                      <span>{plan.week_count} weeks</span>
                       <span>&bull;</span>
-                      <span>${plan.estimated_cost_usd.toFixed(2)} API cost</span>
+                      <span>${(plan.estimated_cost_usd ?? 0).toFixed(2)} API cost</span>
                       <span>&bull;</span>
                       <span className="text-emerald-600 font-medium">Approved</span>
                     </div>

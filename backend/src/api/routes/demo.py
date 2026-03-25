@@ -46,7 +46,7 @@ async def list_demo_plans(
         PlanSummary(
             id=p.id,
             goal_event=p.plan_data.get("goal_event", ""),
-            weeks=len(p.plan_data.get("weeks", [])),
+            week_count=len(p.plan_data.get("weeks", [])),
             approved=p.approved,
             status=p.status,
             estimated_cost_usd=p.estimated_cost_usd,
@@ -142,5 +142,4 @@ async def get_demo_plan_debug(
         approved=plan.approved,
         total_tokens=plan.total_tokens,
         estimated_cost_usd=plan.estimated_cost_usd,
-        athlete_snapshot=plan.athlete_snapshot,
     )
