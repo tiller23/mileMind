@@ -24,7 +24,7 @@ export default function DemoPlanDebugPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Debug info not found</h1>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Not found</h1>
           <Link href="/demo" className="text-indigo-600 hover:text-indigo-700">
             &larr; Back to demo plans
           </Link>
@@ -39,9 +39,8 @@ export default function DemoPlanDebugPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/">
               <Logo size="sm" />
-              <span className="text-lg font-semibold text-gray-900">MileMind</span>
             </Link>
             <span className="text-gray-300">|</span>
             <Link href="/demo" className="text-sm text-gray-500 hover:text-gray-700">
@@ -61,7 +60,7 @@ export default function DemoPlanDebugPage() {
         {/* Demo banner */}
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 mb-6">
           <p className="text-sm text-indigo-700">
-            This is the AI transparency view for a demo plan.{" "}
+            See how the AI planner and reviewer negotiated this plan.{" "}
             <Link href={`/demo/${planId}`} className="font-medium underline">
               View the training calendar
             </Link>
@@ -74,10 +73,9 @@ export default function DemoPlanDebugPage() {
         >
           &larr; Back to plan
         </Link>
-        <h1 className="text-2xl font-bold mb-2">Agent Decision Log</h1>
+        <h1 className="text-2xl font-bold mb-2">Decision Log</h1>
         <p className="text-sm text-gray-500 mb-6">
-          {debug.total_tokens.toLocaleString()} tokens &middot; $
-          {debug.estimated_cost_usd.toFixed(2)}
+          {debug.decision_log.length} iteration{debug.decision_log.length !== 1 ? "s" : ""}
           {debug.approved ? " \u00B7 Approved" : " \u00B7 Not approved"}
         </p>
 
@@ -101,9 +99,6 @@ export default function DemoPlanDebugPage() {
                   Iteration {entry.iteration}
                 </span>
                 <StatusBadge variant={entry.outcome} />
-                <span className="text-xs text-gray-400">
-                  {new Date(entry.timestamp).toLocaleTimeString()}
-                </span>
               </div>
 
               {entry.scores && <ScoreBadgeGroup scores={entry.scores} />}
@@ -111,7 +106,7 @@ export default function DemoPlanDebugPage() {
               {entry.critique && (
                 <div className="mt-3">
                   <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Critique
+                    Reviewer Feedback
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">
                     {entry.critique}
@@ -122,7 +117,7 @@ export default function DemoPlanDebugPage() {
               {entry.issues.length > 0 && (
                 <div className="mt-3">
                   <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Issues
+                    Issues Found
                   </div>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                     {entry.issues.map((issue, j) => (
@@ -131,15 +126,6 @@ export default function DemoPlanDebugPage() {
                   </ul>
                 </div>
               )}
-
-              <div className="mt-3 flex gap-4 text-xs text-gray-400">
-                <span>
-                  Planner: {(entry.planner_input_tokens + entry.planner_output_tokens).toLocaleString()} tokens
-                </span>
-                <span>
-                  Reviewer: {(entry.reviewer_input_tokens + entry.reviewer_output_tokens).toLocaleString()} tokens
-                </span>
-              </div>
             </div>
           ))}
         </div>

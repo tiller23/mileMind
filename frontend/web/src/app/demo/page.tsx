@@ -8,19 +8,19 @@ const PERSONA_INFO: Record<string, { title: string; subtitle: string; descriptio
   "5K": {
     title: "Beginner 5K",
     subtitle: "Sarah Chen \u2022 8 weeks",
-    description: "First-time racer building from 12 km/week to a confident 5K finish. Conservative progression with walk breaks allowed.",
+    description: "Building from 12 km/week to a confident 5K finish. Conservative progression with room for walk breaks.",
     color: "from-emerald-500 to-emerald-700",
   },
   "Half Marathon": {
     title: "Intermediate Half Marathon",
     subtitle: "Marcus Rodriguez \u2022 12 weeks",
-    description: "Experienced runner targeting sub-1:35 with tempo runs, VO2max intervals, and a structured taper. IT band history managed.",
+    description: "Targeting sub-1:35 with tempo runs, speed work, and a structured taper. Injury history factored in.",
     color: "from-blue-500 to-blue-700",
   },
   "Marathon": {
     title: "Advanced Marathon",
     subtitle: "Elena Vasquez \u2022 16 weeks",
-    description: "Elite-level runner chasing sub-3:05 on 95 km/week. Marathon-pace tempos, 32K long runs, and Daniels-style periodization.",
+    description: "Chasing sub-3:05 on 95 km/week. Race-pace tempos, 32K long runs, and full periodization.",
     color: "from-purple-500 to-purple-700",
   },
 };
@@ -33,9 +33,8 @@ export default function DemoPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/">
             <Logo size="sm" />
-            <span className="text-lg font-semibold text-gray-900">MileMind</span>
           </Link>
           <Link
             href="/login"
@@ -49,12 +48,11 @@ export default function DemoPage() {
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            AI-Generated Training Plans
+            Sample Training Plans
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Browse real plans created by MileMind&apos;s multi-agent AI system.
-            Each plan was generated, reviewed, and refined automatically &mdash;
-            no human coach involved.
+            Browse plans built by MileMind for three different runners.
+            Every workout, every week, every coaching decision &mdash; all generated and reviewed by AI.
           </p>
         </div>
 
@@ -96,8 +94,6 @@ export default function DemoPage() {
                     <div className="mt-4 flex items-center gap-4 text-xs text-gray-400">
                       <span>{plan.week_count} weeks</span>
                       <span>&bull;</span>
-                      <span>${(plan.estimated_cost_usd ?? 0).toFixed(2)} API cost</span>
-                      <span>&bull;</span>
                       <span className="text-emerald-600 font-medium">Approved</span>
                     </div>
                   </div>
@@ -109,30 +105,30 @@ export default function DemoPage() {
 
         {/* How it works */}
         <div className="mt-16 text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">How It Works</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">How plans are built</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
             <div>
               <div className="text-2xl mb-2">1.</div>
-              <h3 className="font-medium text-gray-900 mb-1">Planner Agent</h3>
+              <h3 className="font-medium text-gray-900 mb-1">Design</h3>
               <p className="text-sm text-gray-600">
-                Claude Sonnet generates a periodized plan using deterministic
-                physiological models (Banister, Daniels, ACWR).
+                An AI planner builds a periodized training block using
+                your profile, goals, and proven exercise science models.
               </p>
             </div>
             <div>
               <div className="text-2xl mb-2">2.</div>
-              <h3 className="font-medium text-gray-900 mb-1">Reviewer Agent</h3>
+              <h3 className="font-medium text-gray-900 mb-1">Review</h3>
               <p className="text-sm text-gray-600">
-                Claude Opus scores the plan on safety, progression, specificity,
-                and feasibility. Plans below 70/100 are rejected.
+                A separate AI reviewer scores the plan on safety, progression,
+                specificity, and feasibility. If it doesn&apos;t pass, it goes back for revision.
               </p>
             </div>
             <div>
               <div className="text-2xl mb-2">3.</div>
-              <h3 className="font-medium text-gray-900 mb-1">Iterate Until Approved</h3>
+              <h3 className="font-medium text-gray-900 mb-1">Refine</h3>
               <p className="text-sm text-gray-600">
-                The planner revises based on reviewer feedback. Most plans
-                converge in 2&ndash;3 iterations. View the full decision log on each plan.
+                The planner revises based on feedback until the plan is approved.
+                You can see the full decision log on each plan.
               </p>
             </div>
           </div>
