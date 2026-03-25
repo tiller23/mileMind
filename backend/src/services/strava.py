@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import Settings
 from src.db.models import StravaToken, WorkoutLog
+from src.services.crypto import decrypt_token, encrypt_token
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +165,34 @@ class StravaService:
             athlete_id=data["athlete"]["id"],
         )
 
+    def _decrypt(self, ciphertext: str) -> str:
+        """Decrypt a token if encryption is configured, otherwise return as-is.
+
+        Args:
+            ciphertext: Encrypted or plaintext token.
+
+        Returns:
+            Plaintext token.
+        """
+        key = self._settings.strava_token_encryption_key
+        if key:
+            return decrypt_token(ciphertext, key)
+        return ciphertext
+
+    def _encrypt(self, plaintext: str) -> str:
+        """Encrypt a token if encryption is configured, otherwise return as-is.
+
+        Args:
+            plaintext: Token value.
+
+        Returns:
+            Encrypted or plaintext token.
+        """
+        key = self._settings.strava_token_encryption_key
+        if key:
+            return encrypt_token(plaintext, key)
+        return plaintext
+
     async def refresh_token(self, strava_token: StravaToken) -> StravaToken:
         """Refresh an expired Strava access token.
 
@@ -178,6 +207,9 @@ class StravaService:
         Raises:
             httpx.HTTPStatusError: If Strava refresh fails.
         """
+        # Decrypt current refresh token for Strava API call
+        decrypted_refresh = self._decrypt(strava_token.refresh_token)
+
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             resp = await client.post(
                 STRAVA_TOKEN_URL,
@@ -185,28 +217,29 @@ class StravaService:
                     "client_id": self._settings.strava_client_id,
                     "client_secret": self._settings.strava_client_secret,
                     "grant_type": "refresh_token",
-                    "refresh_token": strava_token.refresh_token,
+                    "refresh_token": decrypted_refresh,
                 },
             )
             resp.raise_for_status()
             data = resp.json()
 
-        strava_token.access_token = data["access_token"]
-        strava_token.refresh_token = data["refresh_token"]
+        # Re-encrypt new tokens before storing
+        strava_token.access_token = self._encrypt(data["access_token"])
+        strava_token.refresh_token = self._encrypt(data["refresh_token"])
         strava_token.expires_at = datetime.fromtimestamp(
             data["expires_at"], tz=timezone.utc
         )
         await self._session.commit()
         return strava_token
 
-    async def ensure_valid_token(self, user_id: uuid.UUID) -> StravaToken:
+    async def ensure_valid_token(self, user_id: uuid.UUID) -> tuple[StravaToken, str]:
         """Load the user's Strava token, refreshing if expired.
 
         Args:
             user_id: The user's ID.
 
         Returns:
-            A StravaToken with a valid (non-expired) access_token.
+            Tuple of (StravaToken ORM instance, decrypted access token string).
 
         Raises:
             ValueError: If the user has no Strava connection.
@@ -224,7 +257,7 @@ class StravaService:
             logger.info("Refreshing expired Strava token for user %s", user_id)
             token = await self.refresh_token(token)
 
-        return token
+        return token, self._decrypt(token.access_token)
 
     async def fetch_activities(
         self,
@@ -306,7 +339,7 @@ class StravaService:
         Raises:
             ValueError: If the user has no Strava connection.
         """
-        token = await self.ensure_valid_token(user_id)
+        token, access_token = await self.ensure_valid_token(user_id)
 
         # Smart sync: if we have prior imports, only fetch since the latest one
         last_import = await self._session.execute(
@@ -319,7 +352,7 @@ class StravaService:
         # Subtract buffer to catch activities finalized after last sync
         if last_date is not None:
             last_date = last_date - SYNC_OVERLAP_BUFFER
-        activities = await self.fetch_activities(token.access_token, after=last_date)
+        activities = await self.fetch_activities(access_token, after=last_date)
 
         if not activities:
             return 0, 0
@@ -416,10 +449,11 @@ class StravaService:
 
         # Best-effort revocation on Strava
         try:
+            decrypted_access = self._decrypt(token.access_token)
             async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 await client.post(
                     STRAVA_DEAUTH_URL,
-                    data={"access_token": token.access_token},
+                    data={"access_token": decrypted_access},
                 )
         except Exception:
             logger.warning(

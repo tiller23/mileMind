@@ -6,15 +6,16 @@ Includes async plan generation via POST /plans/generate.
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from src.api.deps import get_current_user, get_db
 from src.api.jobs import get_job_manager
+from src.api.rate_limit import limiter
 from src.api.schemas import (
     JobResponse,
     MessageResponse,
@@ -24,7 +25,7 @@ from src.api.schemas import (
     PlanSummary,
     PlanUpdateStartDate,
 )
-from src.config import get_settings
+from src.config import Settings, get_settings
 from src.db.models import DBAthleteProfile, TrainingPlan, User
 from src.db.session import get_session_factory
 from src.models.plan_change import PlanChangeType
@@ -37,27 +38,72 @@ router = APIRouter(prefix="/plans", tags=["plans"])
     response_model=JobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("5/hour")
 async def generate_plan(
+    request: Request,
     body: PlanGenerateRequest = PlanGenerateRequest(),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> JobResponse:
     """Trigger async plan generation.
 
     Reads the user's saved athlete profile, starts a background orchestrator
     job, and returns immediately with a job ID for polling/streaming.
 
+    Requires a redeemed invite code. Enforces monthly plan generation limit
+    and global API budget cap.
+
     Args:
+        request: The incoming request.
         body: Generation options (change_type).
         user: Authenticated user.
         session: Database session.
+        settings: App settings.
 
     Returns:
         JobResponse with job_id and status='pending'.
 
     Raises:
+        HTTPException: 403 if no invite code redeemed.
         HTTPException: 404 if user has no profile.
+        HTTPException: 429 if monthly plan limit reached.
+        HTTPException: 503 if global API budget exhausted.
     """
+    # Gate: require invite code
+    if not user.invite_code_used:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invite code required. Redeem a code to generate plans.",
+        )
+
+    # Gate: per-user monthly plan limit
+    month_start = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    plan_count = await session.scalar(
+        select(func.count(TrainingPlan.id)).where(
+            TrainingPlan.user_id == user.id,
+            TrainingPlan.created_at >= month_start,
+        )
+    )
+    if plan_count is not None and plan_count >= settings.max_plans_per_month:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Monthly plan limit reached ({settings.max_plans_per_month} per month).",
+        )
+
+    # Gate: global API budget cap
+    monthly_cost = await session.scalar(
+        select(func.sum(TrainingPlan.estimated_cost_usd)).where(
+            TrainingPlan.created_at >= month_start,
+        )
+    )
+    if monthly_cost is not None and monthly_cost >= settings.monthly_api_budget_usd:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Monthly API budget exhausted. Please try again next month.",
+        )
     # Load athlete profile from DB
     result = await session.execute(
         select(DBAthleteProfile).where(DBAthleteProfile.user_id == user.id)
@@ -72,7 +118,6 @@ async def generate_plan(
     # Convert DB profile to domain model
     athlete = db_profile.to_athlete_profile()
 
-    settings = get_settings()
     manager = get_job_manager()
     session_factory = get_session_factory()
 

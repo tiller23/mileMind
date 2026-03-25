@@ -47,6 +47,10 @@ async def app(async_engine, db_session: AsyncSession, test_user: User):
 
     app = create_app()
 
+    # Disable rate limiting in tests
+    from src.api.rate_limit import limiter
+    limiter.enabled = False
+
     async def override_get_db():
         yield db_session
 
@@ -59,6 +63,7 @@ async def app(async_engine, db_session: AsyncSession, test_user: User):
     yield app
 
     app.dependency_overrides.clear()
+    limiter.enabled = True
 
 
 @pytest.fixture

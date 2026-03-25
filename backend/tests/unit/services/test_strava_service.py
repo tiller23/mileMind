@@ -184,10 +184,10 @@ class TestEnsureValidToken:
         service = StravaService(settings, db_session)
 
         with patch.object(service, "refresh_token") as mock_refresh:
-            token = await service.ensure_valid_token(test_user.id)
+            token, access_token = await service.ensure_valid_token(test_user.id)
 
         mock_refresh.assert_not_called()
-        assert token.access_token == "strava-access-token"
+        assert access_token == "strava-access-token"
 
     async def test_refreshes_when_expired(
         self,
@@ -305,7 +305,7 @@ class TestImportActivities:
         ]
 
         with patch.object(service, "ensure_valid_token", new_callable=AsyncMock) as mock_token:
-            mock_token.return_value = strava_token_row
+            mock_token.return_value = (strava_token_row, "strava-access-token")
             with patch.object(service, "fetch_activities", new_callable=AsyncMock) as mock_fetch:
                 mock_fetch.return_value = activities
                 imported, total = await service.import_activities(test_user.id)
@@ -357,7 +357,7 @@ class TestImportActivities:
         ]
 
         with patch.object(service, "ensure_valid_token", new_callable=AsyncMock) as mock_token:
-            mock_token.return_value = strava_token_row
+            mock_token.return_value = (strava_token_row, "strava-access-token")
             with patch.object(service, "fetch_activities", new_callable=AsyncMock) as mock_fetch:
                 mock_fetch.return_value = activities
                 imported, total = await service.import_activities(test_user.id)

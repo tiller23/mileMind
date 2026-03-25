@@ -18,8 +18,20 @@ pytestmark = pytest.mark.asyncio
 class TestGeneratePlan:
     """Tests for POST /api/v1/plans/generate."""
 
-    async def test_returns_404_without_profile(self, client: AsyncClient):
+    async def test_returns_403_without_invite_code(
+        self, client: AsyncClient
+    ):
+        """Generating a plan without an invite code returns 403."""
+        resp = await client.post("/api/v1/plans/generate")
+        assert resp.status_code == 403
+        assert "Invite code required" in resp.json()["detail"]
+
+    async def test_returns_404_without_profile(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
         """Generating a plan without a profile returns 404."""
+        test_user.invite_code_used = "MILE-TEST"
+        await db_session.commit()
         resp = await client.post("/api/v1/plans/generate")
         assert resp.status_code == 404
         assert "Profile not found" in resp.json()["detail"]
@@ -32,6 +44,9 @@ class TestGeneratePlan:
         test_profile: DBAthleteProfile,
     ):
         """Valid request returns 202 with job_id."""
+        test_user.invite_code_used = "MILE-TEST"
+        await db_session.commit()
+
         with patch("src.api.routes.plans.get_job_manager") as mock_mgr:
             mock_manager = AsyncMock()
             mock_job_id = uuid.uuid4()
@@ -53,6 +68,9 @@ class TestGeneratePlan:
         test_profile: DBAthleteProfile,
     ):
         """The endpoint constructs an AthleteProfile from the DB record."""
+        test_user.invite_code_used = "MILE-TEST"
+        await db_session.commit()
+
         with patch("src.api.routes.plans.get_job_manager") as mock_mgr:
             mock_manager = AsyncMock()
             mock_manager.start_plan_generation = AsyncMock(return_value=uuid.uuid4())

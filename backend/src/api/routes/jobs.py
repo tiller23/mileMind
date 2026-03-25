@@ -169,12 +169,17 @@ async def stream_job_events(
     async def event_generator():
         """Yield SSE-formatted events as they arrive.
 
+        Sends heartbeat comments every 15 seconds to keep the connection
+        alive through reverse proxies that drop idle connections.
+
         Yields:
             SSE-formatted strings.
         """
         last_seq = -1
         deadline = time.monotonic() + _SSE_TIMEOUT_SECONDS
+        heartbeat_interval = 15.0
         poll_interval = 0.5
+        last_heartbeat = time.monotonic()
 
         while time.monotonic() < deadline:
             # Get new events
@@ -183,6 +188,7 @@ async def stream_job_events(
                 last_seq = event.sequence
                 data = json.dumps(event.to_dict())
                 yield f"event: {event.event_type.value}\ndata: {data}\n\n"
+                last_heartbeat = time.monotonic()
 
                 # If job is done, send final event and close
                 if event.event_type.value in ("job_complete", "job_failed"):
@@ -197,6 +203,12 @@ async def stream_job_events(
                     data = json.dumps(event.to_dict())
                     yield f"event: {event.event_type.value}\ndata: {data}\n\n"
                 return
+
+            # Send heartbeat if idle too long (keeps connection alive)
+            now = time.monotonic()
+            if now - last_heartbeat >= heartbeat_interval:
+                yield ": heartbeat\n\n"
+                last_heartbeat = now
 
             # Poll interval
             await asyncio.sleep(poll_interval)

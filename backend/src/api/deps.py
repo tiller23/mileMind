@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import uuid as uuid_mod
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -22,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import Settings, get_settings
-from src.db.models import User
+from src.db.models import RevokedToken, User
 from src.db.session import get_session
 
 
@@ -54,10 +55,12 @@ def create_access_token(
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.jwt_access_token_expire_minutes
     )
+    jti = str(uuid_mod.uuid4())
     payload = {
         "sub": str(user_id),
         "exp": expire,
         "type": "access",
+        "jti": jti,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -80,10 +83,12 @@ def create_refresh_token(
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.jwt_refresh_token_expire_days
     )
+    jti = str(uuid_mod.uuid4())
     payload = {
         "sub": str(user_id),
         "exp": expire,
         "type": "refresh",
+        "jti": jti,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -126,6 +131,24 @@ async def get_current_user(
                 detail="Invalid token",
             )
         user_id = UUID(user_id_str)
+
+        # Require jti claim (all tokens from Phase 5e+ have it)
+        jti = payload.get("jti")
+        if not jti:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token (missing jti)",
+            )
+
+        # Check JWT denylist (revoked on logout)
+        revoked = await session.execute(
+            select(RevokedToken).where(RevokedToken.jti == jti)
+        )
+        if revoked.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

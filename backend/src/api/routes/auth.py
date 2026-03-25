@@ -13,6 +13,7 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.rate_limit import limiter
 from src.api.deps import (
     create_access_token,
     create_refresh_token,
@@ -43,6 +44,7 @@ def _set_auth_cookies(response: Response, user: User, settings: Settings) -> Tok
     refresh_token = create_refresh_token(user.id, settings)
 
     is_secure = settings.frontend_url.startswith("https")
+    domain = settings.cookie_domain or None
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -50,6 +52,7 @@ def _set_auth_cookies(response: Response, user: User, settings: Settings) -> Tok
         secure=is_secure,
         samesite="lax",
         max_age=settings.jwt_access_token_expire_minutes * 60,
+        domain=domain,
     )
     response.set_cookie(
         key="refresh_token",
@@ -58,6 +61,7 @@ def _set_auth_cookies(response: Response, user: User, settings: Settings) -> Tok
         secure=is_secure,
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
+        domain=domain,
     )
     return TokenResponse(access_token=access_token)
 
@@ -121,7 +125,8 @@ async def _find_or_create_user(
 
 
 @router.get("/google")
-async def google_login(settings: Settings = Depends(get_settings)) -> dict:
+@limiter.limit("10/minute")
+async def google_login(request: Request, settings: Settings = Depends(get_settings)) -> dict:
     """Return the Google OAuth authorization URL.
 
     Args:
@@ -168,7 +173,9 @@ async def google_login(settings: Settings = Depends(get_settings)) -> dict:
 
 
 @router.post("/google/callback")
+@limiter.limit("10/minute")
 async def google_callback(
+    request: Request,
     data: OAuthCallbackRequest,
     response: Response,
     session: AsyncSession = Depends(get_db),
@@ -277,6 +284,7 @@ async def google_callback(
 
 
 @router.post("/refresh")
+@limiter.limit("10/minute")
 async def refresh_token(
     request: Request,
     response: Response,
@@ -319,6 +327,26 @@ async def refresh_token(
             )
         from uuid import UUID
         user_id = UUID(user_id_str)
+
+        # Require jti claim
+        from src.db.models import RevokedToken
+
+        jti = payload.get("jti")
+        if not jti:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token (missing jti)",
+            )
+
+        # Check if refresh token has been revoked
+        revoked = await session.execute(
+            select(RevokedToken).where(RevokedToken.jti == jti)
+        )
+        if revoked.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+            )
     except (JWTError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -333,25 +361,71 @@ async def refresh_token(
             detail="User not found",
         )
 
+    # Revoke the old refresh token (rotation)
+    from datetime import datetime, timezone as tz
+
+    exp = payload.get("exp")
+    if exp:
+        from src.db.models import RevokedToken as RT
+
+        old_revoked = RT(
+            jti=jti,
+            expires_at=datetime.fromtimestamp(exp, tz=tz.utc),
+        )
+        session.add(old_revoked)
+        await session.commit()
+
     return _set_auth_cookies(response, user, settings)
 
 
 @router.post("/logout")
+@limiter.limit("10/minute")
 async def logout(
+    request: Request,
     response: Response,
+    session: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
     _user: User = Depends(get_current_user),
 ) -> dict:
-    """Clear authentication cookies.
+    """Clear authentication cookies and revoke tokens.
 
     Args:
+        request: Request with cookies to revoke.
         response: Response for clearing cookies.
+        session: Database session.
+        settings: App settings.
         _user: Current authenticated user (validates token before logout).
 
     Returns:
         Success message.
     """
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    from src.db.models import RevokedToken
+
+    # Revoke both access and refresh tokens
+    for cookie_name in ("access_token", "refresh_token"):
+        token = request.cookies.get(cookie_name)
+        if token:
+            try:
+                payload = jwt.decode(
+                    token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+                )
+                jti = payload.get("jti")
+                exp = payload.get("exp")
+                if jti and exp:
+                    from datetime import datetime, timezone
+
+                    revoked = RevokedToken(
+                        jti=jti,
+                        expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
+                    )
+                    session.add(revoked)
+            except JWTError:
+                pass
+
+    await session.commit()
+    domain = settings.cookie_domain or None
+    response.delete_cookie("access_token", domain=domain, samesite="lax")
+    response.delete_cookie("refresh_token", domain=domain, samesite="lax")
     return {"detail": "Logged out"}
 
 

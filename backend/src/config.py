@@ -74,24 +74,44 @@ class Settings(BaseSettings):
     # Strava
     strava_client_id: str = ""
     strava_client_secret: str = ""
+    strava_token_encryption_key: str = ""
+
+    # Cost controls
+    max_plans_per_month: int = 2
+    monthly_api_budget_usd: float = 50.0
+
+    # Production
+    environment: str = "development"
+    cookie_domain: str = ""
+    cors_origins: list[str] = []
 
     # Debug
     debug: bool = False
 
     @model_validator(mode="after")
-    def _check_jwt_secret_in_production(self) -> "Settings":
-        """Refuse to start with the default JWT secret in production.
+    def _check_production_secrets(self) -> "Settings":
+        """Validate required secrets are set in production.
 
         Returns:
             Self if validation passes.
 
         Raises:
-            ValueError: If jwt_secret is the default and debug is False.
+            ValueError: If required secrets are missing in production mode.
         """
         if not self.debug and self.jwt_secret == "CHANGE-ME-IN-PRODUCTION":
             raise ValueError(
                 "jwt_secret must be set to a secure value in production. "
                 "Set the JWT_SECRET environment variable."
+            )
+        if (
+            not self.debug
+            and self.strava_client_id
+            and not self.strava_token_encryption_key
+        ):
+            raise ValueError(
+                "STRAVA_TOKEN_ENCRYPTION_KEY must be set when Strava is configured. "
+                "Generate one with: python -c 'from cryptography.fernet import Fernet; "
+                "print(Fernet.generate_key().decode())'"
             )
         return self
 

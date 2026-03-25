@@ -11,12 +11,13 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from jose import JWTError, jwt
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
+from src.api.rate_limit import limiter
 from src.api.schemas import (
     MessageResponse,
     StravaCallbackRequest,
@@ -28,6 +29,7 @@ from src.api.schemas import (
 )
 from src.config import Settings, get_settings
 from src.db.models import StravaToken, User, WorkoutLog
+from src.services.crypto import encrypt_token
 from src.services.strava import StravaService
 
 logger = logging.getLogger(__name__)
@@ -55,7 +57,9 @@ def _require_strava_configured(settings: Settings) -> None:
 
 
 @router.get("/connect", response_model=StravaConnectResponse)
+@limiter.limit("20/minute")
 async def strava_connect(
+    request: Request,
     user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> StravaConnectResponse:
@@ -98,7 +102,9 @@ async def strava_connect(
 
 
 @router.post("/callback", response_model=StravaCallbackResponse)
+@limiter.limit("20/minute")
 async def strava_callback(
+    request: Request,
     data: StravaCallbackRequest,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
@@ -156,10 +162,14 @@ async def strava_callback(
     )
     existing = result.scalar_one_or_none()
 
+    enc_key = settings.strava_token_encryption_key
+    enc_access = encrypt_token(token_data.access_token, enc_key) if enc_key else token_data.access_token
+    enc_refresh = encrypt_token(token_data.refresh_token, enc_key) if enc_key else token_data.refresh_token
+
     if existing:
         existing.strava_athlete_id = token_data.athlete_id
-        existing.access_token = token_data.access_token
-        existing.refresh_token = token_data.refresh_token
+        existing.access_token = enc_access
+        existing.refresh_token = enc_refresh
         existing.expires_at = datetime.fromtimestamp(
             token_data.expires_at, tz=timezone.utc
         )
@@ -168,8 +178,8 @@ async def strava_callback(
         token = StravaToken(
             user_id=user.id,
             strava_athlete_id=token_data.athlete_id,
-            access_token=token_data.access_token,
-            refresh_token=token_data.refresh_token,
+            access_token=enc_access,
+            refresh_token=enc_refresh,
             expires_at=datetime.fromtimestamp(
                 token_data.expires_at, tz=timezone.utc
             ),

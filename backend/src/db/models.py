@@ -63,9 +63,11 @@ class User(Base):
         id: Unique user identifier.
         email: User email (unique).
         name: Display name.
-        auth_provider: OAuth provider ('google' or 'apple').
+        auth_provider: OAuth provider ('google', 'apple', or 'demo').
         auth_provider_id: Provider's unique user ID.
         avatar_url: Profile picture URL.
+        role: User role ('user' or 'admin').
+        invite_code_used: Invite code redeemed by this user (nullable).
         created_at: Account creation time.
         updated_at: Last profile update time.
     """
@@ -78,6 +80,8 @@ class User(Base):
     auth_provider: Mapped[str] = mapped_column(String(20), nullable=False)
     auth_provider_id: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", nullable=False)
+    invite_code_used: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -95,6 +99,7 @@ class User(Base):
 
     __table_args__ = (
         UniqueConstraint("auth_provider", "auth_provider_id", name="uq_auth_provider_id"),
+        CheckConstraint("role IN ('user', 'admin')", name="ck_user_role"),
     )
 
 
@@ -411,8 +416,8 @@ class StravaToken(Base):
     strava_athlete_id: Mapped[int] = mapped_column(
         BigInteger, unique=True, nullable=False
     )
-    access_token: Mapped[str] = mapped_column(String(255), nullable=False)
-    refresh_token: Mapped[str] = mapped_column(String(255), nullable=False)
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -422,4 +427,54 @@ class StravaToken(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+
+class RevokedToken(Base):
+    """Revoked JWT tokens for logout enforcement.
+
+    Tokens are added here on logout and checked on every authenticated request.
+    Expired entries are cleaned up periodically.
+
+    Attributes:
+        jti: JWT token ID (unique identifier for the token).
+        expires_at: When the original token would have expired.
+        revoked_at: When the token was revoked.
+    """
+
+    __tablename__ = "revoked_tokens"
+
+    jti: Mapped[str] = mapped_column(String(36), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
+class InviteCode(Base):
+    """Invite codes that gate access to plan generation.
+
+    Users can sign up and browse freely, but need a redeemed invite code
+    to generate training plans.
+
+    Attributes:
+        code: The invite code string (e.g., 'MILE-A1B2').
+        max_uses: Maximum number of times this code can be redeemed.
+        use_count: Current number of redemptions.
+        expires_at: Optional expiry time for the code.
+        created_at: When the code was created.
+    """
+
+    __tablename__ = "invite_codes"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    max_uses: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    use_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
     )
