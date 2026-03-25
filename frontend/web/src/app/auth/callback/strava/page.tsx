@@ -37,7 +37,7 @@ function StravaCallbackInner() {
       try {
         await strava.callback({
           code: authCode,
-          state: savedStateToken,
+          state: savedStateToken!,
         });
         // Redirect back to onboarding/settings where they initiated connect
         router.push("/onboarding");
