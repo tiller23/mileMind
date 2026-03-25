@@ -43,12 +43,12 @@ export default function LandingPage() {
             >
               Get Started Free
             </Link>
-            <a
-              href="#how-it-works"
+            <Link
+              href="/demo"
               className="px-8 py-3.5 border border-slate-600 text-slate-300 rounded-xl font-medium hover:bg-white/5 transition-colors"
             >
-              How It Works
-            </a>
+              View Demo Plans
+            </Link>
           </div>
         </div>
 

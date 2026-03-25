@@ -241,3 +241,30 @@ export const strava = {
     );
   },
 };
+
+// ---------------------------------------------------------------------------
+// Demo (public, no auth)
+// ---------------------------------------------------------------------------
+
+export const demo = {
+  /** List demo plans (public). */
+  async plans(): Promise<PlanSummary[]> {
+    const res = await fetch(`${API_BASE}/demo/plans`);
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return res.json();
+  },
+
+  /** Get demo plan detail (public). */
+  async plan(planId: string): Promise<PlanDetail> {
+    const res = await fetch(`${API_BASE}/demo/plans/${planId}`);
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return res.json();
+  },
+
+  /** Get demo plan debug view (public). */
+  async debug(planId: string): Promise<PlanDebug> {
+    const res = await fetch(`${API_BASE}/demo/plans/${planId}/debug`);
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return res.json();
+  },
+};

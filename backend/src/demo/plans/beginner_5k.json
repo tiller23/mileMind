@@ -1,0 +1,171 @@
+{
+  "athlete_snapshot": {
+    "name": "Sarah Chen",
+    "age": 28,
+    "vo2max": null,
+    "vdot": 30,
+    "weekly_mileage_base": 12.0,
+    "hr_max": null,
+    "hr_rest": null,
+    "injury_history": "",
+    "risk_tolerance": "conservative",
+    "max_weekly_increase_pct": 0.10,
+    "goal_distance": "5K",
+    "goal_time_minutes": 30.0,
+    "training_days_per_week": 3,
+    "long_run_cap_pct": 0.40,
+    "preferred_units": "imperial",
+    "plan_duration_weeks": 8
+  },
+  "plan_data": {
+    "athlete_name": "Sarah Chen",
+    "goal_event": "5K",
+    "goal_date": "2026-05-18",
+    "plan_start_date": "2026-03-23",
+    "weeks": [
+      {
+        "week_number": 1,
+        "phase": "base",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.2, "pace_zone": "Zone 2", "duration_minutes": 25, "intensity": 0.65, "description": "Easy conversational run. Focus on steady breathing and relaxed form."},
+          {"day": 4, "workout_type": "easy", "distance_km": 3.2, "pace_zone": "Zone 2", "duration_minutes": 25, "intensity": 0.65, "description": "Easy run. Walk breaks OK if needed \u2014 the goal is time on feet."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 4.8, "pace_zone": "Zone 2", "duration_minutes": 38, "intensity": 0.68, "description": "Long run at easy pace. No pressure on speed \u2014 just finish feeling good."}
+        ],
+        "notes": "Week 1: Establishing a baseline. Three runs at comfortable effort to assess current fitness."
+      },
+      {
+        "week_number": 2,
+        "phase": "base",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Easy run with gentle 5% distance increase."},
+          {"day": 4, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Easy run. Focus on cadence \u2014 aim for 170+ steps per minute."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 5.0, "pace_zone": "Zone 2", "duration_minutes": 40, "intensity": 0.68, "description": "Long run progressing gently. Hydrate well beforehand."}
+        ],
+        "notes": "Week 2: Small distance bump. Aerobic system is adapting \u2014 keep all runs easy."
+      },
+      {
+        "week_number": 3,
+        "phase": "base",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.8, "pace_zone": "Zone 2", "duration_minutes": 29, "intensity": 0.65, "description": "Easy aerobic run."},
+          {"day": 4, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.68, "description": "Easy run at slightly firmer pace."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 5.5, "pace_zone": "Zone 2", "duration_minutes": 44, "intensity": 0.68, "description": "Longest run yet. You're already past 5K distance \u2014 great confidence builder."}
+        ],
+        "notes": "Week 3: Peak of the first base block. Long run now exceeds race distance."
+      },
+      {
+        "week_number": 4,
+        "phase": "recovery",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.0, "pace_zone": "Zone 1", "duration_minutes": 24, "intensity": 0.60, "description": "Very easy recovery run. Go slower than you think you need to."},
+          {"day": 4, "workout_type": "easy", "distance_km": 2.5, "pace_zone": "Zone 1", "duration_minutes": 20, "intensity": 0.60, "description": "Short easy run. Take walk breaks if legs feel heavy."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 4.0, "pace_zone": "Zone 2", "duration_minutes": 32, "intensity": 0.65, "description": "Reduced long run. Body is absorbing the last 3 weeks of training."}
+        ],
+        "notes": "Recovery week: 25% volume reduction. This is where fitness actually improves \u2014 your body adapts during rest, not during hard effort."
+      },
+      {
+        "week_number": 5,
+        "phase": "build",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Easy run to restart after recovery week."},
+          {"day": 4, "workout_type": "tempo", "distance_km": 3.0, "pace_zone": "Zone 4", "duration_minutes": 25, "intensity": 0.85, "description": "5 min warm-up, 15 min at comfortably hard effort (can speak short phrases), 5 min cool-down."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 5.5, "pace_zone": "Zone 2", "duration_minutes": 44, "intensity": 0.68, "description": "Long run back to pre-recovery distance."}
+        ],
+        "notes": "Build week 1: First tempo session. This teaches your body to clear lactate and run at a sustained harder effort."
+      },
+      {
+        "week_number": 6,
+        "phase": "build",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Easy recovery run after yesterday's workout."},
+          {"day": 4, "workout_type": "interval", "distance_km": 3.0, "pace_zone": "Zone 5", "duration_minutes": 25, "intensity": 0.95, "description": "5 min warm-up, 6x200m fast with 200m jog recovery, 5 min cool-down. Run the 200s at a pace you could hold for about 6 minutes."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 6.0, "pace_zone": "Zone 2", "duration_minutes": 48, "intensity": 0.68, "description": "Long run. Practice race-day hydration strategy."}
+        ],
+        "notes": "Build week 2: First speed session. Short intervals develop neuromuscular speed and running economy."
+      },
+      {
+        "week_number": 7,
+        "phase": "peak",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.5, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Easy run."},
+          {"day": 4, "workout_type": "interval", "distance_km": 3.5, "pace_zone": "Zone 5", "duration_minutes": 28, "intensity": 0.95, "description": "5 min warm-up, 4x400m at goal 5K pace with 400m jog recovery, 5 min cool-down. This is race rehearsal."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 6.0, "pace_zone": "Zone 2", "duration_minutes": 48, "intensity": 0.68, "description": "Last long run before race week."}
+        ],
+        "notes": "Peak week: Race-specific sharpening. The 400m intervals at goal pace teach your body exactly what race effort feels like."
+      },
+      {
+        "week_number": 8,
+        "phase": "taper",
+        "workouts": [
+          {"day": 2, "workout_type": "easy", "distance_km": 3.0, "pace_zone": "Zone 2", "duration_minutes": 23, "intensity": 0.65, "description": "Easy shakeout run. Legs may feel antsy \u2014 that's the taper working."},
+          {"day": 4, "workout_type": "interval", "distance_km": 2.0, "pace_zone": "Zone 5", "duration_minutes": 18, "intensity": 0.95, "description": "5 min warm-up, 3x200m at 5K pace with full recovery, 5 min cool-down. Stay sharp without fatiguing."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day \u2014 sleep well, hydrate, lay out race gear."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 5.0, "pace_zone": "Zone 2", "duration_minutes": 30, "intensity": 0.68, "description": "RACE DAY! Start conservative, pick it up at 3K. You're ready."}
+        ],
+        "notes": "Taper week: 30% volume cut. You'll feel restless \u2014 that means you're fresh. Trust the training."
+      }
+    ],
+    "predicted_finish_time_minutes": 29.5,
+    "supplementary_notes": "Strength work: Bodyweight squats, lunges, and calf raises 2x/week on non-running days. Dynamic stretching before runs, static stretching after.",
+    "notes": "Conservative 8-week 5K plan for a beginner runner averaging 12 km/week. Follows a base-build-peak-taper periodization with a recovery week at week 4. Weekly increases stay under 10%. The plan introduces tempo and interval work only after 4 weeks of aerobic base building."
+  },
+  "decision_log": [
+    {
+      "iteration": 1,
+      "timestamp": "2026-03-22T14:30:00Z",
+      "outcome": "rejected",
+      "scores": {
+        "safety": 65,
+        "progression": 78,
+        "specificity": 72,
+        "feasibility": 80,
+        "overall": 72.0
+      },
+      "critique": "Weekly mileage increase from week 2 to week 3 exceeds 10% threshold for a conservative athlete. Long run in week 3 is 40% of weekly volume, which is fine, but the jump from 5K to 7K is too aggressive for this experience level.",
+      "issues": ["Week 2\u21923 load increase is 15%, exceeds max_weekly_increase_pct of 10%", "No recovery week in first 4 weeks"],
+      "planner_input_tokens": 2800,
+      "planner_output_tokens": 3200,
+      "reviewer_input_tokens": 4100,
+      "reviewer_output_tokens": 850,
+      "planner_tool_calls": 3,
+      "reviewer_tool_calls": 2
+    },
+    {
+      "iteration": 2,
+      "timestamp": "2026-03-22T14:31:15Z",
+      "outcome": "approved",
+      "scores": {
+        "safety": 88,
+        "progression": 85,
+        "specificity": 82,
+        "feasibility": 90,
+        "overall": 86.6
+      },
+      "critique": "Revised plan correctly includes recovery week at week 4 with 25% volume reduction. Weekly increases now stay within 10% for the conservative risk profile. Good 80/20 intensity distribution with only 2 quality sessions in the entire plan. Long run cap stays under 40%. Appropriate for a beginner.",
+      "issues": [],
+      "planner_input_tokens": 3500,
+      "planner_output_tokens": 3400,
+      "reviewer_input_tokens": 4500,
+      "reviewer_output_tokens": 600,
+      "planner_tool_calls": 4,
+      "reviewer_tool_calls": 2
+    }
+  ],
+  "scores": {
+    "safety": 88,
+    "progression": 85,
+    "specificity": 82,
+    "feasibility": 90,
+    "overall": 86.6
+  },
+  "approved": true,
+  "total_tokens": 22950,
+  "estimated_cost_usd": 1.42
+}

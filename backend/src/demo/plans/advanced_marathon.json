@@ -1,0 +1,310 @@
+{
+  "athlete_snapshot": {
+    "name": "Elena Vasquez",
+    "age": 37,
+    "vo2max": 58.0,
+    "vdot": 55,
+    "weekly_mileage_base": 95.0,
+    "hr_max": 182,
+    "hr_rest": 44,
+    "injury_history": "Plantar fasciitis (2024, fully resolved). Achilles tendinopathy (2023, managed with eccentric loading protocol).",
+    "risk_tolerance": "moderate",
+    "max_weekly_increase_pct": 0.08,
+    "goal_distance": "marathon",
+    "goal_time_minutes": 185.0,
+    "training_days_per_week": 6,
+    "long_run_cap_pct": 0.30,
+    "preferred_units": "metric",
+    "plan_duration_weeks": 16
+  },
+  "plan_data": {
+    "athlete_name": "Elena Vasquez",
+    "goal_event": "Marathon",
+    "goal_date": "2026-07-12",
+    "plan_start_date": "2026-03-23",
+    "weeks": [
+      {
+        "week_number": 1, "phase": "base",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy aerobic run. Settle into training block rhythm."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Moderate aerobic run."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Easy run with 6x100m strides at end."},
+          {"day": 6, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run. Very easy."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 26.0, "pace_zone": "Zone 2", "duration_minutes": 135, "intensity": 0.68, "description": "Long run at easy effort. Practice fueling every 30 min."}
+        ],
+        "notes": "Base week 1: Establishing volume at ~82 km. All aerobic. Achilles check \u2014 monitor for any soreness post-long run."
+      },
+      {
+        "week_number": 2, "phase": "base",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy aerobic run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 14.0, "pace_zone": "Zone 4", "duration_minutes": 72, "intensity": 0.85, "description": "15 min warm-up, 30 min steady-state tempo at threshold, 15 min cool-down."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 27.0, "pace_zone": "Zone 2", "duration_minutes": 140, "intensity": 0.68, "description": "Long run. Last 20 min at marathon effort (Zone 3)."}
+        ],
+        "notes": "Base week 2: First tempo session. Marathon-pace practice added to long run tail."
+      },
+      {
+        "week_number": 3, "phase": "base",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 11.0, "pace_zone": "Zone 2", "duration_minutes": 57, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "interval", "distance_km": 14.0, "pace_zone": "Zone 5", "duration_minutes": 72, "intensity": 0.95, "description": "15 min warm-up, 6x1000m at 5K pace with 400m jog recovery, 15 min cool-down."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 67, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 28.0, "pace_zone": "Zone 2", "duration_minutes": 145, "intensity": 0.68, "description": "Long run. Building endurance base."}
+        ],
+        "notes": "Base week 3: VO2max intervals introduced. Peak of first base block before recovery."
+      },
+      {
+        "week_number": 4, "phase": "recovery",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Very easy run."},
+          {"day": 3, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run with strides."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 6, "workout_type": "rest", "description": "Extra rest day."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 20.0, "pace_zone": "Zone 2", "duration_minutes": 104, "intensity": 0.65, "description": "Reduced long run. Absorbing weeks 1\u20133."}
+        ],
+        "notes": "Recovery week: ~30% volume reduction. Eccentric heel drops for Achilles maintenance. Sports massage recommended."
+      },
+      {
+        "week_number": 5, "phase": "build",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 16.0, "pace_zone": "Zone 3", "duration_minutes": 80, "intensity": 0.80, "description": "15 min warm-up, 8 km at marathon goal pace (4:25/km), 15 min cool-down. This is the key marathon-specific session."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 29.0, "pace_zone": "Zone 2", "duration_minutes": 150, "intensity": 0.68, "description": "Long run. Final 5 km at marathon pace."}
+        ],
+        "notes": "Build week 1: Marathon-pace tempo introduced. Long run with race-pace finish \u2014 teaches legs to run fast on tired legs."
+      },
+      {
+        "week_number": 6, "phase": "build",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 11.0, "pace_zone": "Zone 2", "duration_minutes": 57, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "interval", "distance_km": 15.0, "pace_zone": "Zone 5", "duration_minutes": 75, "intensity": 0.95, "description": "15 min warm-up, 5x1200m at 10K pace with 600m jog recovery, 15 min cool-down."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 67, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 30.0, "pace_zone": "Zone 2", "duration_minutes": 155, "intensity": 0.70, "description": "Peak long run distance. Practice full race nutrition strategy."}
+        ],
+        "notes": "Build week 2: VO2max development with longer intervals. 30K long run \u2014 longest of the cycle."
+      },
+      {
+        "week_number": 7, "phase": "build",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 11.0, "pace_zone": "Zone 2", "duration_minutes": 57, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 18.0, "pace_zone": "Zone 3", "duration_minutes": 90, "intensity": 0.80, "description": "15 min warm-up, 12 km at marathon pace, 15 min cool-down. Key marathon-specific workout."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 67, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 29.0, "pace_zone": "Zone 2", "duration_minutes": 150, "intensity": 0.68, "description": "Long run. Last 8 km at marathon effort."}
+        ],
+        "notes": "Build week 3: Extended marathon-pace tempo (12 km). This is the hardest week of the cycle."
+      },
+      {
+        "week_number": 8, "phase": "recovery",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Very easy."},
+          {"day": 3, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run with strides."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 6, "workout_type": "rest", "description": "Extra rest."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 21.0, "pace_zone": "Zone 2", "duration_minutes": 109, "intensity": 0.65, "description": "Reduced long run."}
+        ],
+        "notes": "Recovery week 2: Critical adaptation window. You're halfway through the block. Plantar fascia \u2014 roll a frozen water bottle under foot nightly."
+      },
+      {
+        "week_number": 9, "phase": "build",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 11.0, "pace_zone": "Zone 2", "duration_minutes": 57, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 18.0, "pace_zone": "Zone 3", "duration_minutes": 90, "intensity": 0.80, "description": "15 min warm-up, 14 km at marathon pace, 15 min cool-down. Longest MP session of the cycle."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 67, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 32.0, "pace_zone": "Zone 2", "duration_minutes": 166, "intensity": 0.68, "description": "Peak long run of the entire plan. Last 10 km at marathon pace. Full dress rehearsal."}
+        ],
+        "notes": "Build week 4: Peak training. 32 km long run with marathon-pace finish is the cornerstone workout of the plan."
+      },
+      {
+        "week_number": 10, "phase": "build",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 14.0, "pace_zone": "Zone 2", "duration_minutes": 72, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "interval", "distance_km": 15.0, "pace_zone": "Zone 5", "duration_minutes": 75, "intensity": 0.95, "description": "15 min warm-up, 4x1600m at 10K pace with 800m jog recovery, 15 min cool-down."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 28.0, "pace_zone": "Zone 2", "duration_minutes": 145, "intensity": 0.68, "description": "Long run beginning to taper down from peak."}
+        ],
+        "notes": "Build week 5: Last hard VO2max session. Volume starts decreasing as we transition toward peak phase."
+      },
+      {
+        "week_number": 11, "phase": "peak",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 13.0, "pace_zone": "Zone 2", "duration_minutes": 67, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 16.0, "pace_zone": "Zone 3", "duration_minutes": 80, "intensity": 0.80, "description": "15 min warm-up, 10 km at marathon pace, 15 min cool-down. Sharpening \u2014 not building."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 11.0, "pace_zone": "Zone 2", "duration_minutes": 57, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 25.0, "pace_zone": "Zone 2", "duration_minutes": 130, "intensity": 0.68, "description": "Long run. Controlled effort \u2014 bank freshness for race day."}
+        ],
+        "notes": "Peak week 1: Maintaining sharpness with reduced volume. Marathon-pace tempo keeps the engine tuned."
+      },
+      {
+        "week_number": 12, "phase": "peak",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.68, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "interval", "distance_km": 13.0, "pace_zone": "Zone 5", "duration_minutes": 65, "intensity": 0.95, "description": "15 min warm-up, 3x2000m at half-marathon pace with 800m jog, 15 min cool-down."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.68, "description": "Easy run."},
+          {"day": 6, "workout_type": "recovery", "distance_km": 8.0, "pace_zone": "Zone 1", "duration_minutes": 45, "intensity": 0.58, "description": "Recovery run."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 22.0, "pace_zone": "Zone 2", "duration_minutes": 114, "intensity": 0.68, "description": "Last long run over 20K. Savor it."}
+        ],
+        "notes": "Peak week 2: Last speed session. Long run continues to decrease. Taper begins next week."
+      },
+      {
+        "week_number": 13, "phase": "taper",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 10.0, "pace_zone": "Zone 2", "duration_minutes": 52, "intensity": 0.65, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 2", "duration_minutes": 42, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 12.0, "pace_zone": "Zone 3", "duration_minutes": 60, "intensity": 0.80, "description": "10 min warm-up, 6 km at marathon pace, 10 min cool-down. Stay connected to race pace."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 2", "duration_minutes": 42, "intensity": 0.65, "description": "Easy run with strides."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 16.0, "pace_zone": "Zone 2", "duration_minutes": 83, "intensity": 0.65, "description": "Reduced long run. Keep it honest but don't push."}
+        ],
+        "notes": "Taper week 1: 35% volume cut. Maintain one marathon-pace session to stay sharp. Legs may feel heavy or restless \u2014 both normal."
+      },
+      {
+        "week_number": 14, "phase": "taper",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 8.0, "pace_zone": "Zone 2", "duration_minutes": 42, "intensity": 0.65, "description": "Easy run."},
+          {"day": 2, "workout_type": "easy", "distance_km": 6.0, "pace_zone": "Zone 2", "duration_minutes": 32, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "tempo", "distance_km": 8.0, "pace_zone": "Zone 3", "duration_minutes": 42, "intensity": 0.80, "description": "8 min warm-up, 4 km at marathon pace, 8 min cool-down. Touch the pace, don't chase it."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 6.0, "pace_zone": "Zone 1", "duration_minutes": 35, "intensity": 0.58, "description": "Very easy shakeout."},
+          {"day": 6, "workout_type": "rest", "description": "Rest day"},
+          {"day": 7, "workout_type": "long_run", "distance_km": 12.0, "pace_zone": "Zone 2", "duration_minutes": 62, "intensity": 0.65, "description": "Last true long run. Keep it relaxed and enjoy it."}
+        ],
+        "notes": "Taper week 2: Volume down to ~40 km. You should start feeling fresh and fast. Sleep 8+ hours."
+      },
+      {
+        "week_number": 15, "phase": "taper",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 6.0, "pace_zone": "Zone 2", "duration_minutes": 32, "intensity": 0.65, "description": "Easy run."},
+          {"day": 3, "workout_type": "easy", "distance_km": 5.0, "pace_zone": "Zone 2", "duration_minutes": 27, "intensity": 0.65, "description": "Short easy run with 4x100m strides at marathon pace."},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "easy", "distance_km": 4.0, "pace_zone": "Zone 1", "duration_minutes": 22, "intensity": 0.58, "description": "Shakeout jog. Lay out race gear tonight."},
+          {"day": 6, "workout_type": "rest", "description": "Full rest. Carb-load dinner. Visualize your race."},
+          {"day": 7, "workout_type": "rest", "description": "Full rest day before race."}
+        ],
+        "notes": "Race week minus 1: Minimal running. Focus on sleep, nutrition, and mental preparation. Taper tantrum is real \u2014 you're not losing fitness."
+      },
+      {
+        "week_number": 16, "phase": "taper",
+        "workouts": [
+          {"day": 1, "workout_type": "easy", "distance_km": 3.0, "pace_zone": "Zone 1", "duration_minutes": 18, "intensity": 0.55, "description": "Pre-race shakeout. 15 min jog + 3x20s strides. Done."},
+          {"day": 2, "workout_type": "rest", "description": "Rest. Hydrate. Trust the process."},
+          {"day": 3, "workout_type": "rest", "description": "Rest day"},
+          {"day": 4, "workout_type": "rest", "description": "Rest day"},
+          {"day": 5, "workout_type": "rest", "description": "Rest. Light stretching only."},
+          {"day": 6, "workout_type": "rest", "description": "Pre-race rest. Carb-load. Early to bed."},
+          {"day": 7, "workout_type": "long_run", "distance_km": 42.2, "pace_zone": "Zone 3", "duration_minutes": 185, "intensity": 0.80, "description": "RACE DAY. First 10K at 4:28/km (slightly conservative). 10\u201330K at 4:24/km (goal pace). 30\u201342K \u2014 everything you've got. You're ready."}
+        ],
+        "notes": "RACE WEEK. 16 weeks of smart, disciplined training behind you. Execute the plan: start conservative, negative split the second half."
+      }
+    ],
+    "predicted_finish_time_minutes": 184.5,
+    "supplementary_notes": "Injury prevention: Eccentric heel drops 3x15 daily for Achilles maintenance. Plantar fascia \u2014 frozen bottle rolls nightly. Hip and glute activation pre-run (clamshells, monster walks). Core work 3x/week (planks, bird-dogs, dead bugs). Consider compression socks for long runs over 25K. Sports massage every 3 weeks.",
+    "notes": "16-week marathon plan for an advanced runner (VDOT 55, 95 km/week base) targeting sub-3:05. Daniels-style periodization: base (weeks 1\u20133), build (weeks 5\u201310), peak (weeks 11\u201312), taper (weeks 13\u201316) with recovery weeks at 4 and 8. Key workouts: marathon-pace tempos (building from 8K to 14K at goal pace) and VO2max intervals for aerobic ceiling. Long runs peak at 32K with marathon-pace finishes. Injury history addressed with specific prehab protocols."
+  },
+  "decision_log": [
+    {
+      "iteration": 1,
+      "timestamp": "2026-03-22T16:00:00Z",
+      "outcome": "rejected",
+      "scores": {
+        "safety": 68,
+        "progression": 75,
+        "specificity": 85,
+        "feasibility": 78,
+        "overall": 74.8
+      },
+      "critique": "Safety below threshold. Long run in week 6 at 32K is 34% of weekly volume, exceeding the 30% cap. Week 9 long run also exceeds cap. Achilles history requires explicit prehab in supplementary notes. Recovery weeks need clearer load reduction.",
+      "issues": ["Week 6 long run exceeds 30% of weekly volume", "Week 9 long run exceeds 30% cap", "Achilles tendinopathy history not addressed in supplementary notes", "Recovery week 4 load reduction only 22% (should be 25-30%)"],
+      "planner_input_tokens": 6800,
+      "planner_output_tokens": 9200,
+      "reviewer_input_tokens": 12500,
+      "reviewer_output_tokens": 1800,
+      "planner_tool_calls": 8,
+      "reviewer_tool_calls": 4
+    },
+    {
+      "iteration": 2,
+      "timestamp": "2026-03-22T16:04:00Z",
+      "outcome": "rejected",
+      "scores": {
+        "safety": 78,
+        "progression": 82,
+        "specificity": 87,
+        "feasibility": 80,
+        "overall": 81.0
+      },
+      "critique": "Improved but progression between weeks 8 (recovery) and 9 is too aggressive \u2014 17% jump. Need a gentler ramp-up out of recovery week 8. Prehab notes now included. Long run caps corrected.",
+      "issues": ["Week 8\u21929 volume jump of 17% exceeds 8% limit"],
+      "planner_input_tokens": 8200,
+      "planner_output_tokens": 9800,
+      "reviewer_input_tokens": 14000,
+      "reviewer_output_tokens": 1200,
+      "planner_tool_calls": 9,
+      "reviewer_tool_calls": 4
+    },
+    {
+      "iteration": 3,
+      "timestamp": "2026-03-22T16:07:00Z",
+      "outcome": "approved",
+      "scores": {
+        "safety": 85,
+        "progression": 83,
+        "specificity": 90,
+        "feasibility": 84,
+        "overall": 85.4
+      },
+      "critique": "Excellent marathon plan for an advanced runner. All weekly increases within 8%. Long runs stay within 30% cap. Two properly placed recovery weeks. Injury history addressed with specific prehab protocols. Marathon-pace progression is well-structured (8K \u2192 12K \u2192 14K). 80/20 distribution maintained even with two quality sessions per week. Predicted finish time aligns with VDOT-based prediction.",
+      "issues": [],
+      "planner_input_tokens": 9500,
+      "planner_output_tokens": 10200,
+      "reviewer_input_tokens": 15500,
+      "reviewer_output_tokens": 1000,
+      "planner_tool_calls": 10,
+      "reviewer_tool_calls": 5
+    }
+  ],
+  "scores": {
+    "safety": 85,
+    "progression": 83,
+    "specificity": 90,
+    "feasibility": 84,
+    "overall": 85.4
+  },
+  "approved": true,
+  "total_tokens": 108200,
+  "estimated_cost_usd": 5.85
+}

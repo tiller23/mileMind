@@ -97,6 +97,7 @@ def create_app() -> FastAPI:
 
     # Register routes
     from src.api.routes.auth import router as auth_router
+    from src.api.routes.demo import router as demo_router
     from src.api.routes.invite import router as invite_router
     from src.api.routes.jobs import router as jobs_router
     from src.api.routes.plans import router as plans_router
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     from src.api.routes.strava import router as strava_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(demo_router, prefix="/api/v1")
     app.include_router(invite_router, prefix="/api/v1")
     app.include_router(profile_router, prefix="/api/v1")
     app.include_router(plans_router, prefix="/api/v1")

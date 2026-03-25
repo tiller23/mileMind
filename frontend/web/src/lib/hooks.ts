@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, auth, jobs, plans, profile, strava } from "./api";
+import { ApiError, auth, demo, jobs, plans, profile, strava } from "./api";
 import type {
   PlanGenerateRequest,
   PlanUpdateStartDate,
@@ -187,5 +187,35 @@ export function useStravaActivities(limit = 50) {
     queryFn: () => strava.activities(limit),
     enabled: limit > 0,
     staleTime: 60_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Demo (public, no auth)
+// ---------------------------------------------------------------------------
+
+export function useDemoPlans() {
+  return useQuery({
+    queryKey: ["demo-plans"],
+    queryFn: () => demo.plans(),
+    staleTime: Infinity,
+  });
+}
+
+export function useDemoPlan(planId: string | undefined) {
+  return useQuery({
+    queryKey: ["demo-plan", planId],
+    queryFn: () => demo.plan(planId!),
+    enabled: !!planId,
+    staleTime: Infinity,
+  });
+}
+
+export function useDemoPlanDebug(planId: string | undefined) {
+  return useQuery({
+    queryKey: ["demo-plan-debug", planId],
+    queryFn: () => demo.debug(planId!),
+    enabled: !!planId,
+    staleTime: Infinity,
   });
 }
