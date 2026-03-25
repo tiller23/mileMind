@@ -69,6 +69,7 @@ async def upsert_profile(
     sanitized = data.model_dump()
     sanitized["name"] = sanitize_prompt_text(sanitized["name"])
     sanitized["injury_history"] = sanitize_prompt_text(sanitized["injury_history"])
+    sanitized["goal_distance"] = sanitize_prompt_text(sanitized["goal_distance"])
 
     result = await session.execute(
         select(DBAthleteProfile).where(DBAthleteProfile.user_id == user.id)

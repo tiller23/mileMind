@@ -12,11 +12,15 @@ Usage:
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import Request, Response
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 
 def _get_rate_limit_key(request: Request) -> str:
@@ -66,6 +70,11 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Res
     Returns:
         JSON 429 response.
     """
+    logger.warning(
+        "Rate limit exceeded: %s from %s",
+        exc.detail,
+        get_remote_address(request),
+    )
     return JSONResponse(
         status_code=429,
         content={"detail": f"Rate limit exceeded: {exc.detail}"},

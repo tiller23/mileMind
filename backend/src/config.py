@@ -98,13 +98,18 @@ class Settings(BaseSettings):
         Raises:
             ValueError: If required secrets are missing in production mode.
         """
+        is_prod = self.environment == "production"
+        if is_prod and self.debug:
+            raise ValueError(
+                "DEBUG cannot be True when ENVIRONMENT=production."
+            )
         if not self.debug and self.jwt_secret == "CHANGE-ME-IN-PRODUCTION":
             raise ValueError(
                 "jwt_secret must be set to a secure value in production. "
                 "Set the JWT_SECRET environment variable."
             )
         if (
-            not self.debug
+            is_prod
             and self.strava_client_id
             and not self.strava_token_encryption_key
         ):

@@ -309,11 +309,24 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="STRAVA_TOKEN_ENCRYPTION_KEY"):
             Settings(
                 debug=False,
+                environment="production",
                 jwt_secret="a-real-secret-value-here",
                 strava_client_id="some-id",
                 strava_client_secret="some-secret",
                 strava_token_encryption_key="",
                 database_url="sqlite+aiosqlite://",
+            )
+
+    def test_debug_rejected_in_production(self) -> None:
+        """Config rejects debug=True when environment=production."""
+        with pytest.raises(ValueError, match="DEBUG cannot be True"):
+            Settings(
+                debug=True,
+                environment="production",
+                jwt_secret="a-real-secret-value-here",
+                database_url="sqlite+aiosqlite://",
+                strava_client_id="",
+                strava_client_secret="",
             )
 
     def test_strava_encryption_key_not_required_without_strava(self) -> None:

@@ -11,8 +11,11 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import uuid as uuid_mod
 from collections.abc import AsyncGenerator
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
@@ -126,6 +129,7 @@ async def get_current_user(
         user_id_str: str | None = payload.get("sub")
         token_type: str | None = payload.get("type")
         if user_id_str is None or token_type != "access":
+            logger.warning("Auth failed: invalid token claims (type=%s)", token_type)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
@@ -135,6 +139,7 @@ async def get_current_user(
         # Require jti claim (all tokens from Phase 5e+ have it)
         jti = payload.get("jti")
         if not jti:
+            logger.warning("Auth failed: missing jti for user %s", user_id_str)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token (missing jti)",
@@ -145,11 +150,13 @@ async def get_current_user(
             select(RevokedToken).where(RevokedToken.jti == jti)
         )
         if revoked.scalar_one_or_none() is not None:
+            logger.warning("Auth failed: revoked token jti=%s user=%s", jti, user_id_str)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
             )
     except JWTError:
+        logger.warning("Auth failed: JWT decode error")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
@@ -158,6 +165,7 @@ async def get_current_user(
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
+        logger.warning("Auth failed: user not found for id=%s", user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",

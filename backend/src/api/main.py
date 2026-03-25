@@ -79,6 +79,8 @@ def create_app() -> FastAPI:
         description="AI-powered running training optimizer",
         version="0.1.0",
         lifespan=lifespan,
+        docs_url="/docs" if settings.debug else None,
+        redoc_url="/redoc" if settings.debug else None,
     )
 
     # Rate limiter
@@ -91,7 +93,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization"],
     )
 

@@ -206,7 +206,7 @@ async def create_invite_codes(
 
     codes: list[InviteCode] = []
     for _ in range(body.count):
-        suffix = secrets.token_hex(3).upper()[:4]
+        suffix = secrets.token_urlsafe(8)[:8]
         code = InviteCode(
             code=f"{body.prefix}-{suffix}",
             max_uses=body.max_uses,
