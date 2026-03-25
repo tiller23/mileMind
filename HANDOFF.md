@@ -1,88 +1,115 @@
-# Session Handoff — 2026-03-24 (Session 2)
+# Session Handoff — 2026-03-25
 
-**Branch:** `feature/phase-5c-frontend`
-**Tests:** 1729 backend + 54 frontend = 1783 total
-**Date:** 2026-03-24
+**Branch:** `main` (Phase 5e merged)
+**Tests:** 1904 backend + 54 frontend = 1958 total
+**Date:** 2026-03-25
+**Status:** DEPLOYED to production
 
 ## What Got Done This Session
 
-### Phase 5d: Strava Integration
-- OAuth connect/disconnect with JWT-signed CSRF state tokens
-- `StravaService` — token exchange, auto-refresh (6-hour expiry), activity fetch
-- Activity import with smart sync (only fetches new since last import, 1-hour overlap buffer)
-- Dedup by `strava_activity_id`, unit conversion (m→km, s→min), run-only filter
-- Safety: 30s httpx timeout, MAX_PAGES=20 pagination guard, 5-min sync cooldown
-- `StravaConnect` component on onboarding page with "Powered by Strava" attribution
-- Strava OAuth callback page (`/auth/callback/strava`)
-- 6 REST endpoints: connect, callback, status, sync, disconnect, activities
-- `StravaSyncResponse` includes `suggested_weekly_mileage_km` for profile enrichment
-- 26 backend tests (service + routes), 6 frontend tests
+### Phase 5e: Pre-Deployment Hardening & Deployment
 
-### Plan vs. Actual on Dashboard
-- Green actual distance overlay on This Week card (from Strava data)
-- Tappable day cells show stacked Planned (gray) + Actual (green) detail panels
-- Actual panel shows: activity name, distance, duration, avg HR, pace
-- Days with only Strava data (no planned workout) show green-tinted cells
-- Week navigation arrows (prev/next) with "Today" pill to snap back
+#### Security Hardening
+- Fernet encryption for Strava tokens at rest (`crypto.py`)
+- Rate limiting via `slowapi` (auth 10/min, generate 5/hr, strava 20/min)
+- SSE heartbeats every 15s to prevent Railway idle disconnect
+- JWT logout revocation with denylist table + hourly cleanup
+- Required `jti` claim on all tokens (no bypass for legacy tokens)
+- Cookie domain support for cross-subdomain auth (`app.X` + `api.X`)
 
-### Security Hardening (Code Review Fixes)
-- OAuth CSRF: state token now verified on Google callback (was generated but never checked)
-- Middleware restored: `proxy.ts` → `middleware.ts`, function renamed
-- `goal_distance` pattern constraint (`^[a-zA-Z0-9_ ]+$`) prevents prompt injection
-- `weekly_mileage_base` capped at `le=500.0` km
-- Pricing constants extracted to module level (`SONNET_INPUT_COST_PER_TOKEN` etc.)
-- `StravaCallbackRequest.code` validated, response models typed (no bare dicts)
+#### Access Controls
+- Invite code system with atomic redemption (gates plan generation, not signup)
+- Admin routes for invite code creation/listing (`POST/GET /invite/admin/codes`)
+- Per-user monthly plan limit (2/month default)
+- Global API budget cap ($50/month default)
+- User role field (`user`/`admin`) with DB check constraint
 
-### Frontend Polish
-- 404, error, global-error, and dashboard loading skeleton pages
-- Navbar: keyboard nav (Escape closes dropdown), `role="menu"`/`role="menuitem"`
-- Onboarding: unit toggle `role="radiogroup"` with `aria-checked`
-- PlanCalendar: `aria-label` on workout cells, `WorkoutCell` memoized with `React.memo`
-- `PlanGenerationLoader`: `useStableCallback` prevents SSE reconnects on parent render
-- Date inputs: proper `htmlFor`/`id` and `aria-label` associations
-- Logo SVGs updated to match Mm mark design (removed old winding path)
-- `usePlan` accepts `undefined` instead of empty string
+#### Demo Mode
+- 3 hand-crafted demo plans: beginner 5K (8wk), intermediate half (12wk), advanced marathon (16wk)
+- Each includes realistic decision logs showing planner-reviewer negotiation
+- Public API: `GET /demo/plans`, `/demo/plans/{id}`, `/demo/plans/{id}/debug` (no auth)
+- Demo landing with persona cards and "How plans are built" section
+- Reuses PlanCalendar and ScoreBadge components
+- "View Demo Plans" button on landing page hero
+- Seed script: `python scripts/seed_demo_data.py` (idempotent)
 
-### Git Cleanup
-- Removed stale files: `bootstrap.sh`, `proxy.ts`, 5 unused Next.js default SVGs
-- Deleted 6 merged branches (local + remote): phase-3, phase-4-review-fixes, phase-5a-db-api, phase5-plan-cleanup, pre-phase5-hardening, security-warnings
-- Only `main` and `feature/phase-5c-frontend` remain
+#### Deployment Infrastructure
+- Backend Dockerfile (Python 3.12 slim, single Uvicorn worker, runs migrations on startup)
+- GitHub Actions CI (backend tests + lint, frontend tests on push/PR)
+- Production config: `ENVIRONMENT`, `COOKIE_DOMAIN`, `CORS_ORIGINS` fields
+- Swagger docs disabled in production
+- Security event logging for failed auth and rate limit hits
+
+#### Security Pen Test (OWASP Top 10)
+- 0 critical, 1 HIGH fixed, 4 MEDIUM fixed, 3 LOW fixed
+- HIGH: `debug` flag can no longer bypass production secret validation
+- Invite code entropy increased from 65K to ~2.8T keyspace
+- `goal_distance` sanitized for prompt injection
+- All findings documented and resolved before deploy
+
+#### Production Deployment
+- **Backend:** Railway (Docker, managed PostgreSQL, `api.milemind.app`)
+- **Frontend:** Vercel (Next.js, `milemind.app`)
+- **Domain:** `milemind.app` on Cloudflare (auto-connected to Railway)
+- **Database:** Railway PostgreSQL (private networking)
+- Google OAuth redirect URIs updated for production
+- Strava callback domain updated for production
+- Demo data seeded on production database
+
+### Other Fixes
+- Renamed `middleware.ts` to `proxy.ts` (Next.js 16 deprecation)
+- Fixed Alembic migration chain (wrong `down_revision`)
+- TypeScript null assertion fix for Strava OAuth callback
+- Logo size prop fix in demo pages
+- PlanCalendar/ScoreBadge prop mismatches fixed
+
+## Production URLs
+- **App:** https://milemind.app
+- **API:** https://api.milemind.app
+- **Health:** https://api.milemind.app/health
+- **Demo:** https://milemind.app/demo
+
+## Production Environment Variables (Railway)
+- `DATABASE_URL` — asyncpg connection to Railway Postgres (private)
+- `DATABASE_URL_SYNC` — sync connection for Alembic
+- `JWT_SECRET` — generated, production-grade
+- `STRAVA_TOKEN_ENCRYPTION_KEY` — Fernet key
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+- `ANTHROPIC_API_KEY`
+- `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET`
+- `FRONTEND_URL` = `https://milemind.app`
+- `COOKIE_DOMAIN` = `.milemind.app`
+- `ENVIRONMENT` = `production`
+- `DEBUG` = `false`
 
 ## Test Counts
-- Backend: 1729 (26 new Strava tests)
-- Frontend: 54 (6 new Strava tests)
+- Backend: 1904 (48 new security/demo/invite tests)
+- Frontend: 54
 
-## Strava Setup
-Strava is connected and working. Credentials in `backend/.env`:
-- `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET` from strava.com/settings/api
-- Authorization callback domain: `localhost` (update for production)
-- Redirect URI: `http://localhost:3000/auth/callback/strava`
-
-## Known Deferrals
-- Strava token encryption at rest → Phase 5e (deployment hardening)
-- SSE cleanup race condition (60s timer) → Phase 5e (needs Redis)
-- Strava webhooks for real-time sync → Phase 5e (needs public URL)
-- Radiogroup arrow-key navigation → minor a11y enhancement
-- `PlanData` index signature `[key: string]: unknown` → accepted tradeoff
+## Known Issues
+- Railway port: custom domain targets 8080 (Railway's default PORT), not 8000
+- `DATABASE_URL` had trailing whitespace on first paste — watch for this on future edits
+- Strava webhooks not yet implemented (requires public URL, now available)
 
 ## Next Session
 
 ### Should Do
-1. **Merge to main** — Phase 5c+5d is feature-complete, all tests pass
-2. **Phase 5e — Deployment** — Docker, managed Postgres, Vercel, Strava webhook setup
-3. **Strava token encryption** — Fernet encryption with env key before production
+1. **Create invite codes** — run admin endpoint or script to generate codes for testers
+2. **Strava token encryption key** — verify tokens are encrypted on production
+3. **Monitor Railway logs** — watch for any startup issues or errors
+4. **Strava webhooks** — now feasible with public URL `api.milemind.app`
 
 ### Feature Backlog
-4. Strava webhooks for real-time activity sync (requires public URL)
-5. Bidirectional Strava sync (push planned workouts)
-6. Plan adaptation from actual workout data (feedback loop)
-7. Mobile app (React Native/Expo)
+5. Plan negotiation UI ("change up this week")
+6. Bidirectional Strava sync (push planned workouts)
+7. Plan adaptation from actual workout data (feedback loop)
+8. Mobile app (React Native/Expo)
 
 ### Prompt Tuning Backlog
-8. Recovery week load reduction tied to athlete level
-9. Zone 3 "easy" classification nuance for standalone marathon-pace workouts
-10. Workout variety enforcement in reviewer
-11. User-selectable experience level
+9. Recovery week load reduction tied to athlete level
+10. Zone 3 "easy" classification nuance
+11. Workout variety enforcement in reviewer
+12. User-selectable experience level
 
 ## Local Dev Setup
 ```bash
