@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+tests/
+evaluation_reports/
+milemind_backend.egg-info/
+.env
+.env.*
+*.md
