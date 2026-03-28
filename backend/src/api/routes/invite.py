@@ -127,9 +127,7 @@ async def redeem_invite_code(
 
     if updated is None:
         # Check if the code exists at all (for better error message)
-        check = await session.execute(
-            select(InviteCode).where(InviteCode.code == code_str)
-        )
+        check = await session.execute(select(InviteCode).where(InviteCode.code == code_str))
         existing = check.scalar_one_or_none()
         if existing is None:
             raise HTTPException(
@@ -147,9 +145,7 @@ async def redeem_invite_code(
         )
 
     # Check expiry (if set)
-    code_row = await session.execute(
-        select(InviteCode).where(InviteCode.code == code_str)
-    )
+    code_row = await session.execute(select(InviteCode).where(InviteCode.code == code_str))
     invite_code = code_row.scalar_one()
     if invite_code.expires_at and invite_code.expires_at < datetime.now(UTC):
         # Roll back the increment
@@ -345,11 +341,10 @@ async def request_invite(
     async def _notify_discord() -> None:
         try:
             from src.api.notifications import _strip_discord_markdown, send_discord_notification
+
             safe_name = _strip_discord_markdown(user.name)
             safe_email = _strip_discord_markdown(user.email)
-            await send_discord_notification(
-                f"New invite request from {safe_name} ({safe_email})"
-            )
+            await send_discord_notification(f"New invite request from {safe_name} ({safe_email})")
         except Exception:
             logger.warning("Failed to send Discord notification", exc_info=True)
 
@@ -482,14 +477,13 @@ async def approve_invite_request(
     _require_admin(user)
 
     from uuid import UUID
+
     try:
         req_uuid = UUID(request_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Invalid request ID.")
 
-    result = await session.execute(
-        select(InviteRequest).where(InviteRequest.id == req_uuid)
-    )
+    result = await session.execute(select(InviteRequest).where(InviteRequest.id == req_uuid))
     invite_req = result.scalar_one_or_none()
     if invite_req is None:
         raise HTTPException(status_code=404, detail="Invite request not found.")
@@ -507,9 +501,7 @@ async def approve_invite_request(
     session.add(code)
 
     # Assign to requesting user
-    req_user_result = await session.execute(
-        select(User).where(User.id == invite_req.user_id)
-    )
+    req_user_result = await session.execute(select(User).where(User.id == invite_req.user_id))
     req_user = req_user_result.scalar_one()
     req_user.invite_code_used = code_str
 
@@ -523,6 +515,7 @@ async def approve_invite_request(
     async def _notify_email() -> None:
         try:
             from src.api.notifications import send_approval_email
+
             await send_approval_email(req_user.email, req_user.name)
         except Exception:
             logger.warning("Failed to send approval email", exc_info=True)
@@ -557,14 +550,13 @@ async def deny_invite_request(
     _require_admin(user)
 
     from uuid import UUID
+
     try:
         req_uuid = UUID(request_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Invalid request ID.")
 
-    result = await session.execute(
-        select(InviteRequest).where(InviteRequest.id == req_uuid)
-    )
+    result = await session.execute(select(InviteRequest).where(InviteRequest.id == req_uuid))
     invite_req = result.scalar_one_or_none()
     if invite_req is None:
         raise HTTPException(status_code=404, detail="Invite request not found.")

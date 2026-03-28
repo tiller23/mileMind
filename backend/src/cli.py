@@ -147,7 +147,8 @@ def parse_args() -> argparse.Namespace:
         help="Print the system prompt, tools, and athlete profile without calling the API",
     )
     parser.add_argument(
-        "-y", "--yes",
+        "-y",
+        "--yes",
         action="store_true",
         help="Skip the confirmation prompt before making API calls",
     )
@@ -164,7 +165,7 @@ def parse_args() -> argparse.Namespace:
         choices=["full", "adaptation", "tweak"],
         default="full",
         help="Plan change scope: full (new plan + full review), "
-             "adaptation (mid-cycle + 1 retry), tweak (no review). Default: full.",
+        "adaptation (mid-cycle + 1 retry), tweak (no review). Default: full.",
     )
     parser.add_argument(
         "--no-review",
@@ -184,7 +185,8 @@ def parse_args() -> argparse.Namespace:
         help="Claude model for reviewer (default: claude-opus-4-20250514)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging (DEBUG level for agent internals)",
     )
@@ -221,7 +223,9 @@ def load_athlete(args: argparse.Namespace) -> AthleteProfile:
 
 
 def print_result(
-    result: PlannerResult, validation: ValidationResult, debug: bool = False,
+    result: PlannerResult,
+    validation: ValidationResult,
+    debug: bool = False,
 ) -> None:
     """Pretty-print the planner result (Phase 2 planner-only mode).
 
@@ -257,7 +261,7 @@ def print_result(
             status = "OK" if tc["success"] else "FAIL"
             print(f"\n  [{i}] {tc['name']} [{status}]")
             print(f"      Input:  {json.dumps(tc['input'], indent=2)[:200]}")
-            output_str = json.dumps(tc['output'], indent=2)
+            output_str = json.dumps(tc["output"], indent=2)
             if len(output_str) > 200:
                 output_str = output_str[:200] + "..."
             print(f"      Output: {output_str}")
@@ -480,7 +484,9 @@ async def main() -> None:
     # Dry run: show what would be sent and exit
     if args.dry_run:
         print_dry_run(
-            athlete, args.model, args.max_iterations,
+            athlete,
+            args.model,
+            args.max_iterations,
             review=change_type != PlanChangeType.TWEAK,
             reviewer_model=effective_reviewer_model,
             max_retries=args.max_retries,

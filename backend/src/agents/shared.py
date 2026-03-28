@@ -88,6 +88,7 @@ def sanitize_prompt_text(text: str) -> str:
 # AgentLoopResult dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentLoopResult:
     """Result of a generic agent tool-use loop.
@@ -118,6 +119,7 @@ class AgentLoopResult:
 # ---------------------------------------------------------------------------
 # build_registry
 # ---------------------------------------------------------------------------
+
 
 def build_registry() -> ToolRegistry:
     """Create a ToolRegistry with all six MileMind tools.
@@ -153,6 +155,7 @@ def build_registry() -> ToolRegistry:
 # extract_text  (W12: proper type narrowing with hasattr checks)
 # ---------------------------------------------------------------------------
 
+
 def extract_text(content_blocks: list[Any]) -> str:
     """Extract concatenated text from Claude's response content blocks.
 
@@ -173,11 +176,7 @@ def extract_text(content_blocks: list[Any]) -> str:
     """
     text_parts: list[str] = []
     for block in content_blocks:
-        if (
-            hasattr(block, "type")
-            and hasattr(block, "text")
-            and block.type == "text"
-        ):
+        if hasattr(block, "type") and hasattr(block, "text") and block.type == "text":
             text_parts.append(block.text)
     return "\n".join(text_parts)
 
@@ -185,6 +184,7 @@ def extract_text(content_blocks: list[Any]) -> str:
 # ---------------------------------------------------------------------------
 # run_agent_loop — generic tool-use loop shared by planner and reviewer
 # ---------------------------------------------------------------------------
+
 
 async def run_agent_loop(
     transport: MessageTransport,
@@ -237,7 +237,11 @@ async def run_agent_loop(
 
         loop_logger.info(
             "%s agent iteration %d/%d, model=%s, messages=%d",
-            logger_name, iteration, max_iterations, model, len(messages),
+            logger_name,
+            iteration,
+            max_iterations,
+            model,
+            len(messages),
         )
 
         response = await transport.create_message(
@@ -303,22 +307,28 @@ async def run_agent_loop(
                 result = registry.execute(tool_name, tool_input)
 
                 loop_logger.info(
-                    "Tool call: tool=%s, success=%s", tool_name, result.success,
+                    "Tool call: tool=%s, success=%s",
+                    tool_name,
+                    result.success,
                 )
 
-                tool_call_log.append({
-                    "name": tool_name,
-                    "input": tool_input,
-                    "output": result.output,
-                    "success": result.success,
-                })
+                tool_call_log.append(
+                    {
+                        "name": tool_name,
+                        "input": tool_input,
+                        "output": result.output,
+                        "success": result.success,
+                    }
+                )
 
-                tool_result_blocks.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_use_id,
-                    "content": result.to_content_block(),
-                    "is_error": not result.success,
-                })
+                tool_result_blocks.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                        "content": result.to_content_block(),
+                        "is_error": not result.success,
+                    }
+                )
 
             # Append all tool results in a single user message
             messages.append({"role": "user", "content": tool_result_blocks})
@@ -337,7 +347,8 @@ async def run_agent_loop(
     # Max iterations reached without a final response
     loop_logger.warning(
         "%s agent hit max iterations (%d) without completing.",
-        logger_name, max_iterations,
+        logger_name,
+        max_iterations,
     )
     return AgentLoopResult(
         final_text="",

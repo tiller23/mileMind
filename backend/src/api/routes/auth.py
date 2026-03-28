@@ -151,6 +151,7 @@ async def google_login(request: Request, settings: Settings = Depends(get_settin
     # Sign the state token as a short-lived JWT so the callback can verify it
     # without server-side session storage.
     from datetime import datetime, timedelta
+
     state_token = jwt.encode(
         {
             "state": state,
@@ -198,9 +199,7 @@ async def google_callback(
     """
     # Verify CSRF state token
     try:
-        payload = jwt.decode(
-            data.state, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(data.state, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         if payload.get("type") != "oauth_state":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -232,7 +231,9 @@ async def google_callback(
             )
             if token_resp.status_code != 200:
                 logger.error("Google token exchange failed: %s", token_resp.text)
-                raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
+                raise HTTPException(
+                    status_code=400, detail="Failed to exchange authorization code"
+                )
 
             tokens = token_resp.json()
 
@@ -327,6 +328,7 @@ async def refresh_token(
                 detail="Invalid refresh token",
             )
         from uuid import UUID
+
         user_id = UUID(user_id_str)
 
         # Require jti claim
@@ -340,9 +342,7 @@ async def refresh_token(
             )
 
         # Check if refresh token has been revoked
-        revoked = await session.execute(
-            select(RevokedToken).where(RevokedToken.jti == jti)
-        )
+        revoked = await session.execute(select(RevokedToken).where(RevokedToken.jti == jti))
         if revoked.scalar_one_or_none() is not None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

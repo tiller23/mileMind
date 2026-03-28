@@ -245,20 +245,15 @@ def check_safety(
 
     # --- Hard cap check (ACWR > 1.5, always enforced) ---
     if acwr_rolling > WARNING_UPPER:
-        violations.append(
-            f"ACWR {acwr_rolling:.2f} exceeds hard cap {WARNING_UPPER:.1f}"
-        )
+        violations.append(f"ACWR {acwr_rolling:.2f} exceeds hard cap {WARNING_UPPER:.1f}")
     if acwr_ewma is not None and acwr_ewma > WARNING_UPPER:
-        violations.append(
-            f"ACWR (EWMA) {acwr_ewma:.2f} exceeds hard cap {WARNING_UPPER:.1f}"
-        )
+        violations.append(f"ACWR (EWMA) {acwr_ewma:.2f} exceeds hard cap {WARNING_UPPER:.1f}")
 
     # --- Risk-tolerance ceiling check ---
     tolerance_ceiling = RISK_TOLERANCE_PRESETS[risk_tolerance]
     if acwr_rolling > tolerance_ceiling and acwr_rolling <= WARNING_UPPER:
         violations.append(
-            f"ACWR {acwr_rolling:.2f} exceeds {risk_tolerance} ceiling "
-            f"{tolerance_ceiling:.1f}"
+            f"ACWR {acwr_rolling:.2f} exceeds {risk_tolerance} ceiling " f"{tolerance_ceiling:.1f}"
         )
 
     # --- Weekly mileage increase + spike detection (single pass) ---
@@ -407,13 +402,11 @@ def _validate_acwr_inputs(
         raise ValueError(f"chronic_days must be positive, got {chronic_days}")
     if acute_days >= chronic_days:
         raise ValueError(
-            f"acute_days ({acute_days}) must be less than "
-            f"chronic_days ({chronic_days})"
+            f"acute_days ({acute_days}) must be less than " f"chronic_days ({chronic_days})"
         )
     if len(daily_loads) < chronic_days:
         raise ValueError(
-            f"daily_loads must have at least {chronic_days} entries, "
-            f"got {len(daily_loads)}"
+            f"daily_loads must have at least {chronic_days} entries, " f"got {len(daily_loads)}"
         )
 
 
@@ -433,9 +426,7 @@ def _validate_safety_inputs(
         ValueError: On invalid inputs.
     """
     if len(weekly_loads) < 4:
-        raise ValueError(
-            f"weekly_loads must have at least 4 entries, got {len(weekly_loads)}"
-        )
+        raise ValueError(f"weekly_loads must have at least 4 entries, got {len(weekly_loads)}")
     if risk_tolerance not in RISK_TOLERANCE_PRESETS:
         raise ValueError(
             f"risk_tolerance must be one of {list(RISK_TOLERANCE_PRESETS.keys())}, "

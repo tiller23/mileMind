@@ -48,6 +48,7 @@ def _rates_for_model(model: str) -> tuple[float, float]:
 # Per-persona result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PersonaResult:
     """Result of running one persona through the orchestrator.
@@ -117,11 +118,11 @@ class PersonaResult:
             Estimated cost in USD.
         """
         p_in, p_out = (
-            _rates_for_model(self.planner_model) if self.planner_model
-            else _DEFAULT_PLANNER_RATES
+            _rates_for_model(self.planner_model) if self.planner_model else _DEFAULT_PLANNER_RATES
         )
         r_in, r_out = (
-            _rates_for_model(self.reviewer_model) if self.reviewer_model
+            _rates_for_model(self.reviewer_model)
+            if self.reviewer_model
             else _DEFAULT_REVIEWER_RATES
         )
         planner_cost = (
@@ -201,9 +202,7 @@ class PersonaResult:
                 "overall": self.final_scores.overall,
             }
 
-        decision_log_dicts = [
-            entry.model_dump(mode="json") for entry in self.decision_log
-        ]
+        decision_log_dicts = [entry.model_dump(mode="json") for entry in self.decision_log]
 
         return {
             "persona_id": self.persona_id,
@@ -232,6 +231,7 @@ class PersonaResult:
 # ---------------------------------------------------------------------------
 # Aggregate metrics
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class HarnessMetrics:
@@ -312,8 +312,7 @@ class HarnessMetrics:
         # Score averages only from results that have scores
         scored = [r for r in results if r.final_scores is not None]
         avg_safety = (
-            sum(r.final_scores.safety for r in scored if r.final_scores is not None)
-            / len(scored)
+            sum(r.final_scores.safety for r in scored if r.final_scores is not None) / len(scored)
             if scored
             else 0.0
         )
@@ -323,8 +322,7 @@ class HarnessMetrics:
             else 0.0
         )
         avg_overall = (
-            sum(r.final_scores.overall for r in scored if r.final_scores is not None)
-            / len(scored)
+            sum(r.final_scores.overall for r in scored if r.final_scores is not None) / len(scored)
             if scored
             else 0.0
         )

@@ -45,18 +45,10 @@ class AthleteProfile(BaseModel):
 
     name: str = Field(min_length=1, max_length=100, description="Athlete display name")
     age: int = Field(ge=10, le=100, description="Age in years")
-    vo2max: float | None = Field(
-        default=None, ge=15.0, le=90.0, description="VO2max in ml/kg/min"
-    )
-    vdot: float | None = Field(
-        default=None, ge=15.0, le=85.0, description="VDOT score"
-    )
-    weekly_mileage_base: float = Field(
-        ge=0.0, description="Current weekly mileage baseline in km"
-    )
-    hr_max: int | None = Field(
-        default=None, ge=100, le=230, description="Max heart rate in bpm"
-    )
+    vo2max: float | None = Field(default=None, ge=15.0, le=90.0, description="VO2max in ml/kg/min")
+    vdot: float | None = Field(default=None, ge=15.0, le=85.0, description="VDOT score")
+    weekly_mileage_base: float = Field(ge=0.0, description="Current weekly mileage baseline in km")
+    hr_max: int | None = Field(default=None, ge=100, le=230, description="Max heart rate in bpm")
     hr_rest: int | None = Field(
         default=None, ge=30, le=100, description="Resting heart rate in bpm"
     )
@@ -65,10 +57,14 @@ class AthleteProfile(BaseModel):
     )
     risk_tolerance: RiskTolerance = Field(default=RiskTolerance.MODERATE)
     max_weekly_increase_pct: float = Field(
-        default=0.10, ge=0.01, le=0.20,
+        default=0.10,
+        ge=0.01,
+        le=0.20,
         description="Max weekly load increase as fraction (0.10 = 10%)",
     )
-    goal_distance: str = Field(max_length=50, description="Target race distance (e.g., '5K', 'marathon')")
+    goal_distance: str = Field(
+        max_length=50, description="Target race distance (e.g., '5K', 'marathon')"
+    )
     goal_time_minutes: float | None = Field(
         default=None, ge=1.0, description="Target finish time in minutes"
     )
@@ -76,7 +72,9 @@ class AthleteProfile(BaseModel):
         default=5, ge=3, le=7, description="Available training days per week"
     )
     long_run_cap_pct: float = Field(
-        default=0.30, ge=0.15, le=0.50,
+        default=0.30,
+        ge=0.15,
+        le=0.50,
         description="Max fraction of weekly mileage in a single long run",
     )
     preferred_units: str = Field(
@@ -85,7 +83,9 @@ class AthleteProfile(BaseModel):
         description="Distance units preference: metric (km) or imperial (miles)",
     )
     plan_duration_weeks: int = Field(
-        default=12, ge=4, le=24,
+        default=12,
+        ge=4,
+        le=24,
         description="Desired training plan length in weeks (4-24)",
     )
 

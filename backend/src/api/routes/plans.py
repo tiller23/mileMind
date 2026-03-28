@@ -78,9 +78,7 @@ async def generate_plan(
         )
 
     # Gate: per-user monthly plan limit
-    month_start = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     plan_count = await session.scalar(
         select(func.count(TrainingPlan.id)).where(
             TrainingPlan.user_id == user.id,
@@ -174,15 +172,17 @@ async def list_plans(
     for p in plans:
         plan_data = p.plan_data or {}
         weeks = plan_data.get("weeks", [])
-        summaries.append(PlanSummary(
-            id=p.id,
-            approved=p.approved,
-            status=p.status,
-            scores=p.scores,
-            goal_event=plan_data.get("goal_event"),
-            week_count=len(weeks) if weeks else None,
-            created_at=p.created_at,
-        ))
+        summaries.append(
+            PlanSummary(
+                id=p.id,
+                approved=p.approved,
+                status=p.status,
+                scores=p.scores,
+                goal_event=plan_data.get("goal_event"),
+                week_count=len(weeks) if weeks else None,
+                created_at=p.created_at,
+            )
+        )
     return summaries
 
 

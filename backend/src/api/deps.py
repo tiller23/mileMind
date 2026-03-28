@@ -55,9 +55,7 @@ def create_access_token(
     """
     if settings is None:
         settings = get_settings()
-    expire = datetime.now(UTC) + timedelta(
-        minutes=settings.jwt_access_token_expire_minutes
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     jti = str(uuid_mod.uuid4())
     payload = {
         "sub": str(user_id),
@@ -83,9 +81,7 @@ def create_refresh_token(
     """
     if settings is None:
         settings = get_settings()
-    expire = datetime.now(UTC) + timedelta(
-        days=settings.jwt_refresh_token_expire_days
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     jti = str(uuid_mod.uuid4())
     payload = {
         "sub": str(user_id),
@@ -146,9 +142,7 @@ async def get_current_user(
             )
 
         # Check JWT denylist (revoked on logout)
-        revoked = await session.execute(
-            select(RevokedToken).where(RevokedToken.jti == jti)
-        )
+        revoked = await session.execute(select(RevokedToken).where(RevokedToken.jti == jti))
         if revoked.scalar_one_or_none() is not None:
             logger.warning("Auth failed: revoked token jti=%s user=%s", jti, user_id_str)
             raise HTTPException(

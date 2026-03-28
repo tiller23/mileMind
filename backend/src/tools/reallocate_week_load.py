@@ -96,7 +96,9 @@ class ReallocateWeekInput(BaseModel):
         description="Current week's workouts (1-21 entries; max 3 per day)",
     )
     swap_day: int = Field(ge=1, le=7, description="Day to modify (1=Monday, 7=Sunday)")
-    new_workout_type: WorkoutType = Field(description="WorkoutType value for the replacement workout")
+    new_workout_type: WorkoutType = Field(
+        description="WorkoutType value for the replacement workout"
+    )
     new_intensity: float | None = Field(
         default=None,
         ge=0.0,
@@ -235,7 +237,8 @@ def _scale_workouts_to_target(
 
     # Identify eligible workouts (not the swapped entry, not rest days)
     eligible_indices = [
-        i for i, w in enumerate(workouts)
+        i
+        for i, w in enumerate(workouts)
         if i != swap_idx and w["workout_type"] != WorkoutType.REST.value
     ]
 
@@ -309,15 +312,17 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
         wt = w["workout_type"]
         wt_str = wt.value if isinstance(wt, WorkoutType) else wt
         tss = _compute_tss(w["duration_minutes"], w["intensity"])
-        workouts_out.append({
-            "day": w["day"],
-            "workout_type": wt_str,
-            "distance_km": w["distance_km"],
-            "duration_minutes": w["duration_minutes"],
-            "intensity": w["intensity"],
-            "description": w.get("description", ""),
-            "tss": round(tss, 4),
-        })
+        workouts_out.append(
+            {
+                "day": w["day"],
+                "workout_type": wt_str,
+                "distance_km": w["distance_km"],
+                "duration_minutes": w["duration_minutes"],
+                "intensity": w["intensity"],
+                "description": w.get("description", ""),
+                "tss": round(tss, 4),
+            }
+        )
 
     original_load = sum(w["tss"] for w in workouts_out)
 
@@ -364,8 +369,7 @@ def reallocate_week_load_handler(input_data: dict[str, Any]) -> dict[str, Any]:
             new_tss,
         )
         swap_summary += (
-            f"; remaining workouts scaled to target weekly load "
-            f"{target_weekly_load:.1f} TSS"
+            f"; remaining workouts scaled to target weekly load " f"{target_weekly_load:.1f} TSS"
         )
 
     adjusted_load = sum(w["tss"] for w in workouts_out)
@@ -416,9 +420,11 @@ def register(registry: ToolRegistry) -> None:
     Args:
         registry: The ToolRegistry instance to register into.
     """
-    registry.register(ToolDefinition(
-        name=_TOOL_NAME,
-        description=_TOOL_DESCRIPTION,
-        input_model=ReallocateWeekInput,
-        handler=reallocate_week_load_handler,
-    ))
+    registry.register(
+        ToolDefinition(
+            name=_TOOL_NAME,
+            description=_TOOL_DESCRIPTION,
+            input_model=ReallocateWeekInput,
+            handler=reallocate_week_load_handler,
+        )
+    )

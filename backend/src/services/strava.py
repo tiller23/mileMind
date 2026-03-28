@@ -57,6 +57,7 @@ HTTP_TIMEOUT = httpx.Timeout(30.0)
 # Internal models
 # ---------------------------------------------------------------------------
 
+
 class StravaTokenData(BaseModel):
     """Token data returned from Strava token exchange or refresh.
 
@@ -98,6 +99,7 @@ class StravaActivity(BaseModel):
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
+
 
 class StravaService:
     """Service for Strava API communication and activity management.
@@ -226,9 +228,7 @@ class StravaService:
         # Re-encrypt new tokens before storing
         strava_token.access_token = self._encrypt(data["access_token"])
         strava_token.refresh_token = self._encrypt(data["refresh_token"])
-        strava_token.expires_at = datetime.fromtimestamp(
-            data["expires_at"], tz=UTC
-        )
+        strava_token.expires_at = datetime.fromtimestamp(data["expires_at"], tz=UTC)
         await self._session.commit()
         return strava_token
 
@@ -305,15 +305,17 @@ class StravaService:
                 for item in page_data:
                     sport = item.get("sport_type", item.get("type", ""))
                     if sport in ("Run", "TrailRun", "VirtualRun"):
-                        activities.append(StravaActivity(
-                            id=item["id"],
-                            name=item.get("name", ""),
-                            sport_type=sport,
-                            distance=item.get("distance", 0.0),
-                            moving_time=item.get("moving_time", 0),
-                            start_date=item.get("start_date", ""),
-                            average_heartrate=item.get("average_heartrate"),
-                        ))
+                        activities.append(
+                            StravaActivity(
+                                id=item["id"],
+                                name=item.get("name", ""),
+                                sport_type=sport,
+                                distance=item.get("distance", 0.0),
+                                moving_time=item.get("moving_time", 0),
+                                start_date=item.get("start_date", ""),
+                                average_heartrate=item.get("average_heartrate"),
+                            )
+                        )
 
                 if len(page_data) < per_page:
                     break
@@ -378,9 +380,7 @@ class StravaService:
 
             # Parse start_date (Strava returns ISO 8601 UTC)
             try:
-                completed_at = datetime.fromisoformat(
-                    activity.start_date.replace("Z", "+00:00")
-                )
+                completed_at = datetime.fromisoformat(activity.start_date.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
                 completed_at = datetime.now(UTC)
 
@@ -391,9 +391,7 @@ class StravaService:
                 actual_distance_km=distance_km,
                 actual_duration_minutes=duration_min,
                 avg_heart_rate=(
-                    int(activity.average_heartrate)
-                    if activity.average_heartrate
-                    else None
+                    int(activity.average_heartrate) if activity.average_heartrate else None
                 ),
                 notes=activity.name,
                 completed_at=completed_at,
@@ -461,7 +459,5 @@ class StravaService:
                 user_id,
             )
 
-        await self._session.execute(
-            delete(StravaToken).where(StravaToken.user_id == user_id)
-        )
+        await self._session.execute(delete(StravaToken).where(StravaToken.user_id == user_id))
         await self._session.commit()

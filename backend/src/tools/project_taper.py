@@ -81,16 +81,14 @@ class ProjectTaperInput(BaseModel):
         default=7,
         ge=1,
         description=(
-            'Minimum taper length to search (only used in "optimize" mode). '
-            "Default 7."
+            'Minimum taper length to search (only used in "optimize" mode). ' "Default 7."
         ),
     )
     max_days: int = Field(
         default=28,
         ge=1,
         description=(
-            'Maximum taper length to search (only used in "optimize" mode). '
-            "Default 28."
+            'Maximum taper length to search (only used in "optimize" mode). ' "Default 28."
         ),
     )
 
@@ -103,13 +101,9 @@ class ProjectTaperInput(BaseModel):
                 or max_days < min_days in optimize mode.
         """
         if self.mode == "project" and self.taper_days is None:
-            raise ValueError(
-                'taper_days is required when mode is "project".'
-            )
+            raise ValueError('taper_days is required when mode is "project".')
         if self.mode == "optimize" and self.max_days < self.min_days:
-            raise ValueError(
-                f"max_days ({self.max_days}) must be >= min_days ({self.min_days})."
-            )
+            raise ValueError(f"max_days ({self.max_days}) must be >= min_days ({self.min_days}).")
         return self
 
 

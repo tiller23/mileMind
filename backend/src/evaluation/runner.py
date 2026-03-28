@@ -78,9 +78,7 @@ def check_constraint_violations(
     for match in acwr_pattern.finditer(plan_text):
         acwr_value = float(match.group(1))
         if acwr_value > expected.max_acwr:
-            violations.append(
-                f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}"
-            )
+            violations.append(f"ACWR {acwr_value:.2f} exceeds maximum {expected.max_acwr:.2f}")
 
     return violations
 
@@ -137,9 +135,7 @@ class HarnessRunner:
         try:
             persona = get_persona(persona_id)
             safety_score = (
-                orch_result.final_scores.safety
-                if orch_result.final_scores is not None
-                else None
+                orch_result.final_scores.safety if orch_result.final_scores is not None else None
             )
             violations = check_constraint_violations(
                 orch_result.plan_text,
@@ -281,7 +277,10 @@ class HarnessRunner:
         except Exception as e:
             elapsed = time.monotonic() - start
             logger.error(
-                "Persona %s failed: %s", persona.persona_id, e, exc_info=True,
+                "Persona %s failed: %s",
+                persona.persona_id,
+                e,
+                exc_info=True,
             )
             return self._error_result(persona.persona_id, e, elapsed)
 
@@ -398,7 +397,8 @@ class HarnessRunner:
         if len(results_list) != len(personas):
             logger.error(
                 "Results count mismatch: expected %d, got %d",
-                len(personas), len(results_list),
+                len(personas),
+                len(results_list),
             )
 
         for result in results_list:

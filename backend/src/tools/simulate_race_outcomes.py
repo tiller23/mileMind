@@ -29,9 +29,7 @@ from src.tools.registry import ToolDefinition, ToolRegistry
 # ---------------------------------------------------------------------------
 
 _VALID_DISTANCES = list(daniels.RACE_DISTANCES.keys())
-_DISTANCE_HELP = (
-    "Must be one of: " + ", ".join(f'"{k}"' for k in _VALID_DISTANCES) + "."
-)
+_DISTANCE_HELP = "Must be one of: " + ", ".join(f'"{k}"' for k in _VALID_DISTANCES) + "."
 
 
 class SimulateRaceInput(BaseModel):
@@ -72,10 +70,7 @@ class SimulateRaceInput(BaseModel):
     )
     recent_race_distance: str | None = Field(
         default=None,
-        description=(
-            "Distance key of the reference race used to derive VDOT. "
-            + _DISTANCE_HELP
-        ),
+        description=("Distance key of the reference race used to derive VDOT. " + _DISTANCE_HELP),
     )
     recent_race_time_minutes: float | None = Field(
         default=None,
@@ -83,9 +78,7 @@ class SimulateRaceInput(BaseModel):
         description="Finish time of the reference race in minutes (must be positive).",
     )
     target_distance: str = Field(
-        description=(
-            "Race distance to simulate. " + _DISTANCE_HELP
-        ),
+        description=("Race distance to simulate. " + _DISTANCE_HELP),
     )
     tsb: float = Field(
         default=0.0,
@@ -119,8 +112,7 @@ class SimulateRaceInput(BaseModel):
     seed: int | None = Field(
         default=None,
         description=(
-            "Random seed for reproducibility. Omit to get non-deterministic "
-            "results each call."
+            "Random seed for reproducibility. Omit to get non-deterministic " "results each call."
         ),
     )
 
@@ -133,12 +125,9 @@ class SimulateRaceInput(BaseModel):
         """
         has_vdot = self.vdot is not None
         has_race = (
-            self.recent_race_distance is not None
-            and self.recent_race_time_minutes is not None
+            self.recent_race_distance is not None and self.recent_race_time_minutes is not None
         )
-        partial_race = (
-            self.recent_race_distance is None
-        ) != (
+        partial_race = (self.recent_race_distance is None) != (
             self.recent_race_time_minutes is None
         )
 
@@ -153,9 +142,7 @@ class SimulateRaceInput(BaseModel):
                 "'recent_race_time_minutes'."
             )
         if has_vdot and has_race:
-            raise ValueError(
-                "Provide either 'vdot' or the recent-race pair, not both."
-            )
+            raise ValueError("Provide either 'vdot' or the recent-race pair, not both.")
         return self
 
     @model_validator(mode="after")
@@ -282,9 +269,7 @@ def simulate_race_outcomes_handler(input_data: dict[str, Any]) -> dict[str, Any]
             **common_kwargs,
         )
     else:
-        recent_distance_m: float = daniels.RACE_DISTANCES[
-            input_data["recent_race_distance"]
-        ]
+        recent_distance_m: float = daniels.RACE_DISTANCES[input_data["recent_race_distance"]]
         result = monte_carlo.simulate_race(
             distance_meters=target_distance_m,
             recent_race_distance_meters=recent_distance_m,

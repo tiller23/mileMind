@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ReviewerResult:
     """Result of a reviewer agent run.
@@ -66,6 +67,7 @@ class ReviewerResult:
 # ---------------------------------------------------------------------------
 # ReviewerAgent
 # ---------------------------------------------------------------------------
+
 
 class ReviewerAgent:
     """Agent that reviews training plans using Claude and deterministic tools.
@@ -182,9 +184,7 @@ class ReviewerAgent:
                 iterations=loop_result.iterations,
                 total_input_tokens=loop_result.total_input_tokens,
                 total_output_tokens=loop_result.total_output_tokens,
-                error=(
-                    f"Reviewer did not complete within {self._max_iterations} iterations."
-                ),
+                error=(f"Reviewer did not complete within {self._max_iterations} iterations."),
             )
 
         # Parse the verdict from the final text

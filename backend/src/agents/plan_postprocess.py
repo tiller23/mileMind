@@ -114,7 +114,8 @@ def enrich_plan_with_tss(plan_text: str) -> str:
 
     logger.info(
         "Post-processed plan: computed TSS for %d workouts across %d weeks",
-        total_workouts, len(weeks),
+        total_workouts,
+        len(weeks),
     )
 
     # Replace the JSON block in the original text

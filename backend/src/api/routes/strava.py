@@ -90,7 +90,9 @@ async def strava_connect(
     )
 
     auth_url = StravaService.get_authorization_url(
-        settings.strava_client_id, redirect_uri, state_raw,
+        settings.strava_client_id,
+        redirect_uri,
+        state_raw,
     )
 
     return StravaConnectResponse(
@@ -130,9 +132,7 @@ async def strava_callback(
 
     # Verify CSRF state token
     try:
-        payload = jwt.decode(
-            data.state, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(data.state, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         if payload.get("type") != "strava_oauth_state":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -156,22 +156,22 @@ async def strava_callback(
         )
 
     # Upsert StravaToken
-    result = await session.execute(
-        select(StravaToken).where(StravaToken.user_id == user.id)
-    )
+    result = await session.execute(select(StravaToken).where(StravaToken.user_id == user.id))
     existing = result.scalar_one_or_none()
 
     enc_key = settings.strava_token_encryption_key
-    enc_access = encrypt_token(token_data.access_token, enc_key) if enc_key else token_data.access_token
-    enc_refresh = encrypt_token(token_data.refresh_token, enc_key) if enc_key else token_data.refresh_token
+    enc_access = (
+        encrypt_token(token_data.access_token, enc_key) if enc_key else token_data.access_token
+    )
+    enc_refresh = (
+        encrypt_token(token_data.refresh_token, enc_key) if enc_key else token_data.refresh_token
+    )
 
     if existing:
         existing.strava_athlete_id = token_data.athlete_id
         existing.access_token = enc_access
         existing.refresh_token = enc_refresh
-        existing.expires_at = datetime.fromtimestamp(
-            token_data.expires_at, tz=UTC
-        )
+        existing.expires_at = datetime.fromtimestamp(token_data.expires_at, tz=UTC)
         existing.scope = "activity:read_all"
     else:
         token = StravaToken(
@@ -179,9 +179,7 @@ async def strava_callback(
             strava_athlete_id=token_data.athlete_id,
             access_token=enc_access,
             refresh_token=enc_refresh,
-            expires_at=datetime.fromtimestamp(
-                token_data.expires_at, tz=UTC
-            ),
+            expires_at=datetime.fromtimestamp(token_data.expires_at, tz=UTC),
             scope="activity:read_all",
         )
         session.add(token)
@@ -205,9 +203,7 @@ async def strava_status(
     Returns:
         StravaStatusResponse with connected flag, athlete ID, and last sync time.
     """
-    result = await session.execute(
-        select(StravaToken).where(StravaToken.user_id == user.id)
-    )
+    result = await session.execute(select(StravaToken).where(StravaToken.user_id == user.id))
     token = result.scalar_one_or_none()
 
     if token is None:

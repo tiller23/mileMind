@@ -146,11 +146,13 @@ class ToolRegistry:
             # Also strip titles from nested $defs (enum/model references)
             for definition in schema.get("$defs", {}).values():
                 definition.pop("title", None)
-            tools.append({
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": schema,
-            })
+            tools.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": schema,
+                }
+            )
         self._anthropic_tools_cache = tools
         return tools
 
@@ -205,7 +207,9 @@ class ToolRegistry:
         except Exception as e:
             logger.error(
                 "Tool '%s' unexpected error: %s\n%s",
-                tool_name, e, traceback.format_exc(),
+                tool_name,
+                e,
+                traceback.format_exc(),
             )
             return ToolResult(
                 tool_name=tool_name,

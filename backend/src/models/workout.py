@@ -51,12 +51,8 @@ class Workout(BaseModel):
     pace_zone: PaceZone | None = Field(
         default=None, description="Target pace zone (None for rest days)"
     )
-    duration_minutes: float = Field(
-        ge=0.0, description="Estimated duration in minutes"
-    )
-    intensity: float = Field(
-        ge=0.0, le=1.0, description="Intensity factor (0=rest, 1=max)"
-    )
+    duration_minutes: float = Field(ge=0.0, description="Estimated duration in minutes")
+    intensity: float = Field(ge=0.0, le=1.0, description="Intensity factor (0=rest, 1=max)")
     tss: float | None = Field(
         default=None, description="Training stress score (computed by tools)"
     )

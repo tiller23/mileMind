@@ -35,7 +35,7 @@ __all__ = [
 
 # Default time constants from exercise science literature
 DEFAULT_FITNESS_TAU = 42  # days — chronic training load decay
-DEFAULT_FATIGUE_TAU = 7   # days — acute training load decay
+DEFAULT_FATIGUE_TAU = 7  # days — acute training load decay
 
 # TSB classification thresholds (Coggan/Allen Performance Manager)
 _TSB_FRESH_THRESHOLD = 10.0

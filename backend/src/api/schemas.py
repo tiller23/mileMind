@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 # Auth
 # ---------------------------------------------------------------------------
 
+
 class OAuthCallbackRequest(BaseModel):
     """OAuth callback request body.
 
@@ -64,6 +65,7 @@ class UserResponse(BaseModel):
 # Profile
 # ---------------------------------------------------------------------------
 
+
 class ProfileUpdate(BaseModel):
     """Request body for creating or updating an athlete profile.
 
@@ -95,7 +97,9 @@ class ProfileUpdate(BaseModel):
     hr_max: int | None = Field(default=None, ge=100, le=230)
     hr_rest: int | None = Field(default=None, ge=30, le=100)
     injury_history: str = Field(default="", max_length=500)
-    risk_tolerance: str = Field(default="moderate", pattern=r"^(conservative|moderate|aggressive)$")
+    risk_tolerance: str = Field(
+        default="moderate", pattern=r"^(conservative|moderate|aggressive)$"
+    )
     max_weekly_increase_pct: float = Field(default=0.10, ge=0.01, le=0.20)
     goal_distance: str = Field(
         max_length=50,
@@ -160,6 +164,7 @@ class ProfileResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Plans
 # ---------------------------------------------------------------------------
+
 
 class PlanSummary(BaseModel):
     """Abbreviated plan info for list views.
@@ -240,6 +245,7 @@ class PlanDebug(BaseModel):
 # Common
 # ---------------------------------------------------------------------------
 
+
 class MessageResponse(BaseModel):
     """Simple message response for operations without complex return data.
 
@@ -253,6 +259,7 @@ class MessageResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Jobs
 # ---------------------------------------------------------------------------
+
 
 class PlanGenerateRequest(BaseModel):
     """Request body for triggering plan generation.
@@ -322,6 +329,7 @@ class JobDetailResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Strava
 # ---------------------------------------------------------------------------
+
 
 class StravaConnectResponse(BaseModel):
     """Strava OAuth connect response.
@@ -426,6 +434,7 @@ class WorkoutLogResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Invite Requests
 # ---------------------------------------------------------------------------
+
 
 class InviteRequestResponse(BaseModel):
     """Invite request status response.

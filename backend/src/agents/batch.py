@@ -155,8 +155,12 @@ class BatchCoordinator:
         """
         # Track as known but NOT active — activated on first enqueue
         self._known_transports.add(transport_id)
-        logger.debug("Registered transport: %s (known=%d, active=%d)",
-                      transport_id, len(self._known_transports), len(self._active_transports))
+        logger.debug(
+            "Registered transport: %s (known=%d, active=%d)",
+            transport_id,
+            len(self._known_transports),
+            len(self._active_transports),
+        )
         return BatchTransport(transport_id, self)
 
     def deregister_transport(self, transport_id: str) -> None:
@@ -168,7 +172,9 @@ class BatchCoordinator:
         self._known_transports.discard(transport_id)
         self._active_transports.discard(transport_id)
         self._enqueued_transport_ids.discard(transport_id)
-        logger.debug("Deregistered transport: %s (active=%d)", transport_id, len(self._active_transports))
+        logger.debug(
+            "Deregistered transport: %s (active=%d)", transport_id, len(self._active_transports)
+        )
         # Check if remaining active transports are all enqueued
         self._check_round_ready()
 
@@ -200,13 +206,16 @@ class BatchCoordinator:
         # Activate transport on first enqueue (lazy activation prevents deadlock)
         if transport_id not in self._active_transports:
             self._active_transports.add(transport_id)
-            logger.debug("Activated transport: %s (active=%d)",
-                          transport_id, len(self._active_transports))
+            logger.debug(
+                "Activated transport: %s (active=%d)", transport_id, len(self._active_transports)
+            )
         self._enqueued_transport_ids.add(transport_id)
         logger.debug(
             "Enqueued %s (pending=%d, active=%d, enqueued=%d)",
-            custom_id, len(self._pending),
-            len(self._active_transports), len(self._enqueued_transport_ids),
+            custom_id,
+            len(self._pending),
+            len(self._active_transports),
+            len(self._enqueued_transport_ids),
         )
         self._check_round_ready()
 
@@ -224,7 +233,8 @@ class BatchCoordinator:
         ):
             logger.info(
                 "Batch round ready: %d requests from %d transports",
-                len(self._pending), len(self._active_transports),
+                len(self._pending),
+                len(self._active_transports),
             )
             self._round_ready.set()
 
@@ -273,16 +283,18 @@ class BatchCoordinator:
         # Build batch requests
         batch_requests = []
         for custom_id, (params, _future) in round_requests.items():
-            batch_requests.append({
-                "custom_id": custom_id,
-                "params": {
-                    "model": params["model"],
-                    "max_tokens": params["max_tokens"],
-                    "system": params["system"],
-                    "tools": params["tools"],
-                    "messages": params["messages"],
-                },
-            })
+            batch_requests.append(
+                {
+                    "custom_id": custom_id,
+                    "params": {
+                        "model": params["model"],
+                        "max_tokens": params["max_tokens"],
+                        "system": params["system"],
+                        "tools": params["tools"],
+                        "messages": params["messages"],
+                    },
+                }
+            )
 
         try:
             batch = await self._client.messages.batches.create(
@@ -299,16 +311,12 @@ class BatchCoordinator:
                     if result.result.type == "succeeded":
                         future.set_result(result.result.message)
                     else:
-                        error_msg = (
-                            f"Batch request {custom_id} {result.result.type}"
-                        )
+                        error_msg = f"Batch request {custom_id} {result.result.type}"
                         if hasattr(result.result, "error") and result.result.error:
                             error_msg += f": {result.result.error.message}"
                         future.set_exception(RuntimeError(error_msg))
                 else:
-                    future.set_exception(
-                        RuntimeError(f"Batch result missing for {custom_id}")
-                    )
+                    future.set_exception(RuntimeError(f"Batch result missing for {custom_id}"))
 
         except Exception as e:
             logger.error("Batch submission failed: %s", e, exc_info=True)
@@ -345,21 +353,21 @@ class BatchCoordinator:
             elapsed = time.monotonic() - start
             logger.debug(
                 "Batch %s: status=%s (%.0fs elapsed)",
-                batch_id, batch.processing_status, elapsed,
+                batch_id,
+                batch.processing_status,
+                elapsed,
             )
 
             if batch.processing_status in _TERMINAL_STATUSES:
                 if batch.processing_status != "ended":
                     raise RuntimeError(
-                        f"Batch {batch_id} terminated with status: "
-                        f"{batch.processing_status}"
+                        f"Batch {batch_id} terminated with status: " f"{batch.processing_status}"
                     )
                 break
 
             if elapsed >= self._max_poll_seconds:
                 raise TimeoutError(
-                    f"Batch {batch_id} did not complete within "
-                    f"{self._max_poll_seconds:.0f}s"
+                    f"Batch {batch_id} did not complete within " f"{self._max_poll_seconds:.0f}s"
                 )
 
             await asyncio.sleep(self._poll_interval)

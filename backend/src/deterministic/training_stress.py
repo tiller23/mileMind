@@ -81,7 +81,7 @@ def compute_tss(duration_minutes: float, intensity_factor: float) -> float:
         raise ValueError(f"intensity_factor must be in [0, 1], got {intensity_factor}")
 
     duration_seconds = duration_minutes * 60.0
-    return (duration_seconds * intensity_factor ** 2) / 3600.0 * 100.0
+    return (duration_seconds * intensity_factor**2) / 3600.0 * 100.0
 
 
 def classify_load(tss: float) -> LoadClassification:

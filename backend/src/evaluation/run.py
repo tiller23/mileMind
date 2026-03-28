@@ -106,19 +106,24 @@ def parse_args() -> argparse.Namespace:
         help="Output results as JSON to stdout and write a .json file alongside the .md report",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging",
     )
     parsed = parser.parse_args()
 
     if parsed.compare and parsed.reviewer_model != "claude-opus-4-20250514":
-        parser.error("--compare and --reviewer-model are mutually exclusive. "
-                      "--compare runs both Opus and Sonnet automatically.")
+        parser.error(
+            "--compare and --reviewer-model are mutually exclusive. "
+            "--compare runs both Opus and Sonnet automatically."
+        )
 
     if parsed.batch and parsed.compare:
-        parser.error("--batch and --compare are mutually exclusive. "
-                      "Batch mode runs a single reviewer model concurrently.")
+        parser.error(
+            "--batch and --compare are mutually exclusive. "
+            "Batch mode runs a single reviewer model concurrently."
+        )
 
     return parsed
 
@@ -166,7 +171,8 @@ async def run_single(args: argparse.Namespace) -> None:
     if not str(output_dir).startswith(str(cwd)):
         logger.warning(
             "output-dir '%s' is outside the current working directory '%s'",
-            output_dir, cwd,
+            output_dir,
+            cwd,
         )
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -211,7 +217,8 @@ async def run_comparison(args: argparse.Namespace) -> None:
     model_metrics: dict[str, HarnessMetrics] = {}
     for model, results in comparison_results.items():
         model_metrics[model] = HarnessMetrics.from_results(
-            results, reviewer_model=model,
+            results,
+            reviewer_model=model,
             planner_model=args.planner_model,
             total_elapsed_seconds=total_elapsed,
         )
@@ -228,7 +235,8 @@ async def run_comparison(args: argparse.Namespace) -> None:
     if not str(output_dir).startswith(str(cwd)):
         logger.warning(
             "output-dir '%s' is outside the current working directory '%s'",
-            output_dir, cwd,
+            output_dir,
+            cwd,
         )
     output_dir.mkdir(parents=True, exist_ok=True)
 

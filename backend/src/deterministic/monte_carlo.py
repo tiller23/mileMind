@@ -142,8 +142,11 @@ def simulate_race(
             negative, or num_simulations is not positive.
     """
     _validate_simulation_inputs(
-        distance_meters, recent_race_distance_meters,
-        recent_race_time_minutes, pace_cv, num_simulations,
+        distance_meters,
+        recent_race_distance_meters,
+        recent_race_time_minutes,
+        pace_cv,
+        num_simulations,
     )
 
     if environment is None:
@@ -167,14 +170,15 @@ def simulate_race(
     adjusted_baseline = baseline_time * env_factor * fitness_factor
 
     # Step 6: Run simulations — sample from normal distribution
-    simulated_times = _run_simulations(
-        adjusted_baseline, pace_cv, num_simulations, rng
-    )
+    simulated_times = _run_simulations(adjusted_baseline, pace_cv, num_simulations, rng)
 
     # Step 7: Compute statistics
     return _compute_statistics(
-        simulated_times, num_simulations, baseline_time,
-        env_factor, fitness_factor,
+        simulated_times,
+        num_simulations,
+        baseline_time,
+        env_factor,
+        fitness_factor,
     )
 
 
@@ -227,13 +231,14 @@ def simulate_race_from_vdot(
     fitness_factor = _compute_fitness_factor(tsb)
     adjusted_baseline = baseline_time * env_factor * fitness_factor
 
-    simulated_times = _run_simulations(
-        adjusted_baseline, pace_cv, num_simulations, rng
-    )
+    simulated_times = _run_simulations(adjusted_baseline, pace_cv, num_simulations, rng)
 
     return _compute_statistics(
-        simulated_times, num_simulations, baseline_time,
-        env_factor, fitness_factor,
+        simulated_times,
+        num_simulations,
+        baseline_time,
+        env_factor,
+        fitness_factor,
     )
 
 

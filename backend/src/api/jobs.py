@@ -33,15 +33,16 @@ logger = logging.getLogger(__name__)
 # Pricing constants (USD per token)
 # Update these when Anthropic changes pricing.
 # ---------------------------------------------------------------------------
-SONNET_INPUT_COST_PER_TOKEN = 3.0 / 1_000_000   # $3/M input
+SONNET_INPUT_COST_PER_TOKEN = 3.0 / 1_000_000  # $3/M input
 SONNET_OUTPUT_COST_PER_TOKEN = 15.0 / 1_000_000  # $15/M output
-OPUS_INPUT_COST_PER_TOKEN = 15.0 / 1_000_000     # $15/M input
-OPUS_OUTPUT_COST_PER_TOKEN = 75.0 / 1_000_000    # $75/M output
+OPUS_INPUT_COST_PER_TOKEN = 15.0 / 1_000_000  # $15/M input
+OPUS_OUTPUT_COST_PER_TOKEN = 75.0 / 1_000_000  # $75/M output
 
 
 # ---------------------------------------------------------------------------
 # Active job state (in-memory)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _ActiveJob:
@@ -74,6 +75,7 @@ class _ActiveJob:
 # ---------------------------------------------------------------------------
 # Job Manager
 # ---------------------------------------------------------------------------
+
 
 class JobManager:
     """Manages async plan generation jobs with progress tracking.
@@ -120,9 +122,7 @@ class JobManager:
         # C1 fix: Prevent concurrent jobs per user
         for active_job in self._active_jobs.values():
             if active_job.user_id == user.id and not active_job.done_event.is_set():
-                raise ValueError(
-                    "A plan generation job is already running for this user."
-                )
+                raise ValueError("A plan generation job is already running for this user.")
 
         # Create job in database
         async with session_factory() as session:
@@ -184,10 +184,12 @@ class JobManager:
                     job.status = "running"
                     await session.commit()
 
-            active.add_event(ProgressEvent(
-                event_type=ProgressEventType.JOB_STARTED,
-                message="Plan generation started",
-            ))
+            active.add_event(
+                ProgressEvent(
+                    event_type=ProgressEventType.JOB_STARTED,
+                    message="Plan generation started",
+                )
+            )
 
             # Build orchestrator with progress callback
             def on_progress(event: ProgressEvent) -> None:
@@ -199,7 +201,9 @@ class JobManager:
             )
 
             result = await orchestrator.generate_plan(
-                athlete, change_type=change_type, plan_start_date=plan_start_date,
+                athlete,
+                change_type=change_type,
+                plan_start_date=plan_start_date,
             )
 
             # Persist plan to database
@@ -213,10 +217,12 @@ class JobManager:
 
         except Exception as e:
             logger.error("Plan generation failed for job %s: %s", job_id, e, exc_info=True)
-            active.add_event(ProgressEvent(
-                event_type=ProgressEventType.JOB_FAILED,
-                message="Plan generation failed",
-            ))
+            active.add_event(
+                ProgressEvent(
+                    event_type=ProgressEventType.JOB_FAILED,
+                    message="Plan generation failed",
+                )
+            )
             active.done_event.set()
 
             # Mark job failed in DB (generic message for client safety)
@@ -232,7 +238,9 @@ class JobManager:
         finally:
             # Schedule cleanup after SSE clients have time to read final events
             asyncio.get_running_loop().call_later(
-                60.0, self.cleanup, job_id,
+                60.0,
+                self.cleanup,
+                job_id,
             )
 
     async def _persist_result(
@@ -255,8 +263,10 @@ class JobManager:
             plan_start_date: When the plan should start.
         """
         total_tokens = (
-            result.total_planner_input_tokens + result.total_planner_output_tokens
-            + result.total_reviewer_input_tokens + result.total_reviewer_output_tokens
+            result.total_planner_input_tokens
+            + result.total_planner_output_tokens
+            + result.total_reviewer_input_tokens
+            + result.total_reviewer_output_tokens
         )
         # Cost estimate using per-model, per-direction pricing (per token)
         estimated_cost = (
@@ -274,12 +284,8 @@ class JobManager:
                 user_id=active.user_id,
                 athlete_snapshot=athlete.model_dump(),
                 plan_data=plan_data,
-                decision_log=[
-                    entry.model_dump(mode="json") for entry in result.decision_log
-                ],
-                scores=(
-                    result.final_scores.model_dump() if result.final_scores else None
-                ),
+                decision_log=[entry.model_dump(mode="json") for entry in result.decision_log],
+                scores=(result.final_scores.model_dump() if result.final_scores else None),
                 approved=result.approved,
                 status="active",
                 total_tokens=total_tokens,
@@ -300,19 +306,19 @@ class JobManager:
             await session.commit()
 
         # Emit completion event
-        active.add_event(ProgressEvent(
-            event_type=ProgressEventType.JOB_COMPLETE,
-            message="Plan generation complete",
-            data={
-                "plan_id": str(plan_id),
-                "approved": result.approved,
-                "total_tokens": total_tokens,
-                "elapsed_seconds": round(result.total_elapsed_seconds, 1),
-                "scores": (
-                    result.final_scores.model_dump() if result.final_scores else None
-                ),
-            },
-        ))
+        active.add_event(
+            ProgressEvent(
+                event_type=ProgressEventType.JOB_COMPLETE,
+                message="Plan generation complete",
+                data={
+                    "plan_id": str(plan_id),
+                    "approved": result.approved,
+                    "total_tokens": total_tokens,
+                    "elapsed_seconds": round(result.total_elapsed_seconds, 1),
+                    "scores": (result.final_scores.model_dump() if result.final_scores else None),
+                },
+            )
+        )
         active.done_event.set()
 
     def get_active_job_for_user(self, user_id: uuid.UUID) -> _ActiveJob | None:

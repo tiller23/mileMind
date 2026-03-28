@@ -176,8 +176,7 @@ def _format_plan_overview(plan_text: str) -> list[str]:
         phase_str = f"**{phase.title()}**" if "recover" in phase.lower() else phase.title()
 
         lines.append(
-            f"| {wk_num} | {phase_str} | {load_str} | {wow} "
-            f"| {key_str} | {long_run} |"
+            f"| {wk_num} | {phase_str} | {load_str} | {wow} " f"| {key_str} | {long_run} |"
         )
 
         if load_val is not None:
@@ -274,7 +273,9 @@ def _format_persona_section(r: PersonaResult) -> list[str]:
         if persona.expected_behavior.must_include:
             lines.append(f"**Must include:** {', '.join(persona.expected_behavior.must_include)}")
         if persona.expected_behavior.must_not_include:
-            lines.append(f"**Must NOT include:** {', '.join(persona.expected_behavior.must_not_include)}")
+            lines.append(
+                f"**Must NOT include:** {', '.join(persona.expected_behavior.must_not_include)}"
+            )
         if persona.expected_behavior.notes:
             lines.append(f"**Notes:** {persona.expected_behavior.notes}")
         lines.append("")
@@ -355,9 +356,7 @@ def _format_persona_section(r: PersonaResult) -> list[str]:
         lines.append("### Decision Log")
         lines.append("")
         for entry in r.decision_log:
-            lines.append(
-                f"- **Iteration {entry.iteration}:** {entry.outcome.value}"
-            )
+            lines.append(f"- **Iteration {entry.iteration}:** {entry.outcome.value}")
             if entry.scores:
                 lines.append(
                     f"  - Scores: safety={entry.scores.safety}, "
@@ -534,7 +533,8 @@ def generate_comparison_report(
     model_metrics: dict[str, HarnessMetrics] = {}
     for model, results in comparison_results.items():
         model_metrics[model] = HarnessMetrics.from_results(
-            results, reviewer_model=model,
+            results,
+            reviewer_model=model,
         )
 
     # Summary comparison table
@@ -597,20 +597,29 @@ def generate_comparison_report(
         safety_delta = abs(m_a.avg_safety_score - m_b.avg_safety_score)
         approval_match = m_a.total_approved == m_b.total_approved
         cost_delta_pct = (
-            (1.0 - min(m_a.total_cost_usd, m_b.total_cost_usd) /
-             max(m_a.total_cost_usd, m_b.total_cost_usd)) * 100
-            if max(m_a.total_cost_usd, m_b.total_cost_usd) > 0 else 0.0
+            (
+                1.0
+                - min(m_a.total_cost_usd, m_b.total_cost_usd)
+                / max(m_a.total_cost_usd, m_b.total_cost_usd)
+            )
+            * 100
+            if max(m_a.total_cost_usd, m_b.total_cost_usd) > 0
+            else 0.0
         )
         cheaper = name_a if m_a.total_cost_usd < m_b.total_cost_usd else name_b
 
         lines.append("### Computed Deltas")
         lines.append("")
-        lines.append(f"- Approval rate match: {'Yes' if approval_match else 'No'} "
-                      f"({name_a}={m_a.total_approved}/{m_a.total_personas}, "
-                      f"{name_b}={m_b.total_approved}/{m_b.total_personas})")
-        lines.append(f"- Safety score delta: {safety_delta:.1f} points "
-                      f"({name_a}={m_a.avg_safety_score:.1f}, "
-                      f"{name_b}={m_b.avg_safety_score:.1f})")
+        lines.append(
+            f"- Approval rate match: {'Yes' if approval_match else 'No'} "
+            f"({name_a}={m_a.total_approved}/{m_a.total_personas}, "
+            f"{name_b}={m_b.total_approved}/{m_b.total_personas})"
+        )
+        lines.append(
+            f"- Safety score delta: {safety_delta:.1f} points "
+            f"({name_a}={m_a.avg_safety_score:.1f}, "
+            f"{name_b}={m_b.avg_safety_score:.1f})"
+        )
         lines.append(f"- Cost savings: {cost_delta_pct:.0f}% ({cheaper} is cheaper)")
         lines.append("")
 

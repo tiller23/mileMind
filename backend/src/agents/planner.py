@@ -40,6 +40,7 @@ _sanitize_free_text = sanitize_prompt_text
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PlannerResult:
     """Result of a planner agent run.
@@ -66,6 +67,7 @@ class PlannerResult:
 # ---------------------------------------------------------------------------
 # PlannerAgent
 # ---------------------------------------------------------------------------
+
 
 class PlannerAgent:
     """Agent that generates periodized training plans using Claude and tools.
@@ -162,7 +164,10 @@ class PlannerAgent:
             token usage.
         """
         user_message = self._build_revision_message(
-            athlete, prior_plan_text, reviewer_critique, reviewer_issues,
+            athlete,
+            prior_plan_text,
+            reviewer_critique,
+            reviewer_issues,
         )
         return await self._generate_with_message(user_message)
 
@@ -186,10 +191,7 @@ class PlannerAgent:
             result = await self._run_agent_loop(messages)
             result.validation = validate_plan_output(result.plan_text, result.tool_calls)
             if not result.validation.passed and result.error is None:
-                result.error = (
-                    "Output validation failed: "
-                    + "; ".join(result.validation.issues)
-                )
+                result.error = "Output validation failed: " + "; ".join(result.validation.issues)
             return result
         except anthropic.APIError as e:
             logger.error("Anthropic API error: %s", e)
@@ -370,16 +372,8 @@ class PlannerAgent:
                 if athlete.goal_time_minutes
                 else ""
             )
-            + (
-                f"- VDOT: {athlete.vdot}.\n"
-                if athlete.vdot
-                else ""
-            )
-            + (
-                f"- VO2max: {athlete.vo2max} ml/kg/min.\n"
-                if athlete.vo2max
-                else ""
-            )
+            + (f"- VDOT: {athlete.vdot}.\n" if athlete.vdot else "")
+            + (f"- VO2max: {athlete.vo2max} ml/kg/min.\n" if athlete.vo2max else "")
             + injury_section
             + (
                 "\nCall validate_progression_constraints at least once to verify safety. "
@@ -417,14 +411,16 @@ class PlannerAgent:
         if len(prior_plan_text) > max_plan_chars:
             logger.warning(
                 "Truncating prior_plan_text from %d to %d chars",
-                len(prior_plan_text), max_plan_chars,
+                len(prior_plan_text),
+                max_plan_chars,
             )
             prior_plan_text = prior_plan_text[:max_plan_chars] + "\n[...TRUNCATED]"
 
         if len(reviewer_critique) > max_critique_chars:
             logger.warning(
                 "Truncating reviewer_critique from %d to %d chars",
-                len(reviewer_critique), max_critique_chars,
+                len(reviewer_critique),
+                max_critique_chars,
             )
             reviewer_critique = reviewer_critique[:max_critique_chars] + "\n[...TRUNCATED]"
 

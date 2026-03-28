@@ -71,9 +71,7 @@ class TrainingPlan(BaseModel):
 
     athlete_name: str
     goal_event: str
-    goal_date: str | None = Field(
-        default=None, description="Race date (YYYY-MM-DD)"
-    )
+    goal_date: str | None = Field(default=None, description="Race date (YYYY-MM-DD)")
     weeks: list[PlanWeek] = Field(default_factory=list)
     predicted_finish_time_minutes: float | None = Field(
         default=None, description="Predicted finish time (from simulation tool)"

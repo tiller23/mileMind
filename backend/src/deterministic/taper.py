@@ -126,14 +126,10 @@ def find_optimal_taper_length(
     if min_days < 1:
         raise ValueError(f"min_days must be at least 1, got {min_days}")
     if max_days < min_days:
-        raise ValueError(
-            f"max_days ({max_days}) must be >= min_days ({min_days})"
-        )
+        raise ValueError(f"max_days ({max_days}) must be >= min_days ({min_days})")
 
     # Project the full max_days taper
-    result = project_taper(
-        daily_loads, max_days, taper_load_fraction, fitness_tau, fatigue_tau
-    )
+    result = project_taper(daily_loads, max_days, taper_load_fraction, fitness_tau, fatigue_tau)
 
     # Search for peak TSB within [min_days, max_days]
     best_day = min_days
@@ -217,6 +213,4 @@ def _validate_taper_inputs(
     if taper_days <= 0:
         raise ValueError(f"taper_days must be positive, got {taper_days}")
     if not 0.0 <= taper_load_fraction <= 1.0:
-        raise ValueError(
-            f"taper_load_fraction must be between 0 and 1, got {taper_load_fraction}"
-        )
+        raise ValueError(f"taper_load_fraction must be between 0 and 1, got {taper_load_fraction}")

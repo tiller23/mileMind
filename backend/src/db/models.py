@@ -171,9 +171,7 @@ class DBAthleteProfile(Base):
         CheckConstraint("vo2max IS NULL OR (vo2max BETWEEN 15.0 AND 90.0)", name="ck_vo2max"),
         CheckConstraint("vdot IS NULL OR (vdot BETWEEN 15.0 AND 85.0)", name="ck_vdot"),
         CheckConstraint("weekly_mileage_base >= 0", name="ck_mileage_positive"),
-        CheckConstraint(
-            "hr_max IS NULL OR (hr_max BETWEEN 100 AND 230)", name="ck_hr_max_range"
-        ),
+        CheckConstraint("hr_max IS NULL OR (hr_max BETWEEN 100 AND 230)", name="ck_hr_max_range"),
         CheckConstraint(
             "hr_rest IS NULL OR (hr_rest BETWEEN 30 AND 100)", name="ck_hr_rest_range"
         ),
@@ -292,9 +290,7 @@ class WorkoutLog(Base):
     week_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
-    strava_activity_id: Mapped[int | None] = mapped_column(
-        BigInteger, unique=True, nullable=True
-    )
+    strava_activity_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
     actual_distance_km: Mapped[float] = mapped_column(Float, nullable=False)
     actual_duration_minutes: Mapped[float] = mapped_column(Float, nullable=False)
     avg_heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -346,13 +342,9 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("idx_jobs_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_jobs_user", "user_id"),)
 
 
 class ChatMessage(Base):
@@ -375,9 +367,7 @@ class ChatMessage(Base):
     plan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("training_plans.id", ondelete="CASCADE"), nullable=False
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     role: Mapped[str] = mapped_column(String(10), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     change_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -389,9 +379,7 @@ class ChatMessage(Base):
     # Relationships
     plan: Mapped[TrainingPlan] = relationship("TrainingPlan", back_populates="chat_messages")
 
-    __table_args__ = (
-        Index("idx_chat_plan", "plan_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_chat_plan", "plan_id", "created_at"),)
 
 
 class StravaToken(Base):
@@ -413,14 +401,10 @@ class StravaToken(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    strava_athlete_id: Mapped[int] = mapped_column(
-        BigInteger, unique=True, nullable=False
-    )
+    strava_athlete_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     access_token: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     scope: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -445,9 +429,7 @@ class RevokedToken(Base):
     __tablename__ = "revoked_tokens"
 
     jti: Mapped[str] = mapped_column(String(36), primary_key=True)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -516,9 +498,7 @@ class InviteCode(Base):
     code: Mapped[str] = mapped_column(String(20), primary_key=True)
     max_uses: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     use_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

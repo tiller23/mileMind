@@ -21,6 +21,7 @@ from src.tools.registry import ToolDefinition, ToolRegistry
 # Input model
 # ---------------------------------------------------------------------------
 
+
 class ValidateProgressionInput(BaseModel):
     """Input for the validate_progression_constraints tool.
 
@@ -79,9 +80,7 @@ class ValidateProgressionInput(BaseModel):
         """
         for i, load in enumerate(v):
             if load < 0:
-                raise ValueError(
-                    f"weekly_loads[{i}] must be non-negative, got {load}"
-                )
+                raise ValueError(f"weekly_loads[{i}] must be non-negative, got {load}")
         return v
 
 
@@ -111,15 +110,11 @@ class ValidateProgressionOutput(BaseModel):
 
     passed: bool = Field(description="True if no violations were found")
     acwr: float = Field(description="Rolling ACWR (acute 7-day / chronic 28-day)")
-    acwr_ewma: float | None = Field(
-        description="EWMA-variant ACWR; None if insufficient data"
-    )
+    acwr_ewma: float | None = Field(description="EWMA-variant ACWR; None if insufficient data")
     zone: Literal["low", "safe", "warning", "danger"] = Field(
         description='Risk zone: "low", "safe", "warning", or "danger"'
     )
-    violations: list[str] = Field(
-        description="Violation descriptions; empty when passed=True"
-    )
+    violations: list[str] = Field(description="Violation descriptions; empty when passed=True")
     weekly_increase_pct: float | None = Field(
         description=(
             "Actual week-over-week load change for the proposed week as a "

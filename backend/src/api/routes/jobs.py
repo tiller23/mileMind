@@ -49,11 +49,7 @@ async def get_active_job(
     active = manager.get_active_job_for_user(user.id)
     if active is None:
         return None
-    created_at = (
-        active.events[0].timestamp
-        if active.events
-        else datetime.now(UTC)
-    )
+    created_at = active.events[0].timestamp if active.events else datetime.now(UTC)
     return JobDetailResponse(
         job_id=active.job_id,
         status="running",
@@ -86,11 +82,7 @@ async def get_job_status(
     active = manager.get_active_job(job_id)
     if active is not None and active.user_id == user.id:
         job_status = "running" if not active.done_event.is_set() else "complete"
-        created_at = (
-            active.events[0].timestamp
-            if active.events
-            else datetime.now(UTC)
-        )
+        created_at = active.events[0].timestamp if active.events else datetime.now(UTC)
         return JobDetailResponse(
             job_id=job_id,
             status=job_status,
@@ -99,9 +91,7 @@ async def get_job_status(
         )
 
     # Fall back to database
-    result = await session.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == user.id)
-    )
+    result = await session.execute(select(Job).where(Job.id == job_id, Job.user_id == user.id))
     job = result.scalar_one_or_none()
     if job is None:
         raise HTTPException(
@@ -152,9 +142,7 @@ async def stream_job_events(
 
     if active is None:
         # Check if it exists in DB (already completed)
-        result = await session.execute(
-            select(Job).where(Job.id == job_id, Job.user_id == user.id)
-        )
+        result = await session.execute(select(Job).where(Job.id == job_id, Job.user_id == user.id))
         job = result.scalar_one_or_none()
         if job is None:
             raise HTTPException(

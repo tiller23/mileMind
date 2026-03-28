@@ -80,9 +80,7 @@ class EvaluateFatigueStateInput(BaseModel):
         """
         for i, val in enumerate(loads):
             if val < 0:
-                raise ValueError(
-                    f"daily_loads[{i}] = {val} is negative; TSS values must be >= 0"
-                )
+                raise ValueError(f"daily_loads[{i}] = {val} is negative; TSS values must be >= 0")
         return loads
 
     @field_validator("fatigue_tau")
@@ -107,6 +105,7 @@ class EvaluateFatigueStateInput(BaseModel):
 # ---------------------------------------------------------------------------
 # Output model
 # ---------------------------------------------------------------------------
+
 
 class EvaluateFatigueStateOutput(BaseModel):
     """Validated output of the evaluate_fatigue_state tool.
@@ -219,6 +218,7 @@ def evaluate_fatigue_state_handler(input_data: dict[str, Any]) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 def register(registry: ToolRegistry) -> None:
     """Register the evaluate_fatigue_state tool in the given ToolRegistry.
