@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING, Any
@@ -383,10 +382,10 @@ class PlannerAgent:
             )
             + injury_section
             + (
-                f"\nCall validate_progression_constraints at least once to verify safety. "
-                f"Use simulate_race_outcomes if VDOT data is available. "
-                f"Use Zone 1-6 pace zones in your plan. "
-                f"Return the complete plan as a JSON block."
+                "\nCall validate_progression_constraints at least once to verify safety. "
+                "Use simulate_race_outcomes if VDOT data is available. "
+                "Use Zone 1-6 pace zones in your plan. "
+                "Return the complete plan as a JSON block."
             )
         )
 
@@ -412,22 +411,22 @@ class PlannerAgent:
             A formatted revision request message.
         """
         # W11: Size guard — truncate oversized inputs to prevent token blowout
-        _MAX_PLAN_CHARS = 50_000
-        _MAX_CRITIQUE_CHARS = 10_000
+        max_plan_chars = 50_000
+        max_critique_chars = 10_000
 
-        if len(prior_plan_text) > _MAX_PLAN_CHARS:
+        if len(prior_plan_text) > max_plan_chars:
             logger.warning(
                 "Truncating prior_plan_text from %d to %d chars",
-                len(prior_plan_text), _MAX_PLAN_CHARS,
+                len(prior_plan_text), max_plan_chars,
             )
-            prior_plan_text = prior_plan_text[:_MAX_PLAN_CHARS] + "\n[...TRUNCATED]"
+            prior_plan_text = prior_plan_text[:max_plan_chars] + "\n[...TRUNCATED]"
 
-        if len(reviewer_critique) > _MAX_CRITIQUE_CHARS:
+        if len(reviewer_critique) > max_critique_chars:
             logger.warning(
                 "Truncating reviewer_critique from %d to %d chars",
-                len(reviewer_critique), _MAX_CRITIQUE_CHARS,
+                len(reviewer_critique), max_critique_chars,
             )
-            reviewer_critique = reviewer_critique[:_MAX_CRITIQUE_CHARS] + "\n[...TRUNCATED]"
+            reviewer_critique = reviewer_critique[:max_critique_chars] + "\n[...TRUNCATED]"
 
         # Sanitize inter-agent text to prevent indirect injection
         # (reviewer output flowing into planner prompt)

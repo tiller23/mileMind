@@ -52,6 +52,11 @@ line-length = 99
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+ignore = [
+    "E402",   # module-level imports not at top (deps.py logger pattern)
+    "E501",   # line too long (prompt strings, HTML templates, JSON examples)
+    "UP042",  # str+Enum -> StrEnum (intentional for JSON serialization compat)
+]
 
 [tool.black]
 target-version = ["py312"]

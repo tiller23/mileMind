@@ -7,19 +7,20 @@ JWT access tokens are stored in httpOnly cookies for security.
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.rate_limit import limiter
 from src.api.deps import (
     create_access_token,
     create_refresh_token,
     get_current_user,
     get_db,
 )
+from src.api.rate_limit import limiter
 from src.api.schemas import OAuthCallbackRequest, TokenResponse, UserResponse
 from src.config import Settings, get_settings
 from src.db.models import User
@@ -149,11 +150,11 @@ async def google_login(request: Request, settings: Settings = Depends(get_settin
 
     # Sign the state token as a short-lived JWT so the callback can verify it
     # without server-side session storage.
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     state_token = jwt.encode(
         {
             "state": state,
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "exp": datetime.now(UTC) + timedelta(minutes=10),
             "type": "oauth_state",
         },
         settings.jwt_secret,
@@ -362,15 +363,15 @@ async def refresh_token(
         )
 
     # Revoke the old refresh token (rotation)
-    from datetime import datetime, timezone as tz
+    from datetime import datetime
 
     exp = payload.get("exp")
     if exp:
-        from src.db.models import RevokedToken as RT
+        from src.db.models import RevokedToken
 
-        old_revoked = RT(
+        old_revoked = RevokedToken(
             jti=jti,
-            expires_at=datetime.fromtimestamp(exp, tz=tz.utc),
+            expires_at=datetime.fromtimestamp(exp, tz=UTC),
         )
         session.add(old_revoked)
         await session.commit()
@@ -412,11 +413,11 @@ async def logout(
                 jti = payload.get("jti")
                 exp = payload.get("exp")
                 if jti and exp:
-                    from datetime import datetime, timezone
+                    from datetime import datetime
 
                     revoked = RevokedToken(
                         jti=jti,
-                        expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
+                        expires_at=datetime.fromtimestamp(exp, tz=UTC),
                     )
                     session.add(revoked)
             except JWTError:

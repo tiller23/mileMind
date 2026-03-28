@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.evaluation.personas import get_persona
 from src.evaluation.results import HarnessMetrics, PersonaResult
@@ -454,7 +454,7 @@ def generate_plan_review_report(
         Complete markdown report string.
     """
     lines: list[str] = []
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     lines.append("# MileMind Evaluation Harness — Plan Review Report")
     lines.append("")
@@ -523,7 +523,7 @@ def generate_comparison_report(
         Complete markdown comparison report.
     """
     lines: list[str] = []
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     lines.append("# MileMind Evaluation Harness — Reviewer Model Comparison")
     lines.append("")

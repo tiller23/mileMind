@@ -130,12 +130,14 @@ def build_registry() -> ToolRegistry:
     """
     registry = ToolRegistry()
 
-    from src.tools import compute_training_stress
-    from src.tools import evaluate_fatigue_state
-    from src.tools import validate_progression_constraints
-    from src.tools import simulate_race_outcomes
-    from src.tools import reallocate_week_load
-    from src.tools import project_taper
+    from src.tools import (
+        compute_training_stress,
+        evaluate_fatigue_state,
+        project_taper,
+        reallocate_week_load,
+        simulate_race_outcomes,
+        validate_progression_constraints,
+    )
 
     compute_training_stress.register(registry)
     evaluate_fatigue_state.register(registry)

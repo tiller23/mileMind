@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 import httpx
@@ -227,7 +227,7 @@ class StravaService:
         strava_token.access_token = self._encrypt(data["access_token"])
         strava_token.refresh_token = self._encrypt(data["refresh_token"])
         strava_token.expires_at = datetime.fromtimestamp(
-            data["expires_at"], tz=timezone.utc
+            data["expires_at"], tz=UTC
         )
         await self._session.commit()
         return strava_token
@@ -252,7 +252,7 @@ class StravaService:
         if token is None:
             raise ValueError("Strava not connected")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if token.expires_at <= now + TOKEN_REFRESH_BUFFER:
             logger.info("Refreshing expired Strava token for user %s", user_id)
             token = await self.refresh_token(token)
@@ -279,7 +279,7 @@ class StravaService:
             List of running activities.
         """
         if after is None:
-            after = datetime.now(timezone.utc) - timedelta(days=IMPORT_WINDOW_DAYS)
+            after = datetime.now(UTC) - timedelta(days=IMPORT_WINDOW_DAYS)
 
         after_epoch = int(after.timestamp())
         activities: list[StravaActivity] = []
@@ -382,7 +382,7 @@ class StravaService:
                     activity.start_date.replace("Z", "+00:00")
                 )
             except (ValueError, AttributeError):
-                completed_at = datetime.now(timezone.utc)
+                completed_at = datetime.now(UTC)
 
             log = WorkoutLog(
                 user_id=user_id,
@@ -420,7 +420,7 @@ class StravaService:
         Returns:
             Average weekly distance in km, or None if insufficient data.
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        cutoff = datetime.now(UTC) - timedelta(weeks=weeks)
         result = await self._session.execute(
             select(func.sum(WorkoutLog.actual_distance_km)).where(
                 WorkoutLog.user_id == user_id,

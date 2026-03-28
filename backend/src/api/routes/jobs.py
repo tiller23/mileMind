@@ -12,7 +12,7 @@ import asyncio
 import json
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -52,7 +52,7 @@ async def get_active_job(
     created_at = (
         active.events[0].timestamp
         if active.events
-        else datetime.now(timezone.utc)
+        else datetime.now(UTC)
     )
     return JobDetailResponse(
         job_id=active.job_id,
@@ -89,7 +89,7 @@ async def get_job_status(
         created_at = (
             active.events[0].timestamp
             if active.events
-            else datetime.now(timezone.utc)
+            else datetime.now(UTC)
         )
         return JobDetailResponse(
             job_id=job_id,

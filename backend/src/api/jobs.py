@@ -16,11 +16,11 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from src.agents.orchestrator import Orchestrator, OrchestrationResult
+from src.agents.orchestrator import OrchestrationResult, Orchestrator
 from src.agents.plan_postprocess import extract_structured_plan
 from src.db.models import Job, TrainingPlan, User
 from src.models.athlete import AthleteProfile
@@ -226,7 +226,7 @@ class JobManager:
                     job.status = "failed"
                     job.error = "Plan generation failed. Please try again."
                     job.progress = [ev.to_dict() for ev in active.events]
-                    job.completed_at = datetime.now(timezone.utc)
+                    job.completed_at = datetime.now(UTC)
                     await session.commit()
 
         finally:
@@ -295,7 +295,7 @@ class JobManager:
                 job.status = "complete"
                 job.plan_id = plan_id
                 job.progress = [ev.to_dict() for ev in active.events]
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
 
             await session.commit()
 

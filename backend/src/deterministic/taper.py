@@ -27,7 +27,6 @@ __all__ = [
 from src.deterministic.banister import (
     DEFAULT_FATIGUE_TAU,
     DEFAULT_FITNESS_TAU,
-    compute_atl,
     compute_ctl,
     compute_ema_series,
 )

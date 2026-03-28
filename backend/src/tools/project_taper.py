@@ -23,7 +23,6 @@ from src.deterministic import taper
 from src.deterministic.banister import compute_ctl
 from src.tools.registry import ToolDefinition, ToolRegistry
 
-
 # ---------------------------------------------------------------------------
 # Input model
 # ---------------------------------------------------------------------------
@@ -96,7 +95,7 @@ class ProjectTaperInput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _validate_mode_fields(self) -> "ProjectTaperInput":
+    def _validate_mode_fields(self) -> ProjectTaperInput:
         """Ensure required fields are present for the chosen mode.
 
         Raises:

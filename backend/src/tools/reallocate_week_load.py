@@ -119,7 +119,7 @@ class ReallocateWeekInput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_swap_day_exists(self) -> "ReallocateWeekInput":
+    def validate_swap_day_exists(self) -> ReallocateWeekInput:
         """Ensure swap_day corresponds to at least one workout in the list.
 
         Returns:

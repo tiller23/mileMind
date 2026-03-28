@@ -7,10 +7,9 @@ These models are the output of a harness run and feed into report generation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.models.decision_log import DecisionLogEntry, ReviewerScores
-
 
 # ---------------------------------------------------------------------------
 # Model pricing (USD per million tokens, as of 2026-03)
@@ -260,7 +259,7 @@ class HarnessMetrics:
             safety score if tied). Empty string if no scored results.
     """
 
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     total_personas: int = 0
     total_approved: int = 0
     total_with_violations: int = 0

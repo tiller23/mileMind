@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -136,7 +136,7 @@ async def redeem_invite_code(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Invalid invite code.",
             )
-        if existing.expires_at and existing.expires_at < datetime.now(timezone.utc):
+        if existing.expires_at and existing.expires_at < datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This invite code has expired.",
@@ -151,7 +151,7 @@ async def redeem_invite_code(
         select(InviteCode).where(InviteCode.code == code_str)
     )
     invite_code = code_row.scalar_one()
-    if invite_code.expires_at and invite_code.expires_at < datetime.now(timezone.utc):
+    if invite_code.expires_at and invite_code.expires_at < datetime.now(UTC):
         # Roll back the increment
         await session.execute(
             update(InviteCode)
@@ -272,7 +272,7 @@ async def list_invite_codes(
 # ---------------------------------------------------------------------------
 
 # Import schemas used by request endpoints
-from src.api.schemas import InviteRequestResponse, InviteRequestAdminResponse, MessageResponse
+from src.api.schemas import InviteRequestAdminResponse, InviteRequestResponse, MessageResponse
 
 
 @router.post("/request", response_model=InviteRequestResponse)
@@ -322,8 +322,8 @@ async def request_invite(
             )
         if existing.status == "denied":
             cooldown_end = existing.updated_at + timedelta(days=DENY_COOLDOWN_DAYS)
-            if datetime.now(timezone.utc) < cooldown_end:
-                days_left = (cooldown_end - datetime.now(timezone.utc)).days + 1
+            if datetime.now(UTC) < cooldown_end:
+                days_left = (cooldown_end - datetime.now(UTC)).days + 1
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail=f"Request denied. You can request again in {days_left} days.",
@@ -344,8 +344,7 @@ async def request_invite(
     # Fire Discord notification (truly non-blocking via background task)
     async def _notify_discord() -> None:
         try:
-            from src.api.notifications import send_discord_notification
-            from src.api.notifications import _strip_discord_markdown
+            from src.api.notifications import _strip_discord_markdown, send_discord_notification
             safe_name = _strip_discord_markdown(user.name)
             safe_email = _strip_discord_markdown(user.email)
             await send_discord_notification(
@@ -516,7 +515,7 @@ async def approve_invite_request(
 
     # Update request status
     invite_req.status = "approved"
-    invite_req.updated_at = datetime.now(timezone.utc)
+    invite_req.updated_at = datetime.now(UTC)
 
     await session.commit()
 
@@ -577,7 +576,7 @@ async def deny_invite_request(
         )
 
     invite_req.status = "denied"
-    invite_req.updated_at = datetime.now(timezone.utc)
+    invite_req.updated_at = datetime.now(UTC)
     await session.commit()
 
     return MessageResponse(detail="Request denied.")

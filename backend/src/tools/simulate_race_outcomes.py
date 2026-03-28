@@ -125,7 +125,7 @@ class SimulateRaceInput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _validate_fitness_input(self) -> "SimulateRaceInput":
+    def _validate_fitness_input(self) -> SimulateRaceInput:
         """Ensure exactly one fitness-input path is specified.
 
         Raises:
@@ -159,7 +159,7 @@ class SimulateRaceInput(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _validate_distance_keys(self) -> "SimulateRaceInput":
+    def _validate_distance_keys(self) -> SimulateRaceInput:
         """Ensure distance keys are valid entries in RACE_DISTANCES.
 
         Raises:

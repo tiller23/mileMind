@@ -32,18 +32,17 @@ import asyncio
 import json
 import logging
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 
-from src.agents.orchestrator import Orchestrator, OrchestrationResult
+from src.agents.orchestrator import OrchestrationResult, Orchestrator
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
 from src.agents.shared import build_registry
 from src.agents.validation import ValidationResult
-from src.models.athlete import AthleteProfile, RiskTolerance
+from src.models.athlete import AthleteProfile
 from src.models.decision_log import ReviewOutcome
 from src.models.plan_change import PlanChangeType
 
@@ -393,12 +392,12 @@ def print_dry_run(
         print(f"  Reviewer model: {reviewer_model or model}")
         print(f"  Max retries:    {max_retries}")
     else:
-        print(f"  Reviewer:       DISABLED (planner-only mode)")
+        print("  Reviewer:       DISABLED (planner-only mode)")
     print(f"  Max iterations: {max_iterations}")
     if review:
-        print(f"  Estimated cost: ~$0.50-1.50 (with reviewer)")
+        print("  Estimated cost: ~$0.50-1.50 (with reviewer)")
     else:
-        print(f"  Estimated cost: ~$0.30-0.50 (planner only)")
+        print("  Estimated cost: ~$0.30-0.50 (planner only)")
 
     print("\n" + "-" * 70)
     print("SYSTEM PROMPT")
@@ -476,7 +475,7 @@ async def main() -> None:
         print(f"  Reviewer model: {effective_reviewer_model}")
         print(f"  Max retries: {args.max_retries}")
     else:
-        print(f"  Reviewer: SKIPPED (tweak mode)")
+        print("  Reviewer: SKIPPED (tweak mode)")
 
     # Dry run: show what would be sent and exit
     if args.dry_run:
@@ -492,11 +491,11 @@ async def main() -> None:
     if not args.yes:
         print(f"\n  Max iterations: {args.max_iterations}")
         if change_type == PlanChangeType.TWEAK:
-            print(f"  Estimated cost: ~$0.17 (planner only)")
+            print("  Estimated cost: ~$0.17 (planner only)")
         elif change_type == PlanChangeType.ADAPTATION:
-            print(f"  Estimated cost: ~$0.52 (1 review cycle)")
+            print("  Estimated cost: ~$0.52 (1 review cycle)")
         else:
-            print(f"  Estimated cost: ~$0.52-1.56 (full review)")
+            print("  Estimated cost: ~$0.52-1.56 (full review)")
         response = input("\nProceed with API call? [y/N] ").strip().lower()
         if response not in ("y", "yes"):
             print("Aborted.")

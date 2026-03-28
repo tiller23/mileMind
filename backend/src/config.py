@@ -115,7 +115,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def _check_production_secrets(self) -> "Settings":
+    def _check_production_secrets(self) -> Settings:
         """Validate required secrets are set in production.
 
         Returns:

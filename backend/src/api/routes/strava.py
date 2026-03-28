@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from jose import JWTError, jwt
@@ -83,7 +82,7 @@ async def strava_connect(
     state_token = jwt.encode(
         {
             "state": state_raw,
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "exp": datetime.now(UTC) + timedelta(minutes=10),
             "type": "strava_oauth_state",
         },
         settings.jwt_secret,
@@ -171,7 +170,7 @@ async def strava_callback(
         existing.access_token = enc_access
         existing.refresh_token = enc_refresh
         existing.expires_at = datetime.fromtimestamp(
-            token_data.expires_at, tz=timezone.utc
+            token_data.expires_at, tz=UTC
         )
         existing.scope = "activity:read_all"
     else:
@@ -181,7 +180,7 @@ async def strava_callback(
             access_token=enc_access,
             refresh_token=enc_refresh,
             expires_at=datetime.fromtimestamp(
-                token_data.expires_at, tz=timezone.utc
+                token_data.expires_at, tz=UTC
             ),
             scope="activity:read_all",
         )
@@ -264,7 +263,7 @@ async def strava_sync(
     )
     last_sync_time = last_sync_result.scalar_one_or_none()
     if last_sync_time is not None:
-        elapsed = (datetime.now(timezone.utc) - last_sync_time).total_seconds()
+        elapsed = (datetime.now(UTC) - last_sync_time).total_seconds()
         if elapsed < _SYNC_COOLDOWN_SECONDS:
             remaining = int(_SYNC_COOLDOWN_SECONDS - elapsed)
             raise HTTPException(

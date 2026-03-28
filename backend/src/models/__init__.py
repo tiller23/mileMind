@@ -13,7 +13,7 @@ from src.models.decision_log import (
     ReviewerScores,
     ReviewOutcome,
 )
-from src.models.plan import PlanWeek, TrainingPlan, TrainingPhase
+from src.models.plan import PlanWeek, TrainingPhase, TrainingPlan
 from src.models.plan_change import PlanChangeType
 from src.models.workout import PaceZone, Workout, WorkoutLog, WorkoutType
 

@@ -23,7 +23,7 @@ from typing import Any
 
 from src.agents.plan_postprocess import enrich_plan_with_tss
 from src.agents.planner import PlannerAgent, PlannerResult
-from src.agents.reviewer import ReviewerAgent, ReviewerResult
+from src.agents.reviewer import ReviewerAgent
 from src.models.athlete import AthleteProfile
 from src.models.decision_log import (
     DecisionLogEntry,
@@ -246,7 +246,6 @@ class Orchestrator:
         )
 
         last_valid_plan: str = ""
-        last_planner_result: PlannerResult | None = None
         last_reviewer_critique: str = ""
         last_reviewer_issues: list[str] = []
 
@@ -357,7 +356,6 @@ class Orchestrator:
                     last_reviewer_issues = planner_result.validation.issues
                     if planner_result.plan_text:
                         last_valid_plan = planner_result.plan_text
-                    last_planner_result = planner_result
                     continue
 
                 # Plan passed structural validation — enrich with computed TSS
@@ -372,7 +370,6 @@ class Orchestrator:
                     error=planner_result.error,
                 )
                 last_valid_plan = planner_result.plan_text
-                last_planner_result = planner_result
 
                 # --- Step 3: Reviewer evaluates (or skip) ---
                 if skip_reviewer:

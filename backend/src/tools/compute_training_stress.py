@@ -59,7 +59,7 @@ class ComputeTrainingStressInput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def rest_workout_intensity_check(self) -> "ComputeTrainingStressInput":
+    def rest_workout_intensity_check(self) -> ComputeTrainingStressInput:
         """Warn (via clamping) when a REST workout has non-zero intensity.
 
         REST workouts should have intensity 0. If the caller passes a non-zero

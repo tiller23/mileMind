@@ -16,7 +16,7 @@ import uuid as uuid_mod
 from collections.abc import AsyncGenerator
 
 logger = logging.getLogger(__name__)
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -55,7 +55,7 @@ def create_access_token(
     """
     if settings is None:
         settings = get_settings()
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         minutes=settings.jwt_access_token_expire_minutes
     )
     jti = str(uuid_mod.uuid4())
@@ -83,7 +83,7 @@ def create_refresh_token(
     """
     if settings is None:
         settings = get_settings()
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         days=settings.jwt_refresh_token_expire_days
     )
     jti = str(uuid_mod.uuid4())

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +32,7 @@ async def _cleanup_revoked_tokens() -> None:
             from src.db.session import get_session
 
             async for session in get_session():
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 result = await session.execute(
                     delete(RevokedToken).where(RevokedToken.expires_at < now)
                 )

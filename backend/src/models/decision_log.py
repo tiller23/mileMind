@@ -6,11 +6,10 @@ across the planner-reviewer retry cycle.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
-
 
 REVIEW_PASS_THRESHOLD: int = 70
 """Minimum score (0-100) required for each review dimension to pass.
@@ -96,7 +95,7 @@ class DecisionLogEntry(BaseModel):
     """
 
     iteration: int = Field(ge=1, description="1-based iteration number")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     outcome: ReviewOutcome
     scores: ReviewerScores | None = None
     critique: str = ""

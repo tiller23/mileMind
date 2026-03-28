@@ -7,7 +7,7 @@ All tables use UUID primary keys and UTC timestamps.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -38,7 +38,7 @@ def _utcnow() -> datetime:
     Returns:
         Timezone-aware UTC datetime.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _new_uuid() -> uuid.UUID:

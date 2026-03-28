@@ -6,7 +6,7 @@ Includes async plan generation via POST /plans/generate.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
@@ -78,7 +78,7 @@ async def generate_plan(
         )
 
     # Gate: per-user monthly plan limit
-    month_start = datetime.now(timezone.utc).replace(
+    month_start = datetime.now(UTC).replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
     plan_count = await session.scalar(

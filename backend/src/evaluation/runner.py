@@ -18,7 +18,7 @@ import time
 from typing import Any
 
 from src.agents.batch import BatchCoordinator
-from src.agents.orchestrator import Orchestrator, OrchestrationResult
+from src.agents.orchestrator import OrchestrationResult, Orchestrator
 from src.agents.planner import PlannerAgent
 from src.agents.reviewer import ReviewerAgent
 from src.agents.transport import MessageTransport
