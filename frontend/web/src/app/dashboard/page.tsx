@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
+import { InviteCodeBanner } from "@/components/InviteCodeBanner";
 import { ShoeIcon, RunnerIcon } from "@/components/Icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate, useStravaStatus, useStravaActivities } from "@/lib/hooks";
+import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate, useStravaStatus, useStravaActivities, useUser } from "@/lib/hooks";
 import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse, WorkoutLogResponse } from "@/lib/types";
 import { formatDistance } from "@/lib/units";
 
@@ -507,7 +508,9 @@ function getNextMonday(): string {
 
 export default function DashboardPage() {
   const { isAuthenticated } = useAuthGuard();
+  const { data: userData } = useUser();
   const { data: profileData, isLoading: profileLoading } = useProfile();
+  const hasInvite = userData?.has_invite ?? false;
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const generatePlan = useGeneratePlan();
   const queryClient = useQueryClient();
@@ -575,7 +578,7 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          {profileData && !activeJobId && !showConfirm && (
+          {profileData && hasInvite && !activeJobId && !showConfirm && (
             <button
               onClick={() => setShowConfirm(true)}
               className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm"
@@ -603,6 +606,12 @@ export default function DashboardPage() {
               Get Started
             </Link>
           </div>
+        )}
+
+        {!needsOnboarding && profileData && !hasInvite && (
+          <InviteCodeBanner
+            requestStatus={userData?.invite_request_status ?? null}
+          />
         )}
 
         {generatePlan.isError && (
@@ -705,6 +714,7 @@ export default function DashboardPage() {
               ) : (
                 !needsOnboarding &&
                 profileData &&
+                hasInvite &&
                 !activeJobId &&
                 !showConfirm && (
                   <div className="text-center py-16">

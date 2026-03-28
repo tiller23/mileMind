@@ -453,6 +453,50 @@ class RevokedToken(Base):
     )
 
 
+class InviteRequest(Base):
+    """User request for an invite code.
+
+    Users without an invite code can request access. Admins approve or deny.
+    On approval, an invite code is auto-generated and assigned.
+
+    Attributes:
+        id: Request identifier.
+        user_id: Requesting user.
+        status: Request status (pending/approved/denied).
+        created_at: When the request was submitted.
+        updated_at: Last status change time.
+    """
+
+    __tablename__ = "invite_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=_new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+    # Relationships
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'denied')",
+            name="ck_invite_request_status",
+        ),
+        Index("idx_invite_requests_user", "user_id"),
+        # Partial unique index to prevent duplicate pending requests.
+        # SQLite does not support partial indexes via Index(..., sqlite_where=),
+        # so the constraint is enforced at the application layer for tests
+        # and by the migration for PostgreSQL.
+    )
+
+
 class InviteCode(Base):
     """Invite codes that gate access to plan generation.
 

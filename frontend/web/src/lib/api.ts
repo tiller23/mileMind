@@ -6,6 +6,8 @@
  */
 
 import type {
+  InviteRequestAdminResponse,
+  InviteRequestResponse,
   JobDetailResponse,
   JobResponse,
   MessageResponse,
@@ -239,6 +241,42 @@ export const strava = {
     return request<WorkoutLogResponse[]>(
       `/strava/activities?limit=${limit}&offset=${offset}`,
     );
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Invite
+// ---------------------------------------------------------------------------
+
+export const invite = {
+  /** Request an invite code. */
+  request(): Promise<InviteRequestResponse> {
+    return request<InviteRequestResponse>("/invite/request", { method: "POST" });
+  },
+
+  /** Get current user's invite request status. */
+  status(): Promise<InviteRequestResponse | null> {
+    return request<InviteRequestResponse | null>("/invite/request/status");
+  },
+
+  /** List all invite requests (admin only). */
+  adminList(statusFilter?: string): Promise<InviteRequestAdminResponse[]> {
+    const qs = statusFilter ? `?status_filter=${statusFilter}` : "";
+    return request<InviteRequestAdminResponse[]>(`/invite/admin/requests${qs}`);
+  },
+
+  /** Approve an invite request (admin only). */
+  approve(requestId: string): Promise<{ detail: string }> {
+    return request(`/invite/admin/requests/${encodeURIComponent(requestId)}/approve`, {
+      method: "POST",
+    });
+  },
+
+  /** Deny an invite request (admin only). */
+  deny(requestId: string): Promise<{ detail: string }> {
+    return request(`/invite/admin/requests/${encodeURIComponent(requestId)}/deny`, {
+      method: "POST",
+    });
   },
 };
 

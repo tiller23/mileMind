@@ -48,12 +48,17 @@ class UserResponse(BaseModel):
         email: User email.
         name: Display name.
         avatar_url: Profile picture URL.
+        has_invite: Whether the user has redeemed an invite code.
+        invite_request_status: Status of their invite request (pending/approved/denied/null).
     """
 
     id: uuid.UUID
     email: str
     name: str
     avatar_url: str | None = None
+    role: str = "user"
+    has_invite: bool = False
+    invite_request_status: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -417,3 +422,45 @@ class WorkoutLogResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Invite Requests
+# ---------------------------------------------------------------------------
+
+class InviteRequestResponse(BaseModel):
+    """Invite request status response.
+
+    Attributes:
+        id: Request ID.
+        status: Current status (pending/approved/denied).
+        created_at: When the request was submitted.
+        updated_at: Last status change.
+    """
+
+    id: uuid.UUID
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InviteRequestAdminResponse(BaseModel):
+    """Invite request with user info for admin views.
+
+    Attributes:
+        id: Request ID.
+        user_id: Requesting user's ID.
+        user_email: Requesting user's email.
+        user_name: Requesting user's name.
+        status: Current status.
+        created_at: When the request was submitted.
+    """
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    user_email: str
+    user_name: str
+    status: str
+    created_at: datetime

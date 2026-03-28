@@ -1,22 +1,30 @@
-"""Invite code routes — redeem codes and admin management.
+"""Invite code routes — redeem codes, request access, and admin management.
 
-Users redeem invite codes to unlock plan generation.
-Admin users can create and list invite codes.
+Users can redeem invite codes directly or request access.
+Admin users can create codes, approve/deny requests.
+On approval, an invite code is auto-generated and assigned.
 """
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
 from src.api.rate_limit import limiter
-from src.db.models import InviteCode, User
+from src.db.models import InviteCode, InviteRequest, User
+
+logger = logging.getLogger(__name__)
+
+DENY_COOLDOWN_DAYS = 30
 
 router = APIRouter(prefix="/invite", tags=["invite"])
 
@@ -72,7 +80,7 @@ class CreateInviteRequest(BaseModel):
 
     count: int = Field(default=1, ge=1, le=50)
     max_uses: int = Field(default=1, ge=1, le=100)
-    prefix: str = Field(default="MILE")
+    prefix: str = Field(default="MILE", min_length=1, max_length=10, pattern=r"^[A-Z0-9]+$")
 
 
 @router.post("/redeem", response_model=RedeemResponse)
@@ -257,3 +265,325 @@ async def list_invite_codes(
         )
         for c in codes
     ]
+
+
+# ---------------------------------------------------------------------------
+# Invite request routes
+# ---------------------------------------------------------------------------
+
+# Import schemas used by request endpoints
+from src.api.schemas import InviteRequestResponse, InviteRequestAdminResponse, MessageResponse
+
+
+@router.post("/request", response_model=InviteRequestResponse)
+@limiter.limit("5/minute")
+async def request_invite(
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> InviteRequestResponse:
+    """Request an invite code.
+
+    Creates a pending invite request. Returns 409 if a pending request
+    already exists. Enforces a 30-day cooldown after denial.
+
+    Args:
+        request: The incoming request.
+        user: Authenticated user.
+        session: Database session.
+
+    Returns:
+        InviteRequestResponse with the new request.
+
+    Raises:
+        HTTPException: 400 if user already has invite, 409 if pending exists,
+            429 if denied within cooldown.
+    """
+    if user.invite_code_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have an invite code.",
+        )
+
+    # Check for existing request
+    result = await session.execute(
+        select(InviteRequest)
+        .where(InviteRequest.user_id == user.id)
+        .order_by(InviteRequest.created_at.desc())
+        .limit(1)
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        if existing.status == "pending":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You already have a pending invite request.",
+            )
+        if existing.status == "denied":
+            cooldown_end = existing.updated_at + timedelta(days=DENY_COOLDOWN_DAYS)
+            if datetime.now(timezone.utc) < cooldown_end:
+                days_left = (cooldown_end - datetime.now(timezone.utc)).days + 1
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Request denied. You can request again in {days_left} days.",
+                )
+
+    invite_request = InviteRequest(user_id=user.id, status="pending")
+    session.add(invite_request)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already have a pending invite request.",
+        )
+    await session.refresh(invite_request)
+
+    # Fire Discord notification (truly non-blocking via background task)
+    async def _notify_discord() -> None:
+        try:
+            from src.api.notifications import send_discord_notification
+            from src.api.notifications import _strip_discord_markdown
+            safe_name = _strip_discord_markdown(user.name)
+            safe_email = _strip_discord_markdown(user.email)
+            await send_discord_notification(
+                f"New invite request from {safe_name} ({safe_email})"
+            )
+        except Exception:
+            logger.warning("Failed to send Discord notification", exc_info=True)
+
+    asyncio.create_task(_notify_discord())
+
+    return InviteRequestResponse(
+        id=invite_request.id,
+        status=invite_request.status,
+        created_at=invite_request.created_at,
+        updated_at=invite_request.updated_at,
+    )
+
+
+@router.get("/request/status", response_model=InviteRequestResponse | None)
+@limiter.limit("30/minute")
+async def get_request_status(
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> InviteRequestResponse | None:
+    """Get the current user's most recent invite request status.
+
+    Args:
+        request: The incoming request.
+        user: Authenticated user.
+        session: Database session.
+
+    Returns:
+        InviteRequestResponse or null if no request exists.
+    """
+    result = await session.execute(
+        select(InviteRequest)
+        .where(InviteRequest.user_id == user.id)
+        .order_by(InviteRequest.created_at.desc())
+        .limit(1)
+    )
+    req = result.scalar_one_or_none()
+    if req is None:
+        return None
+    return InviteRequestResponse(
+        id=req.id,
+        status=req.status,
+        created_at=req.created_at,
+        updated_at=req.updated_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Admin request management
+# ---------------------------------------------------------------------------
+
+
+@router.get("/admin/requests", response_model=list[InviteRequestAdminResponse])
+@limiter.limit("30/minute")
+async def list_invite_requests(
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+    status_filter: str | None = None,
+) -> list[InviteRequestAdminResponse]:
+    """List invite requests (admin only).
+
+    Args:
+        request: The incoming request.
+        user: Authenticated admin user.
+        session: Database session.
+        status_filter: Optional status filter (pending/approved/denied).
+
+    Returns:
+        List of invite requests with user info.
+    """
+    _require_admin(user)
+
+    valid_statuses = {"pending", "approved", "denied"}
+    if status_filter and status_filter not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status_filter. Must be one of: {', '.join(sorted(valid_statuses))}",
+        )
+
+    query = (
+        select(InviteRequest, User)
+        .join(User, InviteRequest.user_id == User.id)
+        .order_by(InviteRequest.created_at.desc())
+    )
+    if status_filter:
+        query = query.where(InviteRequest.status == status_filter)
+
+    result = await session.execute(query)
+    rows = result.all()
+
+    return [
+        InviteRequestAdminResponse(
+            id=req.id,
+            user_id=req.user_id,
+            user_email=u.email,
+            user_name=u.name,
+            status=req.status,
+            created_at=req.created_at,
+        )
+        for req, u in rows
+    ]
+
+
+@router.post("/admin/requests/{request_id}/approve", response_model=MessageResponse)
+@limiter.limit("20/minute")
+async def approve_invite_request(
+    request: Request,
+    request_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Approve an invite request (admin only).
+
+    Auto-generates an invite code and assigns it to the requesting user.
+    Sends an approval email notification.
+
+    Args:
+        request: The incoming request.
+        request_id: ID of the invite request to approve.
+        user: Authenticated admin user.
+        session: Database session.
+
+    Returns:
+        Success message with assigned code.
+
+    Raises:
+        HTTPException: 403 if not admin, 404 if request not found.
+    """
+    _require_admin(user)
+
+    from uuid import UUID
+    try:
+        req_uuid = UUID(request_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Invalid request ID.")
+
+    result = await session.execute(
+        select(InviteRequest).where(InviteRequest.id == req_uuid)
+    )
+    invite_req = result.scalar_one_or_none()
+    if invite_req is None:
+        raise HTTPException(status_code=404, detail="Invite request not found.")
+
+    if invite_req.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Request is already {invite_req.status}.",
+        )
+
+    if invite_req.user_id == user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot approve your own request.",
+        )
+
+    # Generate and assign invite code
+    suffix = secrets.token_urlsafe(8)[:8]
+    code_str = f"MILE-{suffix}"
+    code = InviteCode(code=code_str, max_uses=1, use_count=1)
+    session.add(code)
+
+    # Assign to requesting user
+    req_user_result = await session.execute(
+        select(User).where(User.id == invite_req.user_id)
+    )
+    req_user = req_user_result.scalar_one()
+    req_user.invite_code_used = code_str
+
+    # Update request status
+    invite_req.status = "approved"
+    invite_req.updated_at = datetime.now(timezone.utc)
+
+    await session.commit()
+
+    # Send approval email (truly non-blocking via background task)
+    async def _notify_email() -> None:
+        try:
+            from src.api.notifications import send_approval_email
+            await send_approval_email(req_user.email, req_user.name)
+        except Exception:
+            logger.warning("Failed to send approval email", exc_info=True)
+
+    asyncio.create_task(_notify_email())
+
+    return MessageResponse(detail=f"Approved. Code {code_str} assigned to {req_user.email}.")
+
+
+@router.post("/admin/requests/{request_id}/deny", response_model=MessageResponse)
+@limiter.limit("20/minute")
+async def deny_invite_request(
+    request: Request,
+    request_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Deny an invite request (admin only).
+
+    Args:
+        request: The incoming request.
+        request_id: ID of the invite request to deny.
+        user: Authenticated admin user.
+        session: Database session.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: 403 if not admin, 404 if request not found.
+    """
+    _require_admin(user)
+
+    from uuid import UUID
+    try:
+        req_uuid = UUID(request_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Invalid request ID.")
+
+    result = await session.execute(
+        select(InviteRequest).where(InviteRequest.id == req_uuid)
+    )
+    invite_req = result.scalar_one_or_none()
+    if invite_req is None:
+        raise HTTPException(status_code=404, detail="Invite request not found.")
+
+    if invite_req.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Request is already {invite_req.status}.",
+        )
+
+    invite_req.status = "denied"
+    invite_req.updated_at = datetime.now(timezone.utc)
+    await session.commit()
+
+    return MessageResponse(detail="Request denied.")

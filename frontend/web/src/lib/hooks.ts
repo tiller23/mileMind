@@ -5,8 +5,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, auth, demo, jobs, plans, profile, strava } from "./api";
+import { ApiError, auth, demo, invite, jobs, plans, profile, strava } from "./api";
 import type {
+  InviteRequestAdminResponse,
   PlanGenerateRequest,
   PlanUpdateStartDate,
   ProfileResponse,
@@ -70,6 +71,48 @@ export function useUpsertProfile() {
     mutationFn: (data: ProfileUpdate) => profile.upsert(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Invite
+// ---------------------------------------------------------------------------
+
+export function useRequestInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => invite.request(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useAdminInviteRequests(statusFilter?: string) {
+  return useQuery({
+    queryKey: ["admin-invite-requests", statusFilter],
+    queryFn: () => invite.adminList(statusFilter),
+    staleTime: 10_000,
+  });
+}
+
+export function useApproveInviteRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: string) => invite.approve(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-invite-requests"] });
+    },
+  });
+}
+
+export function useDenyInviteRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: string) => invite.deny(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-invite-requests"] });
     },
   });
 }

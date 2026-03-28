@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -85,8 +85,34 @@ class Settings(BaseSettings):
     cookie_domain: str = ""
     cors_origins: list[str] = []
 
+    # Notifications
+    discord_webhook_url: str = ""
+    resend_api_key: str = ""
+    resend_from_email: str = "MileMind <noreply@milemind.app>"
+
     # Debug
     debug: bool = False
+
+    @field_validator("discord_webhook_url")
+    @classmethod
+    def _validate_discord_url(cls, v: str) -> str:
+        """Ensure Discord webhook URL is either empty or a valid Discord URL.
+
+        Args:
+            v: The webhook URL value.
+
+        Returns:
+            Validated URL.
+
+        Raises:
+            ValueError: If URL is not a valid Discord webhook.
+        """
+        if v and not v.startswith("https://discord.com/api/webhooks/"):
+            raise ValueError(
+                "discord_webhook_url must be a Discord webhook URL "
+                "(https://discord.com/api/webhooks/...)"
+            )
+        return v
 
     @model_validator(mode="after")
     def _check_production_secrets(self) -> "Settings":

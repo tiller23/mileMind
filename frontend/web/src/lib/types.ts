@@ -17,6 +17,25 @@ export interface UserResponse {
   email: string;
   name: string;
   avatar_url: string | null;
+  role: "user" | "admin";
+  has_invite: boolean;
+  invite_request_status: "pending" | "approved" | "denied" | null;
+}
+
+export interface InviteRequestResponse {
+  id: string;
+  status: "pending" | "approved" | "denied";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InviteRequestAdminResponse {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  status: "pending" | "approved" | "denied";
+  created_at: string;
 }
 
 // ---------------------------------------------------------------------------

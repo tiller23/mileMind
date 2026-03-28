@@ -430,18 +430,36 @@ async def logout(
 
 
 @router.get("/me")
-async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
+async def get_me(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> UserResponse:
     """Get the current authenticated user's info.
 
     Args:
         user: Current authenticated user.
+        session: Database session.
 
     Returns:
-        UserResponse with public user info.
+        UserResponse with public user info including invite status.
     """
+    from src.db.models import InviteRequest
+
+    # Find the most recent invite request for this user
+    result = await session.execute(
+        select(InviteRequest)
+        .where(InviteRequest.user_id == user.id)
+        .order_by(InviteRequest.created_at.desc())
+        .limit(1)
+    )
+    invite_request = result.scalar_one_or_none()
+
     return UserResponse(
         id=user.id,
         email=user.email,
         name=user.name,
         avatar_url=user.avatar_url,
+        role=user.role,
+        has_invite=bool(user.invite_code_used),
+        invite_request_status=invite_request.status if invite_request else None,
     )
