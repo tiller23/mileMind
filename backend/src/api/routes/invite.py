@@ -501,12 +501,6 @@ async def approve_invite_request(
             detail=f"Request is already {invite_req.status}.",
         )
 
-    if invite_req.user_id == user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot approve your own request.",
-        )
-
     # Generate and assign invite code
     suffix = secrets.token_urlsafe(8)[:8]
     code_str = f"MILE-{suffix}"

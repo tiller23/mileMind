@@ -22,11 +22,8 @@ export default function LandingPage() {
         </nav>
 
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-28 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-sm text-blue-300 mb-6">
-            <span>Personalized running plans</span>
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-medium">
-              Invite Only
-            </span>
+          <div className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-sm text-blue-300 mb-6">
+            Personalized running plans
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-white tracking-tight leading-tight">
             Train smarter.

@@ -173,19 +173,7 @@ class TestAdminInviteRequests:
     ) -> None:
         """Approving a request auto-generates and assigns an invite code."""
         test_user.role = "admin"
-
-        # Create a separate user for the request (admin cannot self-approve)
-        requester = User(
-            id=uuid.uuid4(),
-            email="requester@example.com",
-            name="Requester",
-            auth_provider="google",
-            auth_provider_id="google-req-1",
-        )
-        db_session.add(requester)
-        await db_session.commit()
-
-        req = InviteRequest(user_id=requester.id, status="pending")
+        req = InviteRequest(user_id=test_user.id, status="pending")
         db_session.add(req)
         await db_session.commit()
         await db_session.refresh(req)
@@ -199,10 +187,10 @@ class TestAdminInviteRequests:
         assert resp.status_code == 200
         assert "Approved" in resp.json()["detail"]
 
-        # Verify requester got the code
-        await db_session.refresh(requester)
-        assert requester.invite_code_used is not None
-        assert requester.invite_code_used.startswith("MILE-")
+        # Verify user got the code
+        await db_session.refresh(test_user)
+        assert test_user.invite_code_used is not None
+        assert test_user.invite_code_used.startswith("MILE-")
 
         # Verify request status updated
         await db_session.refresh(req)
@@ -210,28 +198,10 @@ class TestAdminInviteRequests:
 
         # Verify invite code exists in DB
         code_result = await db_session.execute(
-            select(InviteCode).where(InviteCode.code == requester.invite_code_used)
+            select(InviteCode).where(InviteCode.code == test_user.invite_code_used)
         )
         code = code_result.scalar_one()
         assert code.use_count == 1
-
-    async def test_admin_cannot_self_approve(
-        self, db_session: AsyncSession, test_user: User, app
-    ) -> None:
-        """Admin cannot approve their own invite request."""
-        test_user.role = "admin"
-        req = InviteRequest(user_id=test_user.id, status="pending")
-        db_session.add(req)
-        await db_session.commit()
-        await db_session.refresh(req)
-
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(
-                f"/api/v1/invite/admin/requests/{req.id}/approve"
-            )
-        assert resp.status_code == 400
-        assert "own request" in resp.json()["detail"]
 
     async def test_admin_deny_sets_status(
         self, db_session: AsyncSession, test_user: User, app
