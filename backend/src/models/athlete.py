@@ -17,6 +17,24 @@ class RiskTolerance(str, Enum):
     AGGRESSIVE = "aggressive"
 
 
+class InjuryTag(str, Enum):
+    """Structured injury history tags used by the strength playbook.
+
+    Coexists with the free-text ``injury_history`` field; these tags
+    drive deterministic exercise selection and contraindication filtering.
+    """
+
+    KNEE = "knee"
+    IT_BAND = "it_band"
+    PLANTAR_FASCIITIS = "plantar_fasciitis"
+    ACHILLES = "achilles"
+    HIP = "hip"
+    LOWER_BACK = "lower_back"
+    HAMSTRING = "hamstring"
+    SHIN_SPLINTS = "shin_splints"
+    NONE = "none"
+
+
 class AthleteProfile(BaseModel):
     """An athlete's profile used by tools and the planner agent.
 
@@ -87,6 +105,19 @@ class AthleteProfile(BaseModel):
         ge=4,
         le=24,
         description="Desired training plan length in weeks (4-24)",
+    )
+    injury_tags: tuple[InjuryTag, ...] = Field(
+        default=(),
+        description="Structured injury history tags for strength playbook selection",
+    )
+    current_acute_injury: bool = Field(
+        default=False,
+        description="User has flagged a current (not historical) injury; routes to PT gate",
+    )
+    current_injury_description: str = Field(
+        default="",
+        max_length=500,
+        description="Optional description of current injury",
     )
 
     def cache_key(self, *, salt: str = "") -> str:

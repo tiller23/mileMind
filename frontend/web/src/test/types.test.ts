@@ -33,6 +33,9 @@ describe("TypeScript types", () => {
       long_run_cap_pct: 0.3,
       preferred_units: "imperial",
       plan_duration_weeks: 12,
+      injury_tags: [],
+      current_acute_injury: false,
+      current_injury_description: "",
     };
     expect(profile.name).toBe("Test Runner");
   });
@@ -64,6 +67,7 @@ describe("TypeScript types", () => {
       scores: { safety: 90, progression: 85, specificity: 80, feasibility: 82 },
       goal_event: "10K",
       week_count: 12,
+      estimated_cost_usd: 0.5,
       created_at: "2026-03-20T00:00:00Z",
     };
     expect(plan.approved).toBe(true);
@@ -128,6 +132,9 @@ describe("TypeScript types", () => {
       long_run_cap_pct: 0.3,
       preferred_units: "metric",
       plan_duration_weeks: 12,
+      injury_tags: [],
+      current_acute_injury: false,
+      current_injury_description: "",
       created_at: "2026-03-20T00:00:00Z",
       updated_at: "2026-03-20T00:00:00Z",
     };

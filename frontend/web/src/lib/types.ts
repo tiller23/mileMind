@@ -46,6 +46,17 @@ export type RiskTolerance = "conservative" | "moderate" | "aggressive";
 
 export type PreferredUnits = "metric" | "imperial";
 
+export type InjuryTag =
+  | "knee"
+  | "it_band"
+  | "plantar_fasciitis"
+  | "achilles"
+  | "hip"
+  | "lower_back"
+  | "hamstring"
+  | "shin_splints"
+  | "none";
+
 export interface ProfileUpdate {
   name: string;
   age: number;
@@ -63,6 +74,9 @@ export interface ProfileUpdate {
   long_run_cap_pct: number;
   preferred_units: PreferredUnits;
   plan_duration_weeks: number;
+  injury_tags: InjuryTag[];
+  current_acute_injury: boolean;
+  current_injury_description: string;
 }
 
 export interface ProfileResponse extends ProfileUpdate {
@@ -251,6 +265,38 @@ export interface WorkoutLogResponse {
   notes: string;
   completed_at: string;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Strength Playbook
+// ---------------------------------------------------------------------------
+
+export interface StrengthExercise {
+  id: string;
+  name: string;
+  equipment: string[];
+  difficulty: "beginner" | "intermediate" | "advanced";
+  search_query: string;
+}
+
+export interface StrengthBlock {
+  block_id: string;
+  title: string;
+  rationale: string;
+  exercises: StrengthExercise[];
+  matched_injury_tags: InjuryTag[];
+}
+
+export interface StrengthAcuteGate {
+  active: boolean;
+  description: string;
+}
+
+export interface StrengthPlaybookResponse {
+  acute_injury_gate: StrengthAcuteGate;
+  blocks: StrengthBlock[];
+  catalog_version: string;
+  profile_summary: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------

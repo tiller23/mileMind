@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, auth, demo, invite, jobs, plans, profile, strava } from "./api";
+import { ApiError, auth, demo, invite, jobs, plans, profile, strava, strength } from "./api";
 import type {
   InviteRequestAdminResponse,
   PlanGenerateRequest,
@@ -260,5 +260,17 @@ export function useDemoPlanDebug(planId: string | undefined) {
     queryFn: () => demo.debug(planId!),
     enabled: !!planId,
     staleTime: Infinity,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Strength Playbook
+// ---------------------------------------------------------------------------
+
+export function useStrengthPlaybook() {
+  return useQuery({
+    queryKey: ["strength-playbook"],
+    queryFn: () => strength.playbook(),
+    staleTime: 5 * 60_000,
   });
 }
