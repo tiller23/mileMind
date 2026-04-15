@@ -217,8 +217,10 @@ export default function StrengthPage() {
         )}
 
         <footer className="mt-10 text-xs text-gray-500 text-center">
-          Catalog version {data.catalog_version}. These are general
-          running-strength staples, not medical advice.
+          {data.catalog_version && (
+            <>Catalog version {data.catalog_version}. </>
+          )}
+          These are general running-strength staples, not medical advice.
         </footer>
       </main>
     </>
