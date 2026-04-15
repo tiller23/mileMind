@@ -53,6 +53,20 @@ generates physiological numbers directly.
 - Commit messages: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`
 - Merge to main only after all phase gates pass
 
+## Lint / Format (do not let this rot)
+- Pre-commit hooks live in `.pre-commit-config.yaml`. **Install once per clone:**
+  ```bash
+  pip install pre-commit && pre-commit install
+  ```
+- Hooks run `ruff --fix` + `black` on staged backend files and `tsc --noEmit`
+  on staged frontend files. CI runs the same checks as a backstop.
+- Before any commit, manually verify if pre-commit is not installed:
+  ```bash
+  cd backend && ruff check src/ tests/ && black --check src/ tests/
+  cd ../frontend/web && npx tsc --noEmit
+  ```
+- CI lints both `src/` and `tests/`. A failing lint run blocks merge.
+
 ## Session Startup
 - On new sessions, run `git log --oneline -20` to understand recent work
 - Check the Phase Progress section below for what's complete and what's next

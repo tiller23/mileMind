@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,10 +14,9 @@ from src.api.jobs import (
     _ActiveJob,
     get_job_manager,
 )
-from src.models.progress import ProgressEvent, ProgressEventType
 from src.db.models import Base, User
 from src.models.athlete import AthleteProfile
-
+from src.models.progress import ProgressEvent, ProgressEventType
 
 pytestmark = pytest.mark.asyncio
 
@@ -26,6 +24,7 @@ pytestmark = pytest.mark.asyncio
 # ---------------------------------------------------------------------------
 # ProgressEvent tests
 # ---------------------------------------------------------------------------
+
 
 class TestProgressEvent:
     """Tests for ProgressEvent serialization."""
@@ -59,6 +58,7 @@ class TestProgressEvent:
 # _ActiveJob tests
 # ---------------------------------------------------------------------------
 
+
 class TestActiveJob:
     """Tests for in-memory active job state."""
 
@@ -84,6 +84,7 @@ class TestActiveJob:
 # JobManager tests
 # ---------------------------------------------------------------------------
 
+
 class TestJobManager:
     """Tests for the JobManager service."""
 
@@ -100,10 +101,12 @@ class TestJobManager:
         active = _ActiveJob(job_id=job_id, user_id=uuid.uuid4())
 
         for i in range(5):
-            active.add_event(ProgressEvent(
-                event_type=ProgressEventType.PLANNER_STARTED,
-                message=f"Event {i}",
-            ))
+            active.add_event(
+                ProgressEvent(
+                    event_type=ProgressEventType.PLANNER_STARTED,
+                    message=f"Event {i}",
+                )
+            )
 
         manager._active_jobs[job_id] = active
 
@@ -202,6 +205,7 @@ class TestJobManager:
 # ---------------------------------------------------------------------------
 # Singleton tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetJobManager:
     """Tests for the get_job_manager singleton."""

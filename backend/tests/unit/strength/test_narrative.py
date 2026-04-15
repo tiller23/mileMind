@@ -114,3 +114,63 @@ async def test_no_api_key_no_transport_returns_fallback() -> None:
     result = await generate_narrative(pb, profile, transport=None, api_key=None)
     for block in pb.blocks:
         assert result[block.block_id] == block.rationale_fallback
+
+
+@pytest.mark.asyncio
+async def test_concurrent_calls_coalesce_to_one_transport_call() -> None:
+    """Thundering herd: N parallel callers must hit the API once."""
+    import asyncio
+
+    profile = _profile()
+    pb = build_playbook(profile)
+
+    class _SlowStub:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def create_message(self, **_kwargs: Any) -> Any:
+            self.calls += 1
+            await asyncio.sleep(0.05)
+            return SimpleNamespace(content=[SimpleNamespace(text='{"posterior_chain": "ok"}')])
+
+    transport = _SlowStub()
+    results = await asyncio.gather(
+        *(generate_narrative(pb, profile, transport=transport) for _ in range(5))
+    )
+    assert transport.calls == 1
+    # All callers got the same dict.
+    for r in results:
+        assert r == results[0]
+
+
+@pytest.mark.asyncio
+async def test_prescriptive_blurb_falls_back() -> None:
+    """A blurb that drifts into reps/sets must be replaced by fallback."""
+    profile = _profile()
+    pb = build_playbook(profile)
+    bad = '{"posterior_chain": "Do 3 sets of 10 reps at 70% 1RM."}'
+    transport = _StubTransport(bad)
+    result = await generate_narrative(pb, profile, transport=transport)
+    assert (
+        result["posterior_chain"]
+        == next(b for b in pb.blocks if b.block_id == "posterior_chain").rationale_fallback
+    )
+
+
+@pytest.mark.asyncio
+async def test_catalog_version_change_invalidates_cache() -> None:
+    """Changing catalog_version must produce a new cache key."""
+    from dataclasses import replace
+
+    profile = _profile()
+    pb = build_playbook(profile)
+    transport = _StubTransport('{"posterior_chain": "first"}')
+    first = await generate_narrative(pb, profile, transport=transport)
+    assert transport.calls == 1
+
+    # Forge a different catalog_version on a fresh playbook copy.
+    pb_v2 = replace(pb, catalog_version="other-version")
+    transport2 = _StubTransport('{"posterior_chain": "second"}')
+    second = await generate_narrative(pb_v2, profile, transport=transport2)
+    assert transport2.calls == 1
+    assert first["posterior_chain"] != second["posterior_chain"]

@@ -22,6 +22,8 @@ class InjuryTag(str, Enum):
 
     Coexists with the free-text ``injury_history`` field; these tags
     drive deterministic exercise selection and contraindication filtering.
+
+    No "none" sentinel — represent "no injuries" as an empty tuple.
     """
 
     KNEE = "knee"
@@ -32,7 +34,6 @@ class InjuryTag(str, Enum):
     LOWER_BACK = "lower_back"
     HAMSTRING = "hamstring"
     SHIN_SPLINTS = "shin_splints"
-    NONE = "none"
 
 
 class AthleteProfile(BaseModel):

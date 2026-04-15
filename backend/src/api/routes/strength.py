@@ -28,7 +28,10 @@ router = APIRouter(prefix="/strength", tags=["strength"])
 
 
 @router.get("/playbook", response_model=StrengthPlaybookResponse)
-@limiter.limit("30/minute")
+# Per-user via JWT (see src/api/rate_limit.py). Tighter than 30/min because
+# the in-process cache + in-flight dedupe make repeated views free; humans
+# do not need to refetch the playbook 10× per minute.
+@limiter.limit("10/minute")
 async def get_playbook(
     request: Request,
     user: User = Depends(get_current_user),

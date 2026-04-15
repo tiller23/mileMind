@@ -3,8 +3,6 @@
 Tests validate_plan_output as a pure function — no mocking or async needed.
 """
 
-import pytest
-
 from src.agents.validation import ValidationResult, validate_plan_output
 
 
@@ -26,7 +24,12 @@ class TestValidatePlanOutput:
     """Tests for validate_plan_output function."""
 
     VALID_TOOL_CALLS = [
-        {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
+        {
+            "name": "validate_progression_constraints",
+            "input": {},
+            "output": {"valid": True},
+            "success": True,
+        },
     ]
 
     def test_valid_plan_passes(self) -> None:
@@ -47,7 +50,12 @@ class TestValidatePlanOutput:
     def test_compute_training_stress_not_required(self) -> None:
         """compute_training_stress is no longer required — TSS is computed post-hoc."""
         tool_calls = [
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
         ]
         result = validate_plan_output("Plan text.", tool_calls)
         assert result.passed is True
@@ -62,7 +70,12 @@ class TestValidatePlanOutput:
 
     def test_failed_tool_call_fails(self) -> None:
         tool_calls = [
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": False},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": False,
+            },
         ]
         result = validate_plan_output("Plan text.", tool_calls)
         assert result.passed is False
@@ -71,7 +84,12 @@ class TestValidatePlanOutput:
     def test_missing_success_key_treated_as_failure(self) -> None:
         tool_calls = [
             {"name": "compute_training_stress", "input": {}, "output": {}},
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
         ]
         result = validate_plan_output("Plan text.", tool_calls)
         assert result.passed is False

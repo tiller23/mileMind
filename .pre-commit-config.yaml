@@ -1,0 +1,36 @@
+# Pre-commit hooks for MileMind.
+#
+# One-time setup (per clone):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Hooks then run automatically on every `git commit`. To bypass in an
+# emergency, use `--no-verify` (don't make a habit of it).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+        # We use black for formatting, not ruff-format. Disable here.
+        stages: [manual]
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^backend/.*\.py$
+        language_version: python3.12
+
+  - repo: local
+    hooks:
+      - id: frontend-typecheck
+        name: frontend tsc --noEmit
+        entry: bash -c 'cd frontend/web && npx tsc --noEmit'
+        language: system
+        files: ^frontend/web/src/.*\.(ts|tsx)$
+        pass_filenames: false

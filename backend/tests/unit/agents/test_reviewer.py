@@ -21,10 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import anthropic
 import pytest
 
-from src.agents.reviewer import ReviewerAgent, ReviewerResult
-from src.agents.transport import MessageTransport
+from src.agents.reviewer import ReviewerAgent
 from src.models.athlete import AthleteProfile, RiskTolerance
-from src.models.decision_log import ReviewerScores
 from src.tools.registry import ToolRegistry
 from tests.helpers import (
     MockContentBlock,
@@ -34,7 +32,6 @@ from tests.helpers import (
     make_tool_use_response,
     make_verdict_response,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -66,7 +63,12 @@ VALID_PLAN_TEXT = """\
 
 SAMPLE_TOOL_CALLS = [
     {"name": "compute_training_stress", "input": {}, "output": {"tss": 35.0}, "success": True},
-    {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
+    {
+        "name": "validate_progression_constraints",
+        "input": {},
+        "output": {"valid": True},
+        "success": True,
+    },
 ]
 
 
@@ -189,10 +191,10 @@ class TestParseReviewVerdict:
         WHY: Primary code path for well-behaved Claude responses.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": true, "scores": {"safety": 85, "progression": 80, '
             '"specificity": 90, "feasibility": 75}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is True
@@ -208,11 +210,11 @@ class TestParseReviewVerdict:
     def test_valid_fenced_block_rejected(self) -> None:
         """Fenced block with approved=false and issues is parsed correctly."""
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": false, "scores": {"safety": 55, "progression": 80, '
             '"specificity": 85, "feasibility": 75}, "critique": "Too risky.", '
             '"issues": ["No rest days in week 3", "ACWR exceeds 1.3"]}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -229,10 +231,10 @@ class TestParseReviewVerdict:
         If the formula drifts, plans with unsafe scores could get approved.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": true, "scores": {"safety": 80, "progression": 70, '
             '"specificity": 90, "feasibility": 80}, "critique": "OK.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.scores is not None
@@ -302,7 +304,7 @@ class TestParseReviewVerdict:
         WHY: If Claude truncates its JSON output, we must report the parse
         failure rather than silently approving or crashing.
         """
-        text = '```json\n{approved: true, broken json}\n```'
+        text = "```json\n{approved: true, broken json}\n```"
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
         assert result.error is not None
@@ -331,10 +333,10 @@ class TestParseReviewVerdict:
         String coercion would be a security/safety vulnerability.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": "true", "scores": {"safety": 90, "progression": 85, '
             '"specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -345,10 +347,10 @@ class TestParseReviewVerdict:
         WHY: Same as above — truthy int is not boolean True.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": 1, "scores": {"safety": 90, "progression": 85, '
             '"specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -356,10 +358,10 @@ class TestParseReviewVerdict:
     def test_null_approved_not_approved(self) -> None:
         """approved=null is treated as rejected."""
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": null, "scores": {"safety": 90, "progression": 85, '
             '"specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -373,10 +375,10 @@ class TestParseReviewVerdict:
         are required for weighted scoring. Partial scores break the formula.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": true, "scores": {"safety": 90, "progression": 85, '
             '"specificity": 80}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -391,10 +393,10 @@ class TestParseReviewVerdict:
         The parser must catch this and surface it rather than crashing.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": true, "scores": {"safety": "high", "progression": 80, '
             '"specificity": 80, "feasibility": 80}, "critique": "Good.", "issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
@@ -407,11 +409,7 @@ class TestParseReviewVerdict:
         WHY: Scores are optional in the data model. A missing scores dict should
         not block the verdict — it's a degraded-but-valid state.
         """
-        text = (
-            '```json\n'
-            '{"approved": true, "critique": "Fine.", "issues": []}\n'
-            '```'
-        )
+        text = "```json\n" '{"approved": true, "critique": "Fine.", "issues": []}\n' "```"
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is True
         assert result.scores is None
@@ -426,11 +424,11 @@ class TestParseReviewVerdict:
         Integers and nulls from Claude output must be handled gracefully.
         """
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": false, "scores": {"safety": 50, "progression": 50, '
             '"specificity": 50, "feasibility": 50}, "critique": "Bad.", '
             '"issues": [1, "real issue", null, 2.5]}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.issues == ["1", "real issue", "2.5"]
@@ -438,11 +436,11 @@ class TestParseReviewVerdict:
     def test_empty_issues_list(self) -> None:
         """Empty issues list is preserved as-is."""
         text = (
-            '```json\n'
+            "```json\n"
             '{"approved": true, "scores": {"safety": 85, "progression": 80, '
             '"specificity": 80, "feasibility": 80}, "critique": "All good.", '
             '"issues": []}\n'
-            '```'
+            "```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.issues == []
@@ -451,11 +449,11 @@ class TestParseReviewVerdict:
         """Critique text is passed through to the ReviewerResult."""
         critique = "The plan lacks adequate recovery weeks."
         text = (
-            f'```json\n'
+            f"```json\n"
             f'{{"approved": false, "scores": {{"safety": 65, "progression": 70, '
             f'"specificity": 75, "feasibility": 70}}, "critique": "{critique}", '
             f'"issues": ["Add deload week"]}}\n'
-            f'```'
+            f"```"
         )
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.critique == critique
@@ -476,21 +474,27 @@ class TestBuildReviewMessage:
     def test_contains_athlete_name(self, sample_athlete: AthleteProfile) -> None:
         """Athlete name is present for the reviewer to reference."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert sample_athlete.name in msg
 
     def test_contains_profile_json_block(self, sample_athlete: AthleteProfile) -> None:
         """Athlete profile is serialized into a fenced JSON block."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "```json" in msg
 
     def test_contains_plan_text(self, sample_athlete: AthleteProfile) -> None:
         """The plan under review appears verbatim in the message."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "12-Week Half Marathon Plan" in msg
 
@@ -500,7 +504,9 @@ class TestBuildReviewMessage:
         WHY: Reviewer uses this to detect which claims are tool-backed vs fabricated.
         """
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "compute_training_stress [OK]" in msg
         assert "validate_progression_constraints [OK]" in msg
@@ -508,14 +514,18 @@ class TestBuildReviewMessage:
     def test_tool_call_count_mentioned(self, sample_athlete: AthleteProfile) -> None:
         """The count of planner tool calls is stated explicitly."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "2 tool call(s)" in msg
 
     def test_empty_tool_calls_shows_none(self, sample_athlete: AthleteProfile) -> None:
         """Zero tool calls produces '0 tool call(s)' and '(none)' summary."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, [],
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            [],
         )
         assert "0 tool call(s)" in msg
         assert "(none)" in msg
@@ -531,7 +541,9 @@ class TestBuildReviewMessage:
     def test_contains_scoring_instructions(self, sample_athlete: AthleteProfile) -> None:
         """Message asks reviewer to score each dimension 0-100."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "safety" in msg.lower()
         assert "progression" in msg.lower()
@@ -541,14 +553,18 @@ class TestBuildReviewMessage:
     def test_contains_pass_threshold_reference(self, sample_athlete: AthleteProfile) -> None:
         """Message mentions the numeric rejection threshold (70)."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "70" in msg
 
     def test_requests_json_verdict_block(self, sample_athlete: AthleteProfile) -> None:
         """Message instructs reviewer to return verdict as a ```json block."""
         msg = ReviewerAgent._build_review_message(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
         assert "```json" in msg
 
@@ -585,7 +601,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is True
@@ -615,7 +633,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is False
@@ -636,10 +656,14 @@ class TestReviewPlan:
         WHY: Verifies that the reviewer's tool-use loop works identically to
         the planner's — tool call is dispatched, results appended, loop continues.
         """
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
+                }
+            ]
+        )
         verdict_response = make_verdict_response(
             approved=True,
             scores={"safety": 88, "progression": 82, "specificity": 85, "feasibility": 80},
@@ -650,7 +674,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is True
@@ -672,10 +698,17 @@ class TestReviewPlan:
         """
         reviewer_with_mock_transport._transport.create_message = AsyncMock(  # type: ignore[attr-defined]
             side_effect=[
-                make_tool_use_response([{
-                    "name": "validate_progression_constraints",
-                    "input": {"weekly_loads": [100, 105, 110], "risk_tolerance": "moderate"},
-                }]),
+                make_tool_use_response(
+                    [
+                        {
+                            "name": "validate_progression_constraints",
+                            "input": {
+                                "weekly_loads": [100, 105, 110],
+                                "risk_tolerance": "moderate",
+                            },
+                        }
+                    ]
+                ),
                 make_verdict_response(
                     approved=True,
                     scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 80},
@@ -684,10 +717,12 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
-        assert result.total_input_tokens == 200   # 100 per iteration * 2
+        assert result.total_input_tokens == 200  # 100 per iteration * 2
         assert result.total_output_tokens == 400  # 200 per iteration * 2
 
     @pytest.mark.asyncio
@@ -708,7 +743,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is False
@@ -735,7 +772,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is False
@@ -757,7 +796,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is False
@@ -776,14 +817,24 @@ class TestReviewPlan:
         """
         reviewer_with_mock_transport._max_iterations = 3
         reviewer_with_mock_transport._transport.create_message = AsyncMock(  # type: ignore[attr-defined]
-            return_value=make_tool_use_response([{
-                "name": "compute_training_stress",
-                "input": {"workout_type": "easy", "duration_minutes": 30.0, "intensity": 0.5},
-            }])
+            return_value=make_tool_use_response(
+                [
+                    {
+                        "name": "compute_training_stress",
+                        "input": {
+                            "workout_type": "easy",
+                            "duration_minutes": 30.0,
+                            "intensity": 0.5,
+                        },
+                    }
+                ]
+            )
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         assert result.approved is False
@@ -811,10 +862,12 @@ class TestReviewPlan:
         }
         # Deliver valid JSON but with unexpected stop_reason
         truncated_response = MockResponse(
-            content=[MockContentBlock(
-                type="text",
-                text=f"```json\n{json.dumps(verdict)}\n```",
-            )],
+            content=[
+                MockContentBlock(
+                    type="text",
+                    text=f"```json\n{json.dumps(verdict)}\n```",
+                )
+            ],
             stop_reason="max_tokens",
             usage=MockUsage(),
         )
@@ -824,7 +877,9 @@ class TestReviewPlan:
         )
 
         result = await reviewer_with_mock_transport.review_plan(
-            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS,
+            sample_athlete,
+            VALID_PLAN_TEXT,
+            SAMPLE_TOOL_CALLS,
         )
 
         # The reviewer loop exits on unexpected stop_reason and sets error

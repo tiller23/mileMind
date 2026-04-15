@@ -22,6 +22,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import (
+    text as sa_text,
+)
 from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
@@ -156,7 +159,7 @@ class DBAthleteProfile(Base):
     preferred_units: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
     plan_duration_weeks: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
     injury_tags: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, nullable=False, server_default="[]"
+        JSONB, default=list, nullable=False, server_default=sa_text("'[]'")
     )
     current_acute_injury: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, server_default="false"

@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from src.models.athlete import AthleteProfile, InjuryTag
 from src.strength.playbook_builder import (
     _CATALOG_PATH,
@@ -48,9 +46,7 @@ def test_short_goal_no_core_block() -> None:
 
 
 def test_lower_back_tag_forces_core_block_even_for_5k() -> None:
-    pb = build_playbook(
-        _profile(goal_distance="5K", injury_tags=(InjuryTag.LOWER_BACK,))
-    )
+    pb = build_playbook(_profile(goal_distance="5K", injury_tags=(InjuryTag.LOWER_BACK,)))
     ids = [b.block_id for b in pb.blocks]
     assert "core_anti_rotation" in ids
 
@@ -79,14 +75,15 @@ def test_matched_injury_tags_populated() -> None:
     assert "it_band" in hip_glute.matched_injury_tags
 
 
-def test_injury_tag_none_is_ignored() -> None:
-    # InjuryTag.NONE is a sentinel for "user selected 'none'" — should not
-    # behave differently than an empty tuple.
-    a = build_playbook(_profile(injury_tags=(InjuryTag.NONE,)))
-    b = build_playbook(_profile(injury_tags=()))
-    assert [x.block_id for x in a.blocks] == [x.block_id for x in b.blocks]
-    for blk_a, blk_b in zip(a.blocks, b.blocks):
-        assert [e.id for e in blk_a.exercises] == [e.id for e in blk_b.exercises]
+def test_empty_injury_tags_returns_baseline() -> None:
+    # No injury tags should produce baseline blocks (no special filters).
+    pb = build_playbook(_profile(injury_tags=()))
+    block_ids = [b.block_id for b in pb.blocks]
+    assert "posterior_chain" in block_ids
+    assert "single_leg_stability" in block_ids
+    # No matched_injury_tags anywhere when there are no tags.
+    for block in pb.blocks:
+        assert block.matched_injury_tags == ()
 
 
 def test_block_exercise_counts_within_range() -> None:
@@ -96,9 +93,7 @@ def test_block_exercise_counts_within_range() -> None:
 
 
 def test_experience_tier_beginner_avoids_advanced() -> None:
-    pb = build_playbook(
-        _profile(weekly_mileage_base=15.0, injury_tags=(), goal_distance="5K")
-    )
+    pb = build_playbook(_profile(weekly_mileage_base=15.0, injury_tags=(), goal_distance="5K"))
     # Beginners should not have pistol_squat_progression (advanced) ranked
     # above easier options.
     sl = next(b for b in pb.blocks if b.block_id == "single_leg_stability")

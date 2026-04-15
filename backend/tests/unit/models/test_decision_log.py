@@ -1,6 +1,6 @@
 """Tests for decision log models (Phase 3 data layer)."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -13,10 +13,10 @@ from src.models.decision_log import (
     ReviewOutcome,
 )
 
-
 # ---------------------------------------------------------------------------
 # ReviewDimension
 # ---------------------------------------------------------------------------
+
 
 class TestReviewPassThreshold:
     """Guard tests for the REVIEW_PASS_THRESHOLD constant."""
@@ -27,6 +27,7 @@ class TestReviewPassThreshold:
 
     def test_importable_from_package(self) -> None:
         from src.models import REVIEW_PASS_THRESHOLD as imported
+
         assert imported == 70
 
 
@@ -46,6 +47,7 @@ class TestReviewDimension:
 # ---------------------------------------------------------------------------
 # ReviewerScores
 # ---------------------------------------------------------------------------
+
 
 class TestReviewerScores:
     """Tests for ReviewerScores model and computed properties."""
@@ -104,6 +106,7 @@ class TestReviewerScores:
 # ReviewOutcome
 # ---------------------------------------------------------------------------
 
+
 class TestReviewOutcome:
     """Tests for the ReviewOutcome enum."""
 
@@ -119,6 +122,7 @@ class TestReviewOutcome:
 # ---------------------------------------------------------------------------
 # DecisionLogEntry
 # ---------------------------------------------------------------------------
+
 
 class TestDecisionLogEntry:
     """Tests for DecisionLogEntry model."""
@@ -154,9 +158,9 @@ class TestDecisionLogEntry:
         assert entry.planner_tool_calls == 12
 
     def test_timestamp_auto_generated(self) -> None:
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         entry = DecisionLogEntry(iteration=1, outcome=ReviewOutcome.APPROVED)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= entry.timestamp <= after
 
     def test_iteration_must_be_positive(self) -> None:
@@ -200,6 +204,7 @@ class TestDecisionLogEntry:
 # Re-export from models package
 # ---------------------------------------------------------------------------
 
+
 class TestModelsReExport:
     """Verify decision_log models are accessible from src.models."""
 
@@ -210,6 +215,7 @@ class TestModelsReExport:
             ReviewerScores,
             ReviewOutcome,
         )
+
         assert DecisionLogEntry is not None
         assert ReviewDimension is not None
         assert ReviewerScores is not None

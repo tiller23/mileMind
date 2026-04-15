@@ -12,14 +12,15 @@ import pytest
 from src.agents.batch import BatchCoordinator, BatchTransport
 from src.agents.transport import MessageTransport
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FakeMessage:
     """Minimal fake API response."""
+
     custom_id: str = ""
     content: list[dict[str, Any]] | None = None
     stop_reason: str = "end_turn"
@@ -32,6 +33,7 @@ class FakeMessage:
 @dataclass
 class FakeBatchResult:
     """Fake individual result from a batch."""
+
     custom_id: str
 
     @dataclass
@@ -52,6 +54,7 @@ def _make_batch_result(custom_id: str, message: Any = None) -> FakeBatchResult:
 @dataclass
 class FakeBatch:
     """Fake batch object from create/retrieve."""
+
     id: str = "batch_123"
     processing_status: str = "ended"
 
@@ -92,6 +95,7 @@ class TestBatchTransportCreateMessage:
 
         # Capture the future so we can resolve it
         captured_future = None
+
         def capture_enqueue(custom_id, params, future):
             nonlocal captured_future
             captured_future = future
@@ -126,10 +130,18 @@ class TestBatchTransportCreateMessage:
 
         transport = BatchTransport("persona1:planner", coordinator)
         await transport.create_message(
-            model="m", max_tokens=1, system="s", tools=[], messages=[],
+            model="m",
+            max_tokens=1,
+            system="s",
+            tools=[],
+            messages=[],
         )
         await transport.create_message(
-            model="m", max_tokens=1, system="s", tools=[], messages=[],
+            model="m",
+            max_tokens=1,
+            system="s",
+            tools=[],
+            messages=[],
         )
 
         assert custom_ids == ["persona1:planner:1", "persona1:planner:2"]
@@ -149,7 +161,11 @@ class TestBatchTransportCreateMessage:
 
         transport = BatchTransport("test", coordinator)
         await transport.create_message(
-            model="m", max_tokens=1, system="My prompt", tools=[], messages=[],
+            model="m",
+            max_tokens=1,
+            system="My prompt",
+            tools=[],
+            messages=[],
         )
 
         assert captured_params is not None
@@ -346,8 +362,12 @@ class TestBatchCoordinatorSubmitRound:
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         f2: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
-        coordinator.enqueue("t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1)
-        coordinator.enqueue("t2:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f2)
+        coordinator.enqueue(
+            "t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1
+        )
+        coordinator.enqueue(
+            "t2:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f2
+        )
 
         await coordinator._submit_round()
 
@@ -383,7 +403,9 @@ class TestBatchCoordinatorSubmitRound:
 
         coordinator.register_transport("t1")
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
-        coordinator.enqueue("t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1)
+        coordinator.enqueue(
+            "t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1
+        )
 
         await coordinator._submit_round()
 
@@ -416,7 +438,9 @@ class TestBatchCoordinatorSubmitRound:
 
         coordinator.register_transport("t1")
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
-        coordinator.enqueue("t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1)
+        coordinator.enqueue(
+            "t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1
+        )
 
         await coordinator._submit_round()
 
@@ -442,8 +466,12 @@ class TestBatchCoordinatorSubmitRound:
 
         f1: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         f2: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
-        coordinator.enqueue("t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1)
-        coordinator.enqueue("t2:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f2)
+        coordinator.enqueue(
+            "t1:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f1
+        )
+        coordinator.enqueue(
+            "t2:1", {"model": "m", "max_tokens": 1, "system": "s", "tools": [], "messages": []}, f2
+        )
 
         await coordinator._submit_round()
 
@@ -473,6 +501,7 @@ class TestBatchCoordinatorPolling:
             coordinator = BatchCoordinator(api_key="test-key", poll_interval_seconds=0.01)
 
         call_count = 0
+
         async def mock_retrieve(batch_id):
             nonlocal call_count
             call_count += 1
@@ -576,7 +605,11 @@ class TestBatchCoordinatorLifecycle:
         # Launch create_message in a task (it will block on the future)
         result_task = asyncio.create_task(
             transport.create_message(
-                model="m", max_tokens=1, system="s", tools=[], messages=[],
+                model="m",
+                max_tokens=1,
+                system="s",
+                tools=[],
+                messages=[],
             )
         )
 

@@ -35,6 +35,11 @@ NARRATIVE_MAX_TOKENS = 600
 _CACHE: dict[str, dict[str, str]] = {}
 _CACHE_LIMIT = 512
 
+# In-flight map: deduplicates concurrent calls for the same cache key so
+# we don't fan out to N parallel Haiku calls when a profile shape is
+# requested by N tabs / N reloads simultaneously.
+_INFLIGHT: dict[str, asyncio.Future[dict[str, str]]] = {}
+
 _SYSTEM_PROMPT = (
     "You are a running-specific strength coach writing short block intros "
     "for a runner's playbook. For each block the runner will see, return a "
@@ -83,9 +88,9 @@ def _build_user_message(playbook: Playbook, profile: AthleteProfile) -> str:
         "injury_tags": [t.value for t in profile.injury_tags],
         "experience_tier": playbook.profile_summary.get("experience_tier"),
         "current_acute_injury": profile.current_acute_injury,
-        "current_injury_description": sanitize_prompt_text(
-            profile.current_injury_description
-        )[:200],
+        "current_injury_description": sanitize_prompt_text(profile.current_injury_description)[
+            :200
+        ],
         "injury_history_text": sanitize_prompt_text(profile.injury_history)[:300],
     }
     return (
@@ -93,7 +98,7 @@ def _build_user_message(playbook: Playbook, profile: AthleteProfile) -> str:
         f"{json.dumps(athlete_context, indent=2)}\n\n"
         "Blocks to write rationales for:\n"
         f"{json.dumps(block_summary, indent=2)}\n\n"
-        "Return JSON like: {\"posterior_chain\": \"...\", \"calf_achilles\": \"...\"}"
+        'Return JSON like: {"posterior_chain": "...", "calf_achilles": "..."}'
     )
 
 
@@ -167,59 +172,88 @@ async def generate_narrative(
 
     fallback = _fallback_narrative(playbook)
 
+    # Coalesce concurrent callers onto a single in-flight future.
+    inflight = _INFLIGHT.get(key)
+    if inflight is not None:
+        try:
+            return await inflight
+        except Exception:
+            # If the in-flight call failed, fall through and let this caller
+            # produce its own fallback below.
+            return fallback
+
+    loop = asyncio.get_event_loop()
+    inflight = loop.create_future()
+    _INFLIGHT[key] = inflight
+
     if transport is None:
         if not api_key:
             logger.warning("generate_narrative: no transport and no api_key, using fallback")
+            inflight.set_result(fallback)
+            _INFLIGHT.pop(key, None)
             return fallback
         transport = AnthropicTransport(api_key=api_key)
 
     user_message = _build_user_message(playbook, profile)
 
     try:
-        response: Any = await transport.create_message(
-            model=NARRATIVE_MODEL,
-            max_tokens=NARRATIVE_MAX_TOKENS,
-            system=_SYSTEM_PROMPT,
-            tools=[],
-            messages=[{"role": "user", "content": user_message}],
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as exc:  # noqa: BLE001 — resilience is the whole point
-        logger.warning("generate_narrative: transport error %s, using fallback", exc)
-        return fallback
-
-    text_chunks: list[str] = []
-    for block in getattr(response, "content", []) or []:
-        block_text = getattr(block, "text", None)
-        if block_text:
-            text_chunks.append(block_text)
-    text = "".join(text_chunks)
-
-    parsed = _extract_json_map(text)
-    if parsed is None:
-        logger.warning("generate_narrative: unparseable response, using fallback")
-        return fallback
-
-    result = dict(fallback)
-    for block_id, rationale in parsed.items():
-        if block_id not in fallback or not rationale:
-            continue
-        trimmed = rationale[:400]
-        if _looks_prescriptive(trimmed):
-            # Drop prescriptive output; leave static fallback in place.
-            logger.warning(
-                "generate_narrative: prescriptive blurb rejected for %s", block_id
+        try:
+            response: Any = await transport.create_message(
+                model=NARRATIVE_MODEL,
+                max_tokens=NARRATIVE_MAX_TOKENS,
+                system=_SYSTEM_PROMPT,
+                tools=[],
+                messages=[{"role": "user", "content": user_message}],
             )
-            continue
-        result[block_id] = trimmed
+        except asyncio.CancelledError:
+            inflight.cancel()
+            _INFLIGHT.pop(key, None)
+            raise
+        except Exception as exc:  # noqa: BLE001 — resilience is the whole point
+            logger.warning("generate_narrative: transport error %s, using fallback", exc)
+            inflight.set_result(fallback)
+            return fallback
 
-    if len(_CACHE) >= _CACHE_LIMIT:
-        _CACHE.clear()
-    _CACHE[key] = result
-    return result
+        text_chunks: list[str] = []
+        for block in getattr(response, "content", []) or []:
+            block_text = getattr(block, "text", None)
+            if block_text:
+                text_chunks.append(block_text)
+        text = "".join(text_chunks)
+
+        parsed = _extract_json_map(text)
+        if parsed is None:
+            logger.warning("generate_narrative: unparseable response, using fallback")
+            inflight.set_result(fallback)
+            return fallback
+
+        result = dict(fallback)
+        for block_id, rationale in parsed.items():
+            if block_id not in fallback or not rationale:
+                continue
+            trimmed = rationale[:400]
+            if _looks_prescriptive(trimmed):
+                # Drop prescriptive output; leave static fallback in place.
+                logger.warning("generate_narrative: prescriptive blurb rejected for %s", block_id)
+                continue
+            result[block_id] = trimmed
+
+        if len(_CACHE) >= _CACHE_LIMIT:
+            # FIFO eviction so heavy traffic doesn't cause repeated mass
+            # invalidations.
+            for k in list(_CACHE.keys())[: _CACHE_LIMIT // 4]:
+                _CACHE.pop(k, None)
+        _CACHE[key] = result
+        inflight.set_result(result)
+        return result
+    finally:
+        _INFLIGHT.pop(key, None)
 
 
 def clear_cache() -> None:
-    """Clear the narrative cache (test hook)."""
+    """Clear the narrative cache and any in-flight futures (test hook)."""
     _CACHE.clear()
+    for fut in list(_INFLIGHT.values()):
+        if not fut.done():
+            fut.cancel()
+    _INFLIGHT.clear()

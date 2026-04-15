@@ -1,7 +1,5 @@
 """Tests for evaluation report generation."""
 
-import pytest
-
 from src.evaluation.report import (
     _extract_plan_json,
     _format_comparison_persona,
@@ -13,10 +11,10 @@ from src.evaluation.report import (
 from src.evaluation.results import HarnessMetrics, PersonaResult
 from src.models.decision_log import DecisionLogEntry, ReviewerScores, ReviewOutcome
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_result(
     persona_id: str = "beginner_runner",
@@ -74,7 +72,9 @@ class TestPlanReviewReport:
     def test_report_contains_summary_table(self) -> None:
         """Report includes the summary metrics table."""
         results = [_make_result()]
-        metrics = HarnessMetrics.from_results(results, planner_model="sonnet", reviewer_model="opus")
+        metrics = HarnessMetrics.from_results(
+            results, planner_model="sonnet", reviewer_model="opus"
+        )
         report = generate_plan_review_report(results, metrics)
 
         assert "## Summary" in report
@@ -208,7 +208,9 @@ class TestPlanReviewReport:
         """Report header shows planner and reviewer model names."""
         results = [_make_result()]
         metrics = HarnessMetrics.from_results(
-            results, planner_model="claude-sonnet-4", reviewer_model="claude-opus-4",
+            results,
+            planner_model="claude-sonnet-4",
+            reviewer_model="claude-opus-4",
         )
         report = generate_plan_review_report(results, metrics)
 
@@ -436,7 +438,10 @@ class TestFormatPersonaSectionUnknownPersona:
             approved=True,
             retry_count=2,
             final_scores=ReviewerScores(
-                safety=80, progression=75, specificity=70, feasibility=65,
+                safety=80,
+                progression=75,
+                specificity=70,
+                feasibility=65,
             ),
         )
 

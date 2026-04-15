@@ -9,14 +9,15 @@ import pytest
 
 from src.agents.shared import AgentLoopResult, build_registry, extract_text, run_agent_loop
 
-
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MockBlock:
     """Simulates a Claude API content block."""
+
     type: str
     text: str = ""
 
@@ -24,6 +25,7 @@ class MockBlock:
 # ---------------------------------------------------------------------------
 # extract_text tests
 # ---------------------------------------------------------------------------
+
 
 class TestExtractText:
     """Tests for the extract_text utility."""
@@ -61,9 +63,11 @@ class TestExtractText:
 
     def test_block_without_text_attribute(self) -> None:
         """Blocks with 'type' but no 'text' attribute are skipped (W12)."""
+
         @dataclass
         class TypeOnlyBlock:
             type: str
+
         block: Any = TypeOnlyBlock(type="text")
         assert extract_text([block]) == ""
 
@@ -84,6 +88,7 @@ class TestExtractText:
 # build_registry tests
 # ---------------------------------------------------------------------------
 
+
 class TestBuildRegistry:
     """Tests for the build_registry utility."""
 
@@ -101,12 +106,14 @@ class TestBuildRegistry:
             "validate_progression_constraints",
             "simulate_race_outcomes",
             "reallocate_week_load",
-            "project_taper",        }
+            "project_taper",
+        }
 
 
 # ---------------------------------------------------------------------------
 # AgentLoopResult tests
 # ---------------------------------------------------------------------------
+
 
 class TestAgentLoopResult:
     """Tests for the AgentLoopResult dataclass."""

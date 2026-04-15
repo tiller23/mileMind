@@ -47,9 +47,7 @@ class TestListPlans:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_list_with_plans(
-        self, client: AsyncClient, test_plan: TrainingPlan
-    ) -> None:
+    async def test_list_with_plans(self, client: AsyncClient, test_plan: TrainingPlan) -> None:
         """Returns list of plan summaries."""
         resp = await client.get("/api/v1/plans")
         assert resp.status_code == 200
@@ -63,9 +61,7 @@ class TestListPlans:
 class TestGetPlan:
     """Tests for GET /api/v1/plans/{plan_id}."""
 
-    async def test_get_plan(
-        self, client: AsyncClient, test_plan: TrainingPlan
-    ) -> None:
+    async def test_get_plan(self, client: AsyncClient, test_plan: TrainingPlan) -> None:
         """Returns full plan detail."""
         resp = await client.get(f"/api/v1/plans/{test_plan.id}")
         assert resp.status_code == 200
@@ -110,9 +106,7 @@ class TestGetPlan:
 class TestGetPlanDebug:
     """Tests for GET /api/v1/plans/{plan_id}/debug."""
 
-    async def test_get_debug_view(
-        self, client: AsyncClient, test_plan: TrainingPlan
-    ) -> None:
+    async def test_get_debug_view(self, client: AsyncClient, test_plan: TrainingPlan) -> None:
         """Returns debug info with decision log."""
         resp = await client.get(f"/api/v1/plans/{test_plan.id}/debug")
         assert resp.status_code == 200
@@ -125,9 +119,7 @@ class TestGetPlanDebug:
 class TestArchivePlan:
     """Tests for POST /api/v1/plans/{plan_id}/archive."""
 
-    async def test_archive_plan(
-        self, client: AsyncClient, test_plan: TrainingPlan
-    ) -> None:
+    async def test_archive_plan(self, client: AsyncClient, test_plan: TrainingPlan) -> None:
         """Archives a plan and updates its status."""
         resp = await client.post(f"/api/v1/plans/{test_plan.id}/archive")
         assert resp.status_code == 200

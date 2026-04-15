@@ -3,14 +3,11 @@
 import json
 import re
 
-import pytest
-
 from src.agents.plan_postprocess import (
+    _compute_workout_tss,
     enrich_plan_with_tss,
     extract_structured_plan,
-    _compute_workout_tss,
 )
-
 
 SAMPLE_PLAN = {
     "athlete_name": "Test Runner",
@@ -20,9 +17,21 @@ SAMPLE_PLAN = {
             "week_number": 1,
             "phase": "base",
             "workouts": [
-                {"day": 1, "workout_type": "easy", "duration_minutes": 50, "intensity": 0.65, "description": "Easy run"},
+                {
+                    "day": 1,
+                    "workout_type": "easy",
+                    "duration_minutes": 50,
+                    "intensity": 0.65,
+                    "description": "Easy run",
+                },
                 {"day": 3, "workout_type": "rest", "description": "Rest day"},
-                {"day": 5, "workout_type": "long_run", "duration_minutes": 60, "intensity": 0.68, "description": "Long run"},
+                {
+                    "day": 5,
+                    "workout_type": "long_run",
+                    "duration_minutes": 60,
+                    "intensity": 0.68,
+                    "description": "Long run",
+                },
             ],
             "notes": "Base week 1",
         }

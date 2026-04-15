@@ -18,7 +18,6 @@ import math
 import pytest
 
 from src.deterministic.banister import (
-    DEFAULT_FATIGUE_TAU,
     DEFAULT_FITNESS_TAU,
     compute_ctl,
 )
@@ -200,7 +199,7 @@ class TestFindOptimalTaperLength:
 
     def test_partial_taper_affects_optimal(self, well_trained: list[float]) -> None:
         """Partial taper (maintaining some load) should shift optimal length."""
-        result_rest = find_optimal_taper_length(well_trained, taper_load_fraction=0.0)
+        find_optimal_taper_length(well_trained, taper_load_fraction=0.0)
         result_partial = find_optimal_taper_length(well_trained, taper_load_fraction=0.3)
         # Different load fractions should yield different results
         # (they could coincidentally be the same, so test that the function runs)
@@ -233,9 +232,7 @@ class TestComputeTaperFitnessRetention:
 
         This is a fundamental property of exponential decay.
         """
-        retention = compute_taper_fitness_retention(
-            trained_loads, taper_days=42, fitness_tau=42
-        )
+        retention = compute_taper_fitness_retention(trained_loads, taper_days=42, fitness_tau=42)
         assert retention == pytest.approx(math.exp(-1), abs=0.02)
 
     def test_retention_between_zero_and_one(self, trained_loads: list[float]) -> None:
@@ -281,9 +278,7 @@ class TestComputeTaperFitnessRetention:
         days = 14
         tau = 42
         theoretical = math.exp(-days / tau)
-        actual = compute_taper_fitness_retention(
-            trained_loads, taper_days=days, fitness_tau=tau
-        )
+        actual = compute_taper_fitness_retention(trained_loads, taper_days=days, fitness_tau=tau)
         # Should be within a few percent of theoretical
         assert actual == pytest.approx(theoretical, abs=0.05)
 
@@ -402,9 +397,7 @@ class TestEdgeCases:
 
     def test_optimal_with_min_equals_max(self) -> None:
         """min_days == max_days should return that single day."""
-        result = find_optimal_taper_length(
-            [50.0] * 60, min_days=14, max_days=14
-        )
+        result = find_optimal_taper_length([50.0] * 60, min_days=14, max_days=14)
         assert result["optimal_days"] == 14
 
     def test_retention_zero_days_of_rest(self) -> None:

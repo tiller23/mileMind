@@ -169,7 +169,6 @@ class TestComputeACWREWMA:
     def test_ewma_alpha_correct(self) -> None:
         """Verify EWMA uses alpha = 2 / (N + 1)."""
         # Build a simple case and check manually
-        loads = [10.0, 20.0]  # Need at least chronic_days entries
         loads_full = [10.0] * 26 + [10.0, 20.0]
         # The last EWMA value depends on the full history
         acwr = compute_acwr_ewma(loads_full)
@@ -192,20 +191,23 @@ class TestComputeACWREWMA:
 class TestClassifyZone:
     """Tests for ACWR zone classification."""
 
-    @pytest.mark.parametrize("acwr,expected_zone", [
-        (0.0, "low"),
-        (0.5, "low"),
-        (0.79, "low"),
-        (0.8, "safe"),
-        (1.0, "safe"),
-        (1.3, "safe"),
-        (1.31, "warning"),
-        (1.4, "warning"),
-        (1.5, "warning"),
-        (1.51, "danger"),
-        (2.0, "danger"),
-        (5.0, "danger"),
-    ])
+    @pytest.mark.parametrize(
+        "acwr,expected_zone",
+        [
+            (0.0, "low"),
+            (0.5, "low"),
+            (0.79, "low"),
+            (0.8, "safe"),
+            (1.0, "safe"),
+            (1.3, "safe"),
+            (1.31, "warning"),
+            (1.4, "warning"),
+            (1.5, "warning"),
+            (1.51, "danger"),
+            (2.0, "danger"),
+            (5.0, "danger"),
+        ],
+    )
     def test_zone_boundaries(self, acwr: float, expected_zone: str) -> None:
         """Zone classification should respect exact boundary values."""
         assert classify_zone(acwr) == expected_zone
@@ -276,8 +278,7 @@ class TestCheckSafety:
         assert result.safe is False
         # Should have at least the hard cap violation
         hard_cap_violations = [
-            v for v in result.violations if "hard cap" in v.lower()
-            or "exceeds" in v.lower()
+            v for v in result.violations if "hard cap" in v.lower() or "exceeds" in v.lower()
         ]
         assert len(hard_cap_violations) > 0
 
@@ -288,9 +289,7 @@ class TestCheckSafety:
         result = check_safety(weeks, risk_tolerance="conservative")
         # Check if ACWR-related violation exists for conservative ceiling
         if result.acwr > 1.2:
-            tolerance_violations = [
-                v for v in result.violations if "conservative" in v.lower()
-            ]
+            tolerance_violations = [v for v in result.violations if "conservative" in v.lower()]
             assert len(tolerance_violations) > 0
 
     def test_weekly_increase_violation(self) -> None:
@@ -298,18 +297,14 @@ class TestCheckSafety:
         # 15% increase violates default 10% limit
         weeks = [200.0, 200.0, 200.0, 230.0]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
         assert len(increase_violations) > 0
 
     def test_spike_detection(self) -> None:
         """40% single-week spike should be detected."""
         weeks = [100.0, 100.0, 100.0, 145.0]  # 45% spike
         result = check_safety(weeks)
-        spike_violations = [
-            v for v in result.violations if "spike" in v.lower()
-        ]
+        spike_violations = [v for v in result.violations if "spike" in v.lower()]
         assert len(spike_violations) > 0
 
     def test_all_risk_tolerances_accepted(self) -> None:
@@ -564,8 +559,7 @@ class TestCoverageGaps:
         # Simpler: use data where early negatives exactly cancel the EWMA.
         # Let's build this numerically.
         alpha_c = 2.0 / 7  # chronic span=6
-        alpha_a = 2.0 / 4  # acute span=3
-        r_c = 1.0 - alpha_c
+        1.0 - alpha_c
         # ewma after [a, b, c, d, e, f]:
         # ewma_6 = alpha*(f + r*e + r^2*d + r^3*c + r^4*b + r^5*a)
         # For this to be 0 with f>0, we need:
@@ -611,12 +605,10 @@ class TestRecoveryWeekBounceBack:
         """
         weeks = [300.0, 330.0, 360.0, 270.0, 340.0]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
-        assert len(increase_violations) == 0, (
-            f"Recovery bounce-back falsely flagged: {increase_violations}"
-        )
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
+        assert (
+            len(increase_violations) == 0
+        ), f"Recovery bounce-back falsely flagged: {increase_violations}"
 
     def test_genuine_spike_after_recovery_still_flagged(self) -> None:
         """A real spike after recovery (exceeding pre-recovery levels) is flagged.
@@ -625,12 +617,8 @@ class TestRecoveryWeekBounceBack:
         """
         weeks = [300.0, 330.0, 360.0, 270.0, 420.0]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
-        assert len(increase_violations) > 0, (
-            "Genuine spike after recovery should still be flagged"
-        )
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
+        assert len(increase_violations) > 0, "Genuine spike after recovery should still be flagged"
 
     def test_recovery_week_itself_not_flagged(self) -> None:
         """The recovery week drop should not produce any increase violation.
@@ -639,9 +627,7 @@ class TestRecoveryWeekBounceBack:
         """
         weeks = [300.0, 330.0, 360.0, 270.0]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
         assert len(increase_violations) == 0
 
     def test_multiple_recovery_weeks(self) -> None:
@@ -650,21 +636,21 @@ class TestRecoveryWeekBounceBack:
         Pattern: build, build, build, recovery, build, build, build, recovery, build
         """
         weeks = [
-            200.0, 220.0, 240.0,  # Build (weeks 1-3)
-            180.0,                  # Recovery (week 4, -25%)
-            240.0,                  # Return to build (week 5, compare vs week 3)
-            260.0,                  # Build (week 6, +8% vs week 5)
-            280.0,                  # Build (week 7, +8% vs week 6)
-            210.0,                  # Recovery (week 8, -25%)
-            280.0,                  # Return to build (week 9, compare vs week 7)
+            200.0,
+            220.0,
+            240.0,  # Build (weeks 1-3)
+            180.0,  # Recovery (week 4, -25%)
+            240.0,  # Return to build (week 5, compare vs week 3)
+            260.0,  # Build (week 6, +8% vs week 5)
+            280.0,  # Build (week 7, +8% vs week 6)
+            210.0,  # Recovery (week 8, -25%)
+            280.0,  # Return to build (week 9, compare vs week 7)
         ]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
-        assert len(increase_violations) == 0, (
-            f"Multiple recovery bounce-backs falsely flagged: {increase_violations}"
-        )
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
+        assert (
+            len(increase_violations) == 0
+        ), f"Multiple recovery bounce-backs falsely flagged: {increase_violations}"
 
     def test_small_drop_not_treated_as_recovery(self) -> None:
         """A small drop (< 15%) is NOT a recovery week — normal fluctuation.
@@ -675,12 +661,8 @@ class TestRecoveryWeekBounceBack:
         """
         weeks = [300.0, 330.0, 320.0, 360.0]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
-        assert len(increase_violations) > 0, (
-            "Small drop should not be treated as recovery week"
-        )
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
+        assert len(increase_violations) > 0, "Small drop should not be treated as recovery week"
 
     def test_advanced_marathoner_pattern(self) -> None:
         """Real-world pattern from eval harness: advanced marathoner with recovery weeks.
@@ -692,13 +674,11 @@ class TestRecoveryWeekBounceBack:
         """
         weeks = [347.7, 365.4, 394.6, 294.7, 336.1, 372.1]
         result = check_safety(weeks, max_weekly_increase_pct=0.10)
-        increase_violations = [
-            v for v in result.violations if "increase" in v.lower()
-        ]
+        increase_violations = [v for v in result.violations if "increase" in v.lower()]
         # Week 6 (372.1) vs week 5 (336.1) = 10.7% — this IS a borderline violation
         # but week 5 (336.1) vs last build week 3 (394.6) = -15% is fine
         # The real question: is 372.1 vs 336.1 (10.7%) a violation?
         # Yes — week 5 is a non-recovery week, so week 6 compares against it normally.
-        assert len(increase_violations) <= 1, (
-            f"Only week 6 borderline violation expected, got: {increase_violations}"
-        )
+        assert (
+            len(increase_violations) <= 1
+        ), f"Only week 6 borderline violation expected, got: {increase_violations}"

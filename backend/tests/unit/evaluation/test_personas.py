@@ -8,9 +8,9 @@ behavior specifications.
 import pytest
 
 from src.evaluation.personas import (
-    ALL_PERSONAS,
     ADVANCED_MARATHONER,
     AGGRESSIVE_SPIKER,
+    ALL_PERSONAS,
     BEGINNER_RUNNER,
     INJURY_PRONE_RUNNER,
     OVERTRAINED_ATHLETE,
@@ -20,7 +20,6 @@ from src.evaluation.personas import (
     list_persona_ids,
 )
 from src.models.athlete import AthleteProfile, RiskTolerance
-
 
 # ---------------------------------------------------------------------------
 # Registry completeness
@@ -274,10 +273,7 @@ class TestExpectedBehavior:
 
     def test_beginner_no_speed_work(self) -> None:
         """Beginner should not have VO2max intervals."""
-        assert any(
-            "VO2max" in item
-            for item in BEGINNER_RUNNER.expected_behavior.must_not_include
-        )
+        assert any("VO2max" in item for item in BEGINNER_RUNNER.expected_behavior.must_not_include)
 
     def test_overtrained_no_intensity(self) -> None:
         """Overtrained athlete should not have speed work or intervals."""

@@ -9,7 +9,6 @@ with plan overviews, scores, and key metrics.
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -83,8 +82,9 @@ class MileMindPDF(FPDF):
         self.cell(w, 7, badge_text, fill=True)
         self.set_text_color(30, 30, 30)
 
-    def add_table(self, headers: list[str], rows: list[list[str]],
-                  col_widths: list[float] | None = None) -> None:
+    def add_table(
+        self, headers: list[str], rows: list[list[str]], col_widths: list[float] | None = None
+    ) -> None:
         """Draw a simple table."""
         if col_widths is None:
             avail = self.w - self.l_margin - self.r_margin
@@ -164,7 +164,7 @@ def build_plan_overview(plan_text: str) -> list[dict]:
 
 def generate_pdf(report_md_path: str, output_path: str) -> None:
     """Generate PDF from the evaluation report data."""
-    report_text = Path(report_md_path).read_text()
+    Path(report_md_path).read_text()
 
     pdf = MileMindPDF()
     pdf.alias_nb_pages()
@@ -375,8 +375,12 @@ def generate_pdf(report_md_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    report_path = Path(__file__).resolve().parent.parent / "evaluation_reports" / "plan_review_report.md"
-    output = sys.argv[1] if len(sys.argv) > 1 else str(
-        Path(__file__).resolve().parent.parent.parent / "MileMind_Eval_Report.pdf"
+    report_path = (
+        Path(__file__).resolve().parent.parent / "evaluation_reports" / "plan_review_report.md"
+    )
+    output = (
+        sys.argv[1]
+        if len(sys.argv) > 1
+        else str(Path(__file__).resolve().parent.parent.parent / "MileMind_Eval_Report.pdf")
     )
     generate_pdf(str(report_path), output)

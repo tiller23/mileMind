@@ -6,25 +6,18 @@ Verifies verdict parsing, tool spot-checking, score handling, and error paths.
 
 from __future__ import annotations
 
-import json
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.agents.reviewer import ReviewerAgent, ReviewerResult
 from src.agents.prompts import REVIEWER_SYSTEM_PROMPT
-from src.models.athlete import AthleteProfile, RiskTolerance
-from src.models.decision_log import ReviewerScores
+from src.agents.reviewer import ReviewerAgent
+from src.models.athlete import AthleteProfile
 from tests.helpers import (
-    MockContentBlock,
-    MockResponse,
-    MockUsage,
     make_end_turn_response,
     make_tool_use_response,
     make_verdict_response,
 )
-
 
 # sample_athlete fixture is provided by tests/conftest.py
 
@@ -48,13 +41,19 @@ VALID_PLAN_TEXT = """\
 
 SAMPLE_TOOL_CALLS = [
     {"name": "compute_training_stress", "input": {}, "output": {"tss": 30.0}, "success": True},
-    {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
+    {
+        "name": "validate_progression_constraints",
+        "input": {},
+        "output": {"valid": True},
+        "success": True,
+    },
 ]
 
 
 # ---------------------------------------------------------------------------
 # Tests: Verdict parsing
 # ---------------------------------------------------------------------------
+
 
 class TestVerdictParsing:
     """Test _parse_review_verdict() with various input shapes."""
@@ -84,7 +83,7 @@ class TestVerdictParsing:
         assert "Could not find JSON" in result.error
 
     def test_malformed_json(self) -> None:
-        text = '```json\n{approved: true, broken}\n```'
+        text = "```json\n{approved: true, broken}\n```"
         result = ReviewerAgent._parse_review_verdict(text)
         assert result.approved is False
         assert result.error is not None
@@ -154,19 +153,26 @@ class TestVerdictParsing:
 # Tests: Review message building
 # ---------------------------------------------------------------------------
 
+
 class TestReviewMessageBuilding:
     """Test _build_review_message() output."""
 
     def test_contains_athlete_name(self, sample_athlete: AthleteProfile) -> None:
-        msg = ReviewerAgent._build_review_message(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        msg = ReviewerAgent._build_review_message(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
         assert sample_athlete.name in msg
 
     def test_contains_plan_text(self, sample_athlete: AthleteProfile) -> None:
-        msg = ReviewerAgent._build_review_message(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        msg = ReviewerAgent._build_review_message(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
         assert "Training Plan for Test Runner" in msg
 
     def test_contains_tool_summary(self, sample_athlete: AthleteProfile) -> None:
-        msg = ReviewerAgent._build_review_message(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        msg = ReviewerAgent._build_review_message(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
         assert "compute_training_stress [OK]" in msg
         assert "2 tool call(s)" in msg
 
@@ -176,7 +182,9 @@ class TestReviewMessageBuilding:
         assert "(none)" in msg
 
     def test_contains_scoring_instructions(self, sample_athlete: AthleteProfile) -> None:
-        msg = ReviewerAgent._build_review_message(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        msg = ReviewerAgent._build_review_message(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
         assert "safety" in msg.lower()
         assert "progression" in msg.lower()
 
@@ -184,6 +192,7 @@ class TestReviewMessageBuilding:
 # ---------------------------------------------------------------------------
 # Tests: Agent loop with mocked API
 # ---------------------------------------------------------------------------
+
 
 class TestReviewerAgentLoop:
     """Test the reviewer agent loop with mocked Anthropic client."""
@@ -197,7 +206,9 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_approve_without_tools(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Reviewer approves immediately without spot-checking."""
         response = make_verdict_response(
@@ -206,7 +217,9 @@ class TestReviewerAgentLoop:
         )
         mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is True
         assert result.scores is not None
@@ -216,7 +229,9 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_reject_with_issues(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Reviewer rejects with specific issues."""
         response = make_verdict_response(
@@ -227,7 +242,9 @@ class TestReviewerAgentLoop:
         )
         mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is False
         assert result.scores is not None
@@ -236,18 +253,24 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_spot_check_with_tools(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Reviewer uses tools to verify claims before scoring."""
         # Turn 1: reviewer spot-checks TSS
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 45.0,
-                "intensity": 0.6,
-            },
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 45.0,
+                        "intensity": 0.6,
+                    },
+                }
+            ]
+        )
         # Turn 2: verdict
         verdict_response = make_verdict_response(
             approved=True,
@@ -258,7 +281,9 @@ class TestReviewerAgentLoop:
             side_effect=[tool_response, verdict_response]
         )
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is True
         assert result.iterations == 2
@@ -267,16 +292,22 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_token_tracking(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Token usage is accumulated across iterations."""
-        tool_response = make_tool_use_response([{
-            "name": "validate_progression_constraints",
-            "input": {
-                "weekly_loads": [100, 105, 110, 115],
-                "risk_tolerance": "moderate",
-            },
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "validate_progression_constraints",
+                    "input": {
+                        "weekly_loads": [100, 105, 110, 115],
+                        "risk_tolerance": "moderate",
+                    },
+                }
+            ]
+        )
         verdict_response = make_verdict_response(
             approved=True,
             scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 80},
@@ -286,7 +317,9 @@ class TestReviewerAgentLoop:
             side_effect=[tool_response, verdict_response]
         )
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         # Each mock response: 100 input + 200 output (from shared MockUsage)
         assert result.total_input_tokens == 200
@@ -294,13 +327,17 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_malformed_verdict_returns_error(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Malformed verdict text returns a rejected result with error."""
         response = make_end_turn_response("I don't know how to format JSON.")
         mock_reviewer._transport.create_message = AsyncMock(return_value=response)
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is False
         assert result.error is not None
@@ -308,18 +345,26 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_max_iterations_cap(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Reviewer stops after max_iterations."""
-        infinite_tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {"workout_type": "easy", "duration_minutes": 30.0, "intensity": 0.5},
-        }])
+        infinite_tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {"workout_type": "easy", "duration_minutes": 30.0, "intensity": 0.5},
+                }
+            ]
+        )
 
         mock_reviewer._transport.create_message = AsyncMock(return_value=infinite_tool_response)
         mock_reviewer._max_iterations = 3
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is False
         assert result.iterations == 3
@@ -328,10 +373,13 @@ class TestReviewerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_api_error_handled(
-        self, mock_reviewer: ReviewerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_reviewer: ReviewerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """API errors produce a rejected result with error message."""
         from unittest.mock import MagicMock
+
         import anthropic
 
         mock_reviewer._transport.create_message = AsyncMock(
@@ -342,7 +390,9 @@ class TestReviewerAgentLoop:
             )
         )
 
-        result = await mock_reviewer.review_plan(sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS)
+        result = await mock_reviewer.review_plan(
+            sample_athlete, VALID_PLAN_TEXT, SAMPLE_TOOL_CALLS
+        )
 
         assert result.approved is False
         assert result.error is not None
@@ -352,6 +402,7 @@ class TestReviewerAgentLoop:
 # ---------------------------------------------------------------------------
 # Tests: System prompt
 # ---------------------------------------------------------------------------
+
 
 class TestReviewerSystemPrompt:
     """Verify the reviewer system prompt has required content."""

@@ -201,27 +201,23 @@ class TestEachToolDefinitionShape:
         """input_schema root must have \"type\": \"object\"."""
         schema = tool_def["input_schema"]
         assert "type" in schema, f"Schema for '{tool_def['name']}' has no 'type' key"
-        assert schema["type"] == "object", (
-            f"Schema for '{tool_def['name']}' has type '{schema['type']}', expected 'object'"
-        )
+        assert (
+            schema["type"] == "object"
+        ), f"Schema for '{tool_def['name']}' has type '{schema['type']}', expected 'object'"
 
     def test_input_schema_has_properties(self, tool_def: dict) -> None:
         """input_schema must have a 'properties' key (LLM uses it to fill inputs)."""
         schema = tool_def["input_schema"]
-        assert "properties" in schema, (
-            f"Schema for '{tool_def['name']}' is missing 'properties'"
-        )
+        assert "properties" in schema, f"Schema for '{tool_def['name']}' is missing 'properties'"
         assert isinstance(schema["properties"], dict)
-        assert len(schema["properties"]) > 0, (
-            f"Schema for '{tool_def['name']}' has an empty 'properties' dict"
-        )
+        assert (
+            len(schema["properties"]) > 0
+        ), f"Schema for '{tool_def['name']}' has an empty 'properties' dict"
 
     def test_input_schema_has_required(self, tool_def: dict) -> None:
         """input_schema must have a 'required' key listing mandatory fields."""
         schema = tool_def["input_schema"]
-        assert "required" in schema, (
-            f"Schema for '{tool_def['name']}' is missing 'required'"
-        )
+        assert "required" in schema, f"Schema for '{tool_def['name']}' is missing 'required'"
         assert isinstance(schema["required"], list)
 
     def test_required_fields_are_in_properties(self, tool_def: dict) -> None:
@@ -244,9 +240,7 @@ class TestToolNames:
     """Tool names match the expected snake_case identifiers precisely."""
 
     @pytest.mark.parametrize("expected_name", EXPECTED_TOOL_NAMES)
-    def test_name_matches_expected(
-        self, full_registry: ToolRegistry, expected_name: str
-    ) -> None:
+    def test_name_matches_expected(self, full_registry: ToolRegistry, expected_name: str) -> None:
         """get() must return a definition for each exact expected name."""
         tool_def = full_registry.get(expected_name)
         assert tool_def is not None, f"Tool '{expected_name}' not found in registry"
@@ -316,10 +310,9 @@ class TestValidateProgressionConstraintsSchema:
     @pytest.fixture
     def schema(self, anthropic_tools: list[dict]) -> dict:
         """input_schema for validate_progression_constraints."""
-        return next(
-            t for t in anthropic_tools
-            if t["name"] == "validate_progression_constraints"
-        )["input_schema"]
+        return next(t for t in anthropic_tools if t["name"] == "validate_progression_constraints")[
+            "input_schema"
+        ]
 
     def test_weekly_loads_in_required(self, schema: dict) -> None:
         """weekly_loads is a required input field."""
@@ -394,9 +387,7 @@ class TestProjectTaperSchema:
     @pytest.fixture
     def schema(self, anthropic_tools: list[dict]) -> dict:
         """input_schema for project_taper."""
-        return next(t for t in anthropic_tools if t["name"] == "project_taper")[
-            "input_schema"
-        ]
+        return next(t for t in anthropic_tools if t["name"] == "project_taper")["input_schema"]
 
     def test_mode_in_required(self, schema: dict) -> None:
         """mode is a required input field."""

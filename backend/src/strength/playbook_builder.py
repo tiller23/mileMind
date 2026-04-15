@@ -23,7 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from src.models.athlete import AthleteProfile, InjuryTag
+from src.models.athlete import AthleteProfile
 from src.strength.models import Exercise, ExerciseBlock, Playbook
 
 _CATALOG_PATH = Path(__file__).parent / "exercise_catalog.json"
@@ -128,11 +128,7 @@ def _select_block(
     candidates = [ex for ex in _all_exercises() if ex.block_id == block_id]
 
     # Drop contraindicated exercises outright.
-    candidates = [
-        ex
-        for ex in candidates
-        if not (set(ex.contraindicated_for) & injury_tag_values)
-    ]
+    candidates = [ex for ex in candidates if not (set(ex.contraindicated_for) & injury_tag_values)]
 
     def sort_key(ex: Exercise) -> tuple[int, int, str]:
         # Negative count so higher overlap sorts first under ascending sort.
@@ -172,9 +168,7 @@ def build_playbook(profile: AthleteProfile) -> Playbook:
         Playbook with 4–5 blocks depending on goal distance; all exercises
         deterministically selected and ranked.
     """
-    injury_tag_values = {
-        tag.value for tag in profile.injury_tags if tag != InjuryTag.NONE
-    }
+    injury_tag_values = {tag.value for tag in profile.injury_tags}
 
     block_order: list[str] = [
         "posterior_chain",

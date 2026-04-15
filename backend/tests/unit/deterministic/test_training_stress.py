@@ -9,8 +9,6 @@ Validates:
 - DEFAULT_THRESHOLD_HR constant
 """
 
-import math
-
 import pytest
 
 from src.deterministic.training_stress import (
@@ -21,7 +19,6 @@ from src.deterministic.training_stress import (
     hr_to_intensity_factor,
     scale_intensity_for_target_tss,
 )
-
 
 # ---------------------------------------------------------------------------
 # compute_tss
@@ -68,16 +65,19 @@ class TestComputeTss:
 class TestClassifyLoad:
     """Load classification boundary tests."""
 
-    @pytest.mark.parametrize("tss,expected", [
-        (0.0, "easy"),
-        (49.99, "easy"),
-        (50.0, "moderate"),
-        (99.99, "moderate"),
-        (100.0, "hard"),
-        (199.99, "hard"),
-        (200.0, "very_hard"),
-        (500.0, "very_hard"),
-    ])
+    @pytest.mark.parametrize(
+        "tss,expected",
+        [
+            (0.0, "easy"),
+            (49.99, "easy"),
+            (50.0, "moderate"),
+            (99.99, "moderate"),
+            (100.0, "hard"),
+            (199.99, "hard"),
+            (200.0, "very_hard"),
+            (500.0, "very_hard"),
+        ],
+    )
     def test_boundaries(self, tss: float, expected: str) -> None:
         assert classify_load(tss) == expected
 
@@ -176,8 +176,16 @@ class TestDefaultWorkoutIntensity:
     def test_all_workout_types_present(self) -> None:
         """Every known workout type string should have a default intensity."""
         expected_types = {
-            "easy", "long_run", "tempo", "interval", "repetition",
-            "recovery", "marathon_pace", "fartlek", "hill", "rest",
+            "easy",
+            "long_run",
+            "tempo",
+            "interval",
+            "repetition",
+            "recovery",
+            "marathon_pace",
+            "fartlek",
+            "hill",
+            "rest",
             "cross_train",
         }
         assert set(DEFAULT_WORKOUT_INTENSITY.keys()) == expected_types

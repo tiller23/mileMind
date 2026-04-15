@@ -1,7 +1,7 @@
 """Tests for evaluation result models and metrics aggregation."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,7 +12,6 @@ from src.evaluation.results import (
     _rates_for_model,
 )
 from src.models.decision_log import DecisionLogEntry, ReviewerScores, ReviewOutcome
-
 
 # ---------------------------------------------------------------------------
 # Model pricing lookup
@@ -112,10 +111,7 @@ class TestPersonaResult:
             reviewer_model="claude-sonnet-4-20250514",
         )
         # Both use Sonnet rates
-        total = (
-            (50_000 + 30_000) * 3.0 / 1_000_000
-            + (5_000 + 3_000) * 15.0 / 1_000_000
-        )
+        total = (50_000 + 30_000) * 3.0 / 1_000_000 + (5_000 + 3_000) * 15.0 / 1_000_000
         assert r.estimated_cost_usd == pytest.approx(total)
 
     def test_estimated_cost_zero_tokens(self) -> None:
@@ -314,12 +310,18 @@ class TestHarnessMetrics:
     def test_avg_tokens(self) -> None:
         """Average tokens computed across all personas."""
         r1 = self._make_result(
-            persona_id="a", planner_input=10_000, planner_output=1_000,
-            reviewer_input=5_000, reviewer_output=500,
+            persona_id="a",
+            planner_input=10_000,
+            planner_output=1_000,
+            reviewer_input=5_000,
+            reviewer_output=500,
         )
         r2 = self._make_result(
-            persona_id="b", planner_input=20_000, planner_output=2_000,
-            reviewer_input=10_000, reviewer_output=1_000,
+            persona_id="b",
+            planner_input=20_000,
+            planner_output=2_000,
+            reviewer_input=10_000,
+            reviewer_output=1_000,
         )
         m = HarnessMetrics.from_results([r1, r2])
         expected_avg = (r1.total_tokens + r2.total_tokens) / 2
@@ -349,7 +351,8 @@ class TestHarnessMetrics:
     def test_elapsed_seconds_passed_through(self) -> None:
         """Total elapsed seconds stored in metrics."""
         m = HarnessMetrics.from_results(
-            [], total_elapsed_seconds=42.5,
+            [],
+            total_elapsed_seconds=42.5,
         )
         assert m.total_elapsed_seconds == pytest.approx(42.5)
 
@@ -374,9 +377,9 @@ class TestHarnessMetrics:
 
     def test_timestamp_is_recent(self) -> None:
         """Timestamp is set to approximately now."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         m = HarnessMetrics.from_results([])
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= m.timestamp <= after
 
 
@@ -440,7 +443,10 @@ class TestPersonaResultSummary:
             persona_id="beginner_runner",
             approved=True,
             final_scores=ReviewerScores(
-                safety=90, progression=85, specificity=80, feasibility=75,
+                safety=90,
+                progression=85,
+                specificity=80,
+                feasibility=75,
             ),
             planner_input_tokens=50_000,
             planner_output_tokens=5_000,
@@ -469,7 +475,10 @@ class TestPersonaResultSummary:
             persona_id="aggressive_spiker",
             approved=False,
             final_scores=ReviewerScores(
-                safety=60, progression=70, specificity=65, feasibility=55,
+                safety=60,
+                progression=70,
+                specificity=65,
+                feasibility=55,
             ),
             constraint_violations=["Missing required phrase: 'safe'"],
         )
@@ -516,7 +525,10 @@ class TestPersonaResultToDict:
             planner_model="claude-sonnet-4-20250514",
             reviewer_model="claude-opus-4-20250514",
             final_scores=ReviewerScores(
-                safety=90, progression=85, specificity=80, feasibility=75,
+                safety=90,
+                progression=85,
+                specificity=80,
+                feasibility=75,
             ),
         )
         d = r.to_dict()
@@ -548,7 +560,10 @@ class TestPersonaResultToDict:
             iteration=1,
             outcome=ReviewOutcome.APPROVED,
             scores=ReviewerScores(
-                safety=85, progression=80, specificity=75, feasibility=70,
+                safety=85,
+                progression=80,
+                specificity=75,
+                feasibility=70,
             ),
         )
         r = PersonaResult(
@@ -690,9 +705,13 @@ class TestWorstPersonaId:
     def test_worst_persona_mixed_scored_unscored(self) -> None:
         """Unscored results are excluded from worst calculation."""
         results = [
-            self._make_result("scored_bad", safety=60, progression=60, specificity=60, feasibility=60),
+            self._make_result(
+                "scored_bad", safety=60, progression=60, specificity=60, feasibility=60
+            ),
             PersonaResult(persona_id="unscored"),
-            self._make_result("scored_good", safety=90, progression=90, specificity=90, feasibility=90),
+            self._make_result(
+                "scored_good", safety=90, progression=90, specificity=90, feasibility=90
+            ),
         ]
         m = HarnessMetrics.from_results(results)
         assert m.worst_persona_id == "scored_bad"

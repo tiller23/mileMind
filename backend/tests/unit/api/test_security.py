@@ -4,11 +4,8 @@ invite codes, plan limits, and API budget cap.
 
 from __future__ import annotations
 
-import asyncio
-import json
-import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import create_access_token, create_refresh_token
 from src.config import Settings
 from src.db.models import InviteCode, RevokedToken, TrainingPlan, User
-
 
 # ---------------------------------------------------------------------------
 # JWT Token Tests
@@ -73,8 +69,10 @@ class TestTokenRevocation:
     ) -> None:
         """After revoking a token, it should be rejected."""
         settings = Settings(
-            debug=True, jwt_secret="test-secret",
-            strava_client_id="", strava_client_secret="",
+            debug=True,
+            jwt_secret="test-secret",
+            strava_client_id="",
+            strava_client_secret="",
             database_url="sqlite+aiosqlite://",
         )
         token = create_access_token(test_user.id, settings)
@@ -83,7 +81,7 @@ class TestTokenRevocation:
         # Add to denylist
         revoked = RevokedToken(
             jti=payload["jti"],
-            expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
+            expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
         )
         db_session.add(revoked)
         await db_session.commit()
@@ -96,7 +94,7 @@ class TestTokenRevocation:
 
     async def test_revoked_token_model_fields(self) -> None:
         """RevokedToken stores jti, expires_at, and revoked_at."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         revoked = RevokedToken(
             jti="test-jti-123",
             expires_at=now + timedelta(hours=1),
@@ -118,23 +116,19 @@ class TestInviteCodeModel:
         db_session.add(code)
         await db_session.commit()
 
-        result = await db_session.execute(
-            select(InviteCode).where(InviteCode.code == "MILE-TEST")
-        )
+        result = await db_session.execute(select(InviteCode).where(InviteCode.code == "MILE-TEST"))
         saved = result.scalar_one()
         assert saved.max_uses == 5
         assert saved.use_count == 0
         assert saved.expires_at is None
 
     async def test_invite_code_with_expiry(self, db_session: AsyncSession) -> None:
-        expires = datetime.now(timezone.utc) + timedelta(days=30)
+        expires = datetime.now(UTC) + timedelta(days=30)
         code = InviteCode(code="MILE-EXP1", expires_at=expires)
         db_session.add(code)
         await db_session.commit()
 
-        result = await db_session.execute(
-            select(InviteCode).where(InviteCode.code == "MILE-EXP1")
-        )
+        result = await db_session.execute(select(InviteCode).where(InviteCode.code == "MILE-EXP1"))
         saved = result.scalar_one()
         assert saved.expires_at is not None
 
@@ -193,9 +187,7 @@ class TestUserInviteFields:
 class TestPlanGenerationGates:
     """Tests for plan generation access controls."""
 
-    async def test_generate_without_invite_returns_403(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_generate_without_invite_returns_403(self, client: AsyncClient) -> None:
         """Users without an invite code cannot generate plans."""
         resp = await client.post("/api/v1/plans/generate")
         assert resp.status_code == 403
@@ -297,8 +289,10 @@ class TestConfigValidation:
 
     def _base(self, **overrides) -> Settings:
         defaults = dict(
-            debug=True, jwt_secret="test",
-            strava_client_id="", strava_client_secret="",
+            debug=True,
+            jwt_secret="test",
+            strava_client_id="",
+            strava_client_secret="",
             database_url="sqlite+aiosqlite://",
         )
         defaults.update(overrides)
@@ -337,6 +331,7 @@ class TestConfigValidation:
     def test_strava_with_encryption_key_passes(self) -> None:
         """Config accepts Strava with encryption key set."""
         from cryptography.fernet import Fernet
+
         key = Fernet.generate_key().decode()
         s = self._base(
             strava_client_id="some-id",

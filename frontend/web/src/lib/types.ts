@@ -54,8 +54,7 @@ export type InjuryTag =
   | "hip"
   | "lower_back"
   | "hamstring"
-  | "shin_splints"
-  | "none";
+  | "shin_splints";
 
 export interface ProfileUpdate {
   name: string;

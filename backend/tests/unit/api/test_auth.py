@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 import pytest
 from jose import jwt
@@ -50,8 +50,8 @@ class TestCreateAccessToken:
         """Token expiry is in the future."""
         token = create_access_token(uuid.uuid4(), settings)
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        assert exp > datetime.now(timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        assert exp > datetime.now(UTC)
 
     def test_wrong_secret_fails(self, settings: Settings) -> None:
         """Token cannot be decoded with wrong secret."""

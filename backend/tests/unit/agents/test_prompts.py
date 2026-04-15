@@ -16,7 +16,6 @@ import pytest
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT
 from src.models.decision_log import REVIEW_PASS_THRESHOLD
 
-
 # ---------------------------------------------------------------------------
 # Tool names that must appear in both prompts
 # ---------------------------------------------------------------------------
@@ -44,23 +43,26 @@ class TestPlannerSystemPrompt:
         assert isinstance(PLANNER_SYSTEM_PROMPT, str)
         assert len(PLANNER_SYSTEM_PROMPT) > 0
 
-    @pytest.mark.parametrize("section", [
-        "CRITICAL CONSTRAINTS",
-        "AVAILABLE TOOLS",
-        "PLANNING WORKFLOW",
-        "OUTPUT FORMAT",
-        "SAFETY RULES",
-        "EFFICIENCY",
-    ])
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "CRITICAL CONSTRAINTS",
+            "AVAILABLE TOOLS",
+            "PLANNING WORKFLOW",
+            "OUTPUT FORMAT",
+            "SAFETY RULES",
+            "EFFICIENCY",
+        ],
+    )
     def test_contains_required_section(self, section: str) -> None:
         """PLANNER_SYSTEM_PROMPT must contain every structural section header.
 
         Each section guides the LLM through its responsibilities; a missing
         section means the prompt is incomplete and the agent may skip steps.
         """
-        assert section in PLANNER_SYSTEM_PROMPT, (
-            f"PLANNER_SYSTEM_PROMPT is missing section: {section!r}"
-        )
+        assert (
+            section in PLANNER_SYSTEM_PROMPT
+        ), f"PLANNER_SYSTEM_PROMPT is missing section: {section!r}"
 
     @pytest.mark.parametrize("tool_name", EXPECTED_TOOLS)
     def test_mentions_all_tool_names(self, tool_name: str) -> None:
@@ -69,9 +71,9 @@ class TestPlannerSystemPrompt:
         If a tool is omitted the planner may never discover it exists,
         leading to free-generated numbers instead of tool calls.
         """
-        assert tool_name in PLANNER_SYSTEM_PROMPT, (
-            f"PLANNER_SYSTEM_PROMPT does not mention tool: {tool_name!r}"
-        )
+        assert (
+            tool_name in PLANNER_SYSTEM_PROMPT
+        ), f"PLANNER_SYSTEM_PROMPT does not mention tool: {tool_name!r}"
 
     def test_forbids_direct_metric_generation(self) -> None:
         """PLANNER_SYSTEM_PROMPT must include 'NEVER generate' to prohibit free numbers.
@@ -97,9 +99,9 @@ class TestPlannerSystemPrompt:
         """
         safety_pos = PLANNER_SYSTEM_PROMPT.index("SAFETY RULES")
         workflow_pos = PLANNER_SYSTEM_PROMPT.index("PLANNING WORKFLOW")
-        assert safety_pos < workflow_pos, (
-            "SAFETY RULES must appear before PLANNING WORKFLOW in the prompt"
-        )
+        assert (
+            safety_pos < workflow_pos
+        ), "SAFETY RULES must appear before PLANNING WORKFLOW in the prompt"
 
     def test_contains_pace_zone_table(self) -> None:
         """PLANNER_SYSTEM_PROMPT must define numbered pace zones (Zone 1-6).
@@ -108,9 +110,9 @@ class TestPlannerSystemPrompt:
         Numbered zones map to Daniels paces and give athletes clearer guidance.
         """
         for zone_num in range(1, 7):
-            assert f"Zone {zone_num}" in PLANNER_SYSTEM_PROMPT, (
-                f"PLANNER_SYSTEM_PROMPT missing Zone {zone_num} definition"
-            )
+            assert (
+                f"Zone {zone_num}" in PLANNER_SYSTEM_PROMPT
+            ), f"PLANNER_SYSTEM_PROMPT missing Zone {zone_num} definition"
 
     def test_contains_athlete_level_guidelines(self) -> None:
         """PLANNER_SYSTEM_PROMPT must include level-specific coaching guidelines.
@@ -130,7 +132,10 @@ class TestPlannerSystemPrompt:
         """
         assert "recovery week" in PLANNER_SYSTEM_PROMPT.lower()
         # Check for strong language about recovery weeks
-        assert "mandatory" in PLANNER_SYSTEM_PROMPT.lower() or "WILL be rejected" in PLANNER_SYSTEM_PROMPT
+        assert (
+            "mandatory" in PLANNER_SYSTEM_PROMPT.lower()
+            or "WILL be rejected" in PLANNER_SYSTEM_PROMPT
+        )
 
     def test_contains_validation_instruction(self) -> None:
         """PLANNER_SYSTEM_PROMPT instructs calling validate_progression_constraints.
@@ -218,8 +223,14 @@ class TestPlannerSystemPrompt:
         WHY: The eval plan had peak weeks (510-537 TSS) as the highest-volume
         weeks. Peak is about sharpness, not maximum load.
         """
-        assert "sharpening" in PLANNER_SYSTEM_PROMPT.lower() or "sharpen" in PLANNER_SYSTEM_PROMPT.lower()
-        assert "NOT make peak" in PLANNER_SYSTEM_PROMPT or "not maximum volume" in PLANNER_SYSTEM_PROMPT.lower()
+        assert (
+            "sharpening" in PLANNER_SYSTEM_PROMPT.lower()
+            or "sharpen" in PLANNER_SYSTEM_PROMPT.lower()
+        )
+        assert (
+            "NOT make peak" in PLANNER_SYSTEM_PROMPT
+            or "not maximum volume" in PLANNER_SYSTEM_PROMPT.lower()
+        )
 
     def test_weekly_coaching_notes_mandate(self) -> None:
         """Every week must include purpose-explaining notes.
@@ -253,21 +264,24 @@ class TestReviewerSystemPrompt:
         assert isinstance(REVIEWER_SYSTEM_PROMPT, str)
         assert len(REVIEWER_SYSTEM_PROMPT) > 0
 
-    @pytest.mark.parametrize("section", [
-        "CRITICAL CONSTRAINTS",
-        "EVALUATION DIMENSIONS",
-        "REVIEW WORKFLOW",
-        "OUTPUT FORMAT",
-    ])
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "CRITICAL CONSTRAINTS",
+            "EVALUATION DIMENSIONS",
+            "REVIEW WORKFLOW",
+            "OUTPUT FORMAT",
+        ],
+    )
     def test_contains_required_section(self, section: str) -> None:
         """REVIEWER_SYSTEM_PROMPT must contain every structural section header.
 
         Each section governs a distinct phase of the reviewer's evaluation;
         a missing section means the reviewer will skip that phase.
         """
-        assert section in REVIEWER_SYSTEM_PROMPT, (
-            f"REVIEWER_SYSTEM_PROMPT is missing section: {section!r}"
-        )
+        assert (
+            section in REVIEWER_SYSTEM_PROMPT
+        ), f"REVIEWER_SYSTEM_PROMPT is missing section: {section!r}"
 
     @pytest.mark.parametrize("tool_name", EXPECTED_TOOLS)
     def test_mentions_all_tool_names(self, tool_name: str) -> None:
@@ -276,9 +290,9 @@ class TestReviewerSystemPrompt:
         The reviewer independently spot-checks planner values using the same
         6 tools; any omission could cause missed verification.
         """
-        assert tool_name in REVIEWER_SYSTEM_PROMPT, (
-            f"REVIEWER_SYSTEM_PROMPT does not mention tool: {tool_name!r}"
-        )
+        assert (
+            tool_name in REVIEWER_SYSTEM_PROMPT
+        ), f"REVIEWER_SYSTEM_PROMPT does not mention tool: {tool_name!r}"
 
     def test_threshold_placeholder_replaced(self) -> None:
         """REVIEWER_SYSTEM_PROMPT must not contain the raw __THRESHOLD__ placeholder.
@@ -296,21 +310,24 @@ class TestReviewerSystemPrompt:
         """
         assert str(REVIEW_PASS_THRESHOLD) in REVIEWER_SYSTEM_PROMPT
 
-    @pytest.mark.parametrize("dimension", [
-        "Safety",
-        "Progression",
-        "Specificity",
-        "Feasibility",
-    ])
+    @pytest.mark.parametrize(
+        "dimension",
+        [
+            "Safety",
+            "Progression",
+            "Specificity",
+            "Feasibility",
+        ],
+    )
     def test_contains_four_scoring_dimensions(self, dimension: str) -> None:
         """REVIEWER_SYSTEM_PROMPT must list all 4 scoring dimensions.
 
         These dimensions map directly to ReviewerScores fields; a missing
         dimension means the reviewer may omit a score and cause a parse error.
         """
-        assert dimension in REVIEWER_SYSTEM_PROMPT, (
-            f"REVIEWER_SYSTEM_PROMPT missing scoring dimension: {dimension!r}"
-        )
+        assert (
+            dimension in REVIEWER_SYSTEM_PROMPT
+        ), f"REVIEWER_SYSTEM_PROMPT missing scoring dimension: {dimension!r}"
 
     def test_safety_has_double_weight(self) -> None:
         """REVIEWER_SYSTEM_PROMPT must note '2x weight' for the Safety dimension.
@@ -335,7 +352,9 @@ class TestReviewerSystemPrompt:
         which penalized beginner plans for not having VO2max work — then the
         planner added VO2max and got penalized for safety. No-win scenario.
         """
-        assert "Beginners" in REVIEWER_SYSTEM_PROMPT or "beginner" in REVIEWER_SYSTEM_PROMPT.lower()
+        assert (
+            "Beginners" in REVIEWER_SYSTEM_PROMPT or "beginner" in REVIEWER_SYSTEM_PROMPT.lower()
+        )
         # Should NOT have the old blanket statement
         assert "5K plan should include intervals and VO2max" not in REVIEWER_SYSTEM_PROMPT
 
@@ -345,14 +364,18 @@ class TestReviewerSystemPrompt:
         WHY: Long runs at Zone 3 are normal for intermediate+ athletes.
         The reviewer should not penalize progression long runs.
         """
-        assert "LONG RUN ASSESSMENT" in REVIEWER_SYSTEM_PROMPT or "Long Run" in REVIEWER_SYSTEM_PROMPT
+        assert (
+            "LONG RUN ASSESSMENT" in REVIEWER_SYSTEM_PROMPT or "Long Run" in REVIEWER_SYSTEM_PROMPT
+        )
 
     def test_injury_history_assessment_section(self) -> None:
         """Reviewer includes nuanced injury assessment guidance.
 
         WHY: Past healed injuries should not trigger automatic rejection.
         """
-        assert "INJURY HISTORY" in REVIEWER_SYSTEM_PROMPT or "Past injuries" in REVIEWER_SYSTEM_PROMPT
+        assert (
+            "INJURY HISTORY" in REVIEWER_SYSTEM_PROMPT or "Past injuries" in REVIEWER_SYSTEM_PROMPT
+        )
 
     def test_seiler_citation_in_reviewer(self) -> None:
         """Reviewer also cites Seiler for the 80/20 intensity distribution."""
@@ -376,7 +399,10 @@ class TestReviewerSystemPrompt:
 
     def test_reviewer_coaching_notes(self) -> None:
         """Reviewer evaluates presence of weekly coaching notes."""
-        assert "coaching notes" in REVIEWER_SYSTEM_PROMPT.lower() or "weekly notes" in REVIEWER_SYSTEM_PROMPT.lower()
+        assert (
+            "coaching notes" in REVIEWER_SYSTEM_PROMPT.lower()
+            or "weekly notes" in REVIEWER_SYSTEM_PROMPT.lower()
+        )
 
 
 # ---------------------------------------------------------------------------

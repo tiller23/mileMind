@@ -11,14 +11,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.agents.orchestrator import Orchestrator, OrchestrationResult
+from src.agents.orchestrator import Orchestrator
 from src.agents.planner import PlannerAgent, PlannerResult
 from src.agents.reviewer import ReviewerAgent, ReviewerResult
 from src.agents.validation import ValidationResult
-from src.models.athlete import AthleteProfile, RiskTolerance
+from src.models.athlete import AthleteProfile
 from src.models.decision_log import ReviewerScores, ReviewOutcome
 from src.models.plan_change import PlanChangeType
-
 
 # sample_athlete fixture is provided by tests/conftest.py
 
@@ -35,9 +34,20 @@ def _make_planner_result(
     """Helper to build a PlannerResult."""
     return PlannerResult(
         plan_text=plan_text,
-        tool_calls=tool_calls or [
-            {"name": "compute_training_stress", "input": {}, "output": {"tss": 30}, "success": True},
-            {"name": "validate_progression_constraints", "input": {}, "output": {"valid": True}, "success": True},
+        tool_calls=tool_calls
+        or [
+            {
+                "name": "compute_training_stress",
+                "input": {},
+                "output": {"tss": 30},
+                "success": True,
+            },
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {"valid": True},
+                "success": True,
+            },
         ],
         iterations=iterations,
         total_input_tokens=input_tokens,
@@ -79,6 +89,7 @@ def _make_reviewer_result(
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorApproval:
     """Tests for the happy path: approved on first attempt."""
 
@@ -106,9 +117,11 @@ class TestOrchestratorApproval:
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(return_value=_make_planner_result())
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            scores={"safety": 92, "progression": 88, "specificity": 85, "feasibility": 80},
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                scores={"safety": 92, "progression": 88, "specificity": 85, "feasibility": 80},
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer)
         result = await orch.generate_plan(sample_athlete)
@@ -128,15 +141,17 @@ class TestOrchestratorRetry:
         planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Plan v2"))
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(side_effect=[
-            _make_reviewer_result(
-                approved=False,
-                scores={"safety": 55, "progression": 80, "specificity": 80, "feasibility": 75},
-                critique="Safety issues.",
-                issues=["No rest days"],
-            ),
-            _make_reviewer_result(approved=True),
-        ])
+        reviewer.review_plan = AsyncMock(
+            side_effect=[
+                _make_reviewer_result(
+                    approved=False,
+                    scores={"safety": 55, "progression": 80, "specificity": 80, "feasibility": 75},
+                    critique="Safety issues.",
+                    issues=["No rest days"],
+                ),
+                _make_reviewer_result(approved=True),
+            ]
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
         result = await orch.generate_plan(sample_athlete)
@@ -162,11 +177,13 @@ class TestOrchestratorRetry:
         planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Plan v2"))
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            approved=False,
-            critique="Still has issues.",
-            issues=["Ongoing problem"],
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                approved=False,
+                critique="Still has issues.",
+                issues=["Ongoing problem"],
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=2)
         result = await orch.generate_plan(sample_athlete)
@@ -186,11 +203,13 @@ class TestOrchestratorValidationPreFilter:
         """When planner output fails validation, reviewer is not called."""
         planner = MagicMock(spec=PlannerAgent)
         # Attempt 1: validation fails
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(
-            plan_text="Bad plan",
-            passed=False,
-            error="Output validation failed: missing tools",
-        ))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(
+                plan_text="Bad plan",
+                passed=False,
+                error="Output validation failed: missing tools",
+            )
+        )
         # Attempt 2: validation passes, approved
         planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Fixed plan"))
 
@@ -219,11 +238,13 @@ class TestOrchestratorDecisionLog:
         planner.revise_plan = AsyncMock(return_value=_make_planner_result())
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(side_effect=[
-            _make_reviewer_result(approved=False, issues=["Fix X"]),
-            _make_reviewer_result(approved=False, issues=["Fix Y"]),
-            _make_reviewer_result(approved=True),
-        ])
+        reviewer.review_plan = AsyncMock(
+            side_effect=[
+                _make_reviewer_result(approved=False, issues=["Fix X"]),
+                _make_reviewer_result(approved=False, issues=["Fix Y"]),
+                _make_reviewer_result(approved=True),
+            ]
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=5)
         result = await orch.generate_plan(sample_athlete)
@@ -237,13 +258,19 @@ class TestOrchestratorDecisionLog:
     async def test_decision_log_tracks_tokens(self, sample_athlete: AthleteProfile) -> None:
         """Token counts are recorded per-iteration."""
         planner = MagicMock(spec=PlannerAgent)
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(
-            input_tokens=2000, output_tokens=1000,
-        ))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(
+                input_tokens=2000,
+                output_tokens=1000,
+            )
+        )
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            input_tokens=1500, output_tokens=500,
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                input_tokens=1500,
+                output_tokens=500,
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer)
         result = await orch.generate_plan(sample_athlete)
@@ -277,18 +304,26 @@ class TestOrchestratorTokenTracking:
     async def test_cumulative_tokens(self, sample_athlete: AthleteProfile) -> None:
         """Tokens accumulate across retry iterations."""
         planner = MagicMock(spec=PlannerAgent)
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(
-            input_tokens=1000, output_tokens=500,
-        ))
-        planner.revise_plan = AsyncMock(return_value=_make_planner_result(
-            input_tokens=1200, output_tokens=600,
-        ))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(
+                input_tokens=1000,
+                output_tokens=500,
+            )
+        )
+        planner.revise_plan = AsyncMock(
+            return_value=_make_planner_result(
+                input_tokens=1200,
+                output_tokens=600,
+            )
+        )
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(side_effect=[
-            _make_reviewer_result(approved=False, input_tokens=800, output_tokens=300),
-            _make_reviewer_result(approved=True, input_tokens=900, output_tokens=350),
-        ])
+        reviewer.review_plan = AsyncMock(
+            side_effect=[
+                _make_reviewer_result(approved=False, input_tokens=800, output_tokens=300),
+                _make_reviewer_result(approved=True, input_tokens=900, output_tokens=350),
+            ]
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
         result = await orch.generate_plan(sample_athlete)
@@ -305,7 +340,9 @@ class TestOrchestratorReviewerError:
     """Tests for reviewer error handling."""
 
     @pytest.mark.asyncio
-    async def test_reviewer_error_treated_as_rejection(self, sample_athlete: AthleteProfile) -> None:
+    async def test_reviewer_error_treated_as_rejection(
+        self, sample_athlete: AthleteProfile
+    ) -> None:
         """Reviewer error is logged as ERROR and triggers retry."""
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(return_value=_make_planner_result())
@@ -393,9 +430,12 @@ class TestOrchestratorValidation:
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(return_value=_make_planner_result())
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            approved=False, issues=["problem"],
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                approved=False,
+                issues=["problem"],
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=1)
         result = await orch.generate_plan(sample_athlete)
@@ -409,7 +449,9 @@ class TestOrchestratorScoreThresholdGuard:
     """Tests for the server-side score threshold override."""
 
     @pytest.mark.asyncio
-    async def test_override_approval_when_scores_fail(self, sample_athlete: AthleteProfile) -> None:
+    async def test_override_approval_when_scores_fail(
+        self, sample_athlete: AthleteProfile
+    ) -> None:
         """Reviewer says approved=True but safety score fails threshold → overridden to rejected."""
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(return_value=_make_planner_result())
@@ -417,13 +459,15 @@ class TestOrchestratorScoreThresholdGuard:
 
         # Reviewer says approved but safety=50 (below 70 threshold) → all_pass is False
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(side_effect=[
-            _make_reviewer_result(
-                approved=True,
-                scores={"safety": 50, "progression": 80, "specificity": 80, "feasibility": 75},
-            ),
-            _make_reviewer_result(approved=True),  # second attempt passes
-        ])
+        reviewer.review_plan = AsyncMock(
+            side_effect=[
+                _make_reviewer_result(
+                    approved=True,
+                    scores={"safety": 50, "progression": 80, "specificity": 80, "feasibility": 75},
+                ),
+                _make_reviewer_result(approved=True),  # second attempt passes
+            ]
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
         result = await orch.generate_plan(sample_athlete)
@@ -440,10 +484,12 @@ class TestOrchestratorScoreThresholdGuard:
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(return_value=_make_planner_result())
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            approved=True,
-            scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 75},
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                approved=True,
+                scores={"safety": 85, "progression": 80, "specificity": 80, "feasibility": 75},
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer)
         result = await orch.generate_plan(sample_athlete)
@@ -459,10 +505,12 @@ class TestOrchestratorScoreThresholdGuard:
         planner.revise_plan = AsyncMock(return_value=_make_planner_result())
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            approved=True,
-            scores={"safety": 40, "progression": 80, "specificity": 80, "feasibility": 75},
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                approved=True,
+                scores={"safety": 40, "progression": 80, "specificity": 80, "feasibility": 75},
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=2)
         result = await orch.generate_plan(sample_athlete)
@@ -476,7 +524,9 @@ class TestOrchestratorExceptionHandling:
     """Tests for exception handling in the orchestration loop."""
 
     @pytest.mark.asyncio
-    async def test_exception_on_attempt_1_returns_error(self, sample_athlete: AthleteProfile) -> None:
+    async def test_exception_on_attempt_1_returns_error(
+        self, sample_athlete: AthleteProfile
+    ) -> None:
         """Unexpected exception on attempt 1 aborts with error."""
         planner = MagicMock(spec=PlannerAgent)
         planner.generate_plan = AsyncMock(side_effect=RuntimeError("boom"))
@@ -493,16 +543,23 @@ class TestOrchestratorExceptionHandling:
         assert result.decision_log[0].outcome == ReviewOutcome.ERROR
 
     @pytest.mark.asyncio
-    async def test_exception_on_attempt_2_preserves_plan(self, sample_athlete: AthleteProfile) -> None:
+    async def test_exception_on_attempt_2_preserves_plan(
+        self, sample_athlete: AthleteProfile
+    ) -> None:
         """Exception on attempt 2 returns last_valid_plan from attempt 1."""
         planner = MagicMock(spec=PlannerAgent)
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(plan_text="Good plan v1"))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(plan_text="Good plan v1")
+        )
         planner.revise_plan = AsyncMock(side_effect=RuntimeError("network error"))
 
         reviewer = MagicMock(spec=ReviewerAgent)
-        reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result(
-            approved=False, issues=["minor issue"],
-        ))
+        reviewer.review_plan = AsyncMock(
+            return_value=_make_reviewer_result(
+                approved=False,
+                issues=["minor issue"],
+            )
+        )
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
         result = await orch.generate_plan(sample_athlete)
@@ -520,11 +577,15 @@ class TestOrchestratorEmptyPlanGuard:
         """If attempt 1 produces empty plan, attempt 2 calls generate_plan (not revise)."""
         planner = MagicMock(spec=PlannerAgent)
         # Attempt 1: empty plan, validation fails
-        planner.generate_plan = AsyncMock(side_effect=[
-            _make_planner_result(plan_text="", passed=False, error="validation failed"),
-            _make_planner_result(plan_text="Good plan"),
-        ])
-        planner.revise_plan = AsyncMock(return_value=_make_planner_result(plan_text="Should not be called"))
+        planner.generate_plan = AsyncMock(
+            side_effect=[
+                _make_planner_result(plan_text="", passed=False, error="validation failed"),
+                _make_planner_result(plan_text="Good plan"),
+            ]
+        )
+        planner.revise_plan = AsyncMock(
+            return_value=_make_planner_result(plan_text="Should not be called")
+        )
 
         reviewer = MagicMock(spec=ReviewerAgent)
         reviewer.review_plan = AsyncMock(return_value=_make_reviewer_result())
@@ -545,14 +606,19 @@ class TestOrchestratorTokenBudget:
     async def test_token_budget_exceeded_aborts(self, sample_athlete: AthleteProfile) -> None:
         """Orchestrator aborts when cumulative tokens exceed budget."""
         planner = MagicMock(spec=PlannerAgent)
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(
-            input_tokens=600_000, output_tokens=400_000,
-        ))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(
+                input_tokens=600_000,
+                output_tokens=400_000,
+            )
+        )
         reviewer = MagicMock(spec=ReviewerAgent)
 
         orch = Orchestrator(
-            planner=planner, reviewer=reviewer,
-            max_retries=5, max_total_tokens=500_000,
+            planner=planner,
+            reviewer=reviewer,
+            max_retries=5,
+            max_total_tokens=500_000,
         )
         result = await orch.generate_plan(sample_athlete)
 
@@ -566,6 +632,7 @@ class TestOrchestratorTokenBudget:
 # ---------------------------------------------------------------------------
 # PlanChangeType routing
 # ---------------------------------------------------------------------------
+
 
 class TestOrchestratorChangeType:
     """Tests for change_type-based routing."""
@@ -603,9 +670,12 @@ class TestOrchestratorChangeType:
     async def test_tweak_decision_log_populated(self, sample_athlete: AthleteProfile) -> None:
         """TWEAK mode still produces a decision log entry with planner tokens."""
         planner = MagicMock(spec=PlannerAgent)
-        planner.generate_plan = AsyncMock(return_value=_make_planner_result(
-            input_tokens=2000, output_tokens=800,
-        ))
+        planner.generate_plan = AsyncMock(
+            return_value=_make_planner_result(
+                input_tokens=2000,
+                output_tokens=800,
+            )
+        )
         reviewer = MagicMock(spec=ReviewerAgent)
 
         orch = Orchestrator(planner=planner, reviewer=reviewer)
@@ -666,7 +736,8 @@ class TestOrchestratorChangeType:
 
     @pytest.mark.asyncio
     async def test_tweak_single_attempt_on_validation_failure(
-        self, sample_athlete: AthleteProfile,
+        self,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """TWEAK mode with validation failure: no retries, returns warning."""
         planner = MagicMock(spec=PlannerAgent)
@@ -674,7 +745,7 @@ class TestOrchestratorChangeType:
         reviewer = MagicMock(spec=ReviewerAgent)
 
         orch = Orchestrator(planner=planner, reviewer=reviewer, max_retries=3)
-        result = await orch.generate_plan(sample_athlete, change_type=PlanChangeType.TWEAK)
+        await orch.generate_plan(sample_athlete, change_type=PlanChangeType.TWEAK)
 
         # Validation failed → reviewer skipped, but plan didn't pass validation
         # Orchestrator logs ERROR for validation failure, exhausts 1 attempt
@@ -700,6 +771,7 @@ class TestOrchestratorChangeType:
 # ---------------------------------------------------------------------------
 # Cache key
 # ---------------------------------------------------------------------------
+
 
 class TestOrchestratorCacheKey:
     """Tests for athlete_cache_key on OrchestrationResult."""

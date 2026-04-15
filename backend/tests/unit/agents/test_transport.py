@@ -21,8 +21,13 @@ class TestMessageTransportProtocol:
 
         class CustomTransport:
             async def create_message(
-                self, *, model: str, max_tokens: int, system: str,
-                tools: list, messages: list,
+                self,
+                *,
+                model: str,
+                max_tokens: int,
+                system: str,
+                tools: list,
+                messages: list,
             ) -> dict:
                 return {}
 

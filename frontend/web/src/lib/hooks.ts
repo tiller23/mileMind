@@ -71,6 +71,9 @@ export function useUpsertProfile() {
     mutationFn: (data: ProfileUpdate) => profile.upsert(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      // Strength playbook depends on injury tags + acute flag; refetch
+      // so the page reflects the new profile in any open tab.
+      queryClient.invalidateQueries({ queryKey: ["strength-playbook"] });
     },
   });
 }

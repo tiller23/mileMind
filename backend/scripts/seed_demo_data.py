@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.config import get_settings
-from src.db.models import Base, DBAthleteProfile, TrainingPlan, User
+from src.db.models import TrainingPlan, User
 from src.demo.constants import DEMO_PLAN_IDS, DEMO_USER_ID
 
 PLANS_DIR = Path(__file__).resolve().parent.parent / "src" / "demo" / "plans"
@@ -69,9 +69,7 @@ async def seed(session: AsyncSession) -> None:
         snapshot = data["athlete_snapshot"]
 
         # Check if plan already exists
-        result = await session.execute(
-            select(TrainingPlan).where(TrainingPlan.id == plan_id)
-        )
+        result = await session.execute(select(TrainingPlan).where(TrainingPlan.id == plan_id))
         existing = result.scalar_one_or_none()
 
         if existing:
