@@ -115,6 +115,16 @@ export function Navbar() {
             >
               Dashboard
             </Link>
+            <Link
+              href="/strength"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                pathname === "/strength"
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              Strength
+            </Link>
             <UserMenu name={user.name} />
           </div>
         )}

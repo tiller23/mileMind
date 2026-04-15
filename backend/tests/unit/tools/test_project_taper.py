@@ -16,7 +16,6 @@ from src.tools.project_taper import (
 )
 from src.tools.registry import ToolRegistry
 
-
 # ---------------------------------------------------------------------------
 # Sample data
 # ---------------------------------------------------------------------------
@@ -29,12 +28,15 @@ SAMPLE_LOADS = [50.0] * 42
 # Input validation
 # ---------------------------------------------------------------------------
 
+
 class TestProjectTaperInput:
     """Test ProjectTaperInput Pydantic validation."""
 
     def test_valid_project_mode(self) -> None:
         inp = ProjectTaperInput(
-            mode="project", daily_loads=SAMPLE_LOADS, taper_days=14,
+            mode="project",
+            daily_loads=SAMPLE_LOADS,
+            taper_days=14,
         )
         assert inp.mode == "project"
         assert inp.taper_days == 14
@@ -42,7 +44,8 @@ class TestProjectTaperInput:
 
     def test_valid_optimize_mode(self) -> None:
         inp = ProjectTaperInput(
-            mode="optimize", daily_loads=SAMPLE_LOADS,
+            mode="optimize",
+            daily_loads=SAMPLE_LOADS,
         )
         assert inp.mode == "optimize"
         assert inp.min_days == 7
@@ -55,8 +58,10 @@ class TestProjectTaperInput:
     def test_optimize_mode_max_lt_min_rejected(self) -> None:
         with pytest.raises(ValidationError, match="max_days"):
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
-                min_days=20, max_days=10,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
+                min_days=20,
+                max_days=10,
             )
 
     def test_empty_daily_loads_rejected(self) -> None:
@@ -66,39 +71,51 @@ class TestProjectTaperInput:
     def test_negative_taper_days_rejected(self) -> None:
         with pytest.raises(ValidationError, match="taper_days"):
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=-1,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=-1,
             )
 
     def test_taper_load_fraction_out_of_range(self) -> None:
         with pytest.raises(ValidationError):
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS,
-                taper_days=7, taper_load_fraction=1.5,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=7,
+                taper_load_fraction=1.5,
             )
 
     def test_invalid_mode_rejected(self) -> None:
         with pytest.raises(ValidationError, match="mode"):
             ProjectTaperInput(
-                mode="invalid", daily_loads=SAMPLE_LOADS, taper_days=7,
+                mode="invalid",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=7,
             )
 
     def test_taper_days_zero_rejected(self) -> None:
         with pytest.raises(ValidationError, match="taper_days"):
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=0,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=0,
             )
 
     def test_custom_load_fraction(self) -> None:
         inp = ProjectTaperInput(
-            mode="project", daily_loads=SAMPLE_LOADS,
-            taper_days=14, taper_load_fraction=0.3,
+            mode="project",
+            daily_loads=SAMPLE_LOADS,
+            taper_days=14,
+            taper_load_fraction=0.3,
         )
         assert inp.taper_load_fraction == pytest.approx(0.3)
 
     def test_optimize_custom_range(self) -> None:
         inp = ProjectTaperInput(
-            mode="optimize", daily_loads=SAMPLE_LOADS,
-            min_days=10, max_days=21,
+            mode="optimize",
+            daily_loads=SAMPLE_LOADS,
+            min_days=10,
+            max_days=21,
         )
         assert inp.min_days == 10
         assert inp.max_days == 21
@@ -108,13 +125,16 @@ class TestProjectTaperInput:
 # Handler: project mode
 # ---------------------------------------------------------------------------
 
+
 class TestProjectMode:
     """Test project_taper_handler in project mode."""
 
     def test_returns_ctl_atl_tsb_lists(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=14,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
             ).model_dump()
         )
         assert result["mode"] == "project"
@@ -125,7 +145,9 @@ class TestProjectMode:
     def test_tsb_increases_during_taper(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=14,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
             ).model_dump()
         )
         # TSB should generally increase as fatigue dissipates faster than fitness
@@ -134,7 +156,9 @@ class TestProjectMode:
     def test_fitness_retention_is_fraction(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=14,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
             ).model_dump()
         )
         assert 0.0 < result["fitness_retention"] <= 1.0
@@ -142,12 +166,16 @@ class TestProjectMode:
     def test_short_taper_retains_more_fitness(self) -> None:
         short = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=7,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=7,
             ).model_dump()
         )
         long = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS, taper_days=21,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=21,
             ).model_dump()
         )
         assert short["fitness_retention"] > long["fitness_retention"]
@@ -155,14 +183,18 @@ class TestProjectMode:
     def test_partial_load_retains_more_fitness(self) -> None:
         rest = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS,
-                taper_days=14, taper_load_fraction=0.0,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
+                taper_load_fraction=0.0,
             ).model_dump()
         )
         partial = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS,
-                taper_days=14, taper_load_fraction=0.3,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
+                taper_load_fraction=0.3,
             ).model_dump()
         )
         # With partial training, CTL should be higher at end of taper
@@ -172,14 +204,18 @@ class TestProjectMode:
         """C1 regression: fitness_retention must account for taper_load_fraction."""
         rest = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS,
-                taper_days=14, taper_load_fraction=0.0,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
+                taper_load_fraction=0.0,
             ).model_dump()
         )
         partial = project_taper_handler(
             ProjectTaperInput(
-                mode="project", daily_loads=SAMPLE_LOADS,
-                taper_days=14, taper_load_fraction=0.5,
+                mode="project",
+                daily_loads=SAMPLE_LOADS,
+                taper_days=14,
+                taper_load_fraction=0.5,
             ).model_dump()
         )
         # With 50% load maintained, retention must be higher than complete rest
@@ -190,13 +226,15 @@ class TestProjectMode:
 # Handler: optimize mode
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeMode:
     """Test project_taper_handler in optimize mode."""
 
     def test_returns_optimal_days(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
             ).model_dump()
         )
         assert result["mode"] == "optimize"
@@ -206,7 +244,8 @@ class TestOptimizeMode:
     def test_peak_tsb_is_positive(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
             ).model_dump()
         )
         assert result["peak_tsb"] > 0
@@ -214,20 +253,23 @@ class TestOptimizeMode:
     def test_ctl_and_atl_at_peak(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
             ).model_dump()
         )
         assert result["ctl_at_peak"] > 0
         assert result["atl_at_peak"] >= 0
         # TSB = CTL - ATL, so peak_tsb ~ ctl_at_peak - atl_at_peak
         assert result["peak_tsb"] == pytest.approx(
-            result["ctl_at_peak"] - result["atl_at_peak"], abs=0.1,
+            result["ctl_at_peak"] - result["atl_at_peak"],
+            abs=0.1,
         )
 
     def test_fitness_retention_included(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
             ).model_dump()
         )
         assert 0.0 < result["fitness_retention"] <= 1.0
@@ -235,8 +277,10 @@ class TestOptimizeMode:
     def test_custom_search_range(self) -> None:
         result = project_taper_handler(
             ProjectTaperInput(
-                mode="optimize", daily_loads=SAMPLE_LOADS,
-                min_days=10, max_days=14,
+                mode="optimize",
+                daily_loads=SAMPLE_LOADS,
+                min_days=10,
+                max_days=14,
             ).model_dump()
         )
         assert 10 <= result["optimal_days"] <= 14
@@ -245,6 +289,7 @@ class TestOptimizeMode:
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 class TestRegistration:
     """Test tool registration with ToolRegistry."""
@@ -265,19 +310,25 @@ class TestRegistration:
     def test_execute_via_registry(self) -> None:
         registry = ToolRegistry()
         register(registry)
-        result = registry.execute("project_taper", {
-            "mode": "project",
-            "daily_loads": SAMPLE_LOADS,
-            "taper_days": 7,
-        })
+        result = registry.execute(
+            "project_taper",
+            {
+                "mode": "project",
+                "daily_loads": SAMPLE_LOADS,
+                "taper_days": 7,
+            },
+        )
         assert result.success is True
         assert len(result.output["ctl"]) == 7
 
     def test_execute_invalid_input(self) -> None:
         registry = ToolRegistry()
         register(registry)
-        result = registry.execute("project_taper", {
-            "mode": "project",
-            "daily_loads": [],
-        })
+        result = registry.execute(
+            "project_taper",
+            {
+                "mode": "project",
+                "daily_loads": [],
+            },
+        )
         assert result.success is False

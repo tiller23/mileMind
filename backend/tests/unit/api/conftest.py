@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +22,7 @@ def _test_env(monkeypatch):
 
     # Clear the lru_cache so each test gets fresh settings
     from src.config import get_settings
+
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -43,12 +42,12 @@ async def app(async_engine, db_session: AsyncSession, test_user: User):
     """
     from src.api.deps import get_current_user, get_db
     from src.api.main import create_app
-    from src.config import get_settings
 
     app = create_app()
 
     # Disable rate limiting in tests
     from src.api.rate_limit import limiter
+
     limiter.enabled = False
 
     async def override_get_db():

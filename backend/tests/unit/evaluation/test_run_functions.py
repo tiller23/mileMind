@@ -23,7 +23,6 @@ import pytest
 from src.evaluation.results import HarnessMetrics, PersonaResult
 from src.models.decision_log import ReviewerScores
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -37,7 +36,10 @@ def _make_persona_result(persona_id: str = "beginner_runner") -> PersonaResult:
         approved=True,
         retry_count=1,
         final_scores=ReviewerScores(
-            safety=85, progression=80, specificity=80, feasibility=75,
+            safety=85,
+            progression=80,
+            specificity=80,
+            feasibility=75,
         ),
         planner_input_tokens=50_000,
         planner_output_tokens=5_000,
@@ -375,7 +377,9 @@ class TestRunComparison:
         assert (nested_dir / "comparison_report.md").exists()
 
     @pytest.mark.asyncio
-    async def test_run_comparison_constructs_runner_with_correct_params(self, tmp_path: Path) -> None:
+    async def test_run_comparison_constructs_runner_with_correct_params(
+        self, tmp_path: Path
+    ) -> None:
         """HarnessRunner is constructed with planner_model and retries from args.
 
         WHY: run_comparison does not set reviewer_model on the runner (it passes

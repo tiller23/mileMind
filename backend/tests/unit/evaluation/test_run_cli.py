@@ -4,8 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 # Resolve backend directory so tests work from any cwd
 _BACKEND_DIR = str(Path(__file__).resolve().parents[3])
 
@@ -31,7 +29,14 @@ class TestEvaluationCLI:
     def test_dry_run_with_persona_filter(self) -> None:
         """--dry-run with --persona filter shows only selected."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.evaluation.run", "--dry-run", "--persona", "beginner_runner"],
+            [
+                sys.executable,
+                "-m",
+                "src.evaluation.run",
+                "--dry-run",
+                "--persona",
+                "beginner_runner",
+            ],
             capture_output=True,
             text=True,
             cwd=_BACKEND_DIR,
@@ -45,9 +50,16 @@ class TestEvaluationCLI:
     def test_dry_run_shows_model_config(self) -> None:
         """--dry-run prints model configuration."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.evaluation.run", "--dry-run",
-             "--planner-model", "test-planner",
-             "--reviewer-model", "test-reviewer"],
+            [
+                sys.executable,
+                "-m",
+                "src.evaluation.run",
+                "--dry-run",
+                "--planner-model",
+                "test-planner",
+                "--reviewer-model",
+                "test-reviewer",
+            ],
             capture_output=True,
             text=True,
             cwd=_BACKEND_DIR,
@@ -60,6 +72,7 @@ class TestEvaluationCLI:
     def test_no_api_key_exits_with_error(self) -> None:
         """Running without API key and without --dry-run exits with error."""
         import os
+
         env = os.environ.copy()
         # Set to empty string so load_dotenv() won't fill it from .env file
         env["ANTHROPIC_API_KEY"] = ""
@@ -90,8 +103,14 @@ class TestEvaluationCLI:
     def test_invalid_persona_rejected(self) -> None:
         """--persona with unknown ID exits with error."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.evaluation.run", "--dry-run",
-             "--persona", "nonexistent_runner"],
+            [
+                sys.executable,
+                "-m",
+                "src.evaluation.run",
+                "--dry-run",
+                "--persona",
+                "nonexistent_runner",
+            ],
             capture_output=True,
             text=True,
             cwd=_BACKEND_DIR,
@@ -115,8 +134,7 @@ class TestEvaluationCLI:
     def test_batch_and_compare_mutually_exclusive(self) -> None:
         """--batch and --compare together exits with error."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.evaluation.run",
-             "--batch", "--compare", "--dry-run"],
+            [sys.executable, "-m", "src.evaluation.run", "--batch", "--compare", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=_BACKEND_DIR,

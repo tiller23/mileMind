@@ -11,27 +11,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.agents.orchestrator import OrchestrationResult
-from src.agents.planner import PlannerAgent
-from src.agents.reviewer import ReviewerAgent
 from src.evaluation.personas import (
     ALL_PERSONAS,
     BEGINNER_RUNNER,
     ExpectedBehavior,
-    get_persona,
 )
 from src.evaluation.results import PersonaResult
 from src.evaluation.runner import HarnessRunner, check_constraint_violations
-from src.models.plan_change import PlanChangeType
 from src.models.decision_log import (
     DecisionLogEntry,
     ReviewerScores,
     ReviewOutcome,
 )
-
+from src.models.plan_change import PlanChangeType
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_orch_result(
     plan_text: str = "Generated plan.",
@@ -77,6 +74,7 @@ def _make_orch_result(
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestHarnessRunnerSinglePersona:
     """Tests for running a single persona."""
 
@@ -91,7 +89,8 @@ class TestHarnessRunnerSinglePersona:
         orch_result = _make_orch_result()
 
         with patch.object(
-            runner, "_build_orchestrator",
+            runner,
+            "_build_orchestrator",
         ) as mock_build:
             mock_orch = AsyncMock()
             mock_orch.generate_plan = AsyncMock(return_value=orch_result)
@@ -286,8 +285,10 @@ class TestHarnessRunnerBatched:
         runner = HarnessRunner(api_key="test-key")
         orch_result = _make_orch_result()
 
-        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
-             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+        with (
+            patch.object(runner, "_build_orchestrator_with_transports") as mock_build,
+            patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator,
+        ):
 
             # Set up mock coordinator
             mock_coord = MockCoordinator.return_value
@@ -319,8 +320,10 @@ class TestHarnessRunnerBatched:
         runner = HarnessRunner(api_key="test-key")
         orch_result = _make_orch_result()
 
-        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
-             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+        with (
+            patch.object(runner, "_build_orchestrator_with_transports") as mock_build,
+            patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator,
+        ):
 
             mock_coord = MockCoordinator.return_value
             mock_coord.start = AsyncMock()
@@ -336,7 +339,9 @@ class TestHarnessRunnerBatched:
 
         # Should deregister both planner and reviewer transports
         assert mock_coord.deregister_transport.call_count == 2
-        deregistered_ids = {call.args[0] for call in mock_coord.deregister_transport.call_args_list}
+        deregistered_ids = {
+            call.args[0] for call in mock_coord.deregister_transport.call_args_list
+        }
         assert "beginner_runner:planner" in deregistered_ids
         assert "beginner_runner:reviewer" in deregistered_ids
 
@@ -356,8 +361,10 @@ class TestHarnessRunnerBatched:
         """Exceptions during batched persona runs are captured."""
         runner = HarnessRunner(api_key="test-key")
 
-        with patch.object(runner, "_build_orchestrator_with_transports") as mock_build, \
-             patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator:
+        with (
+            patch.object(runner, "_build_orchestrator_with_transports") as mock_build,
+            patch("src.evaluation.runner.BatchCoordinator") as MockCoordinator,
+        ):
 
             mock_coord = MockCoordinator.return_value
             mock_coord.start = AsyncMock()
@@ -409,7 +416,8 @@ class TestConstraintViolations:
             must_not_include=("push through pain",),
         )
         violations = check_constraint_violations(
-            "Athletes should push through pain to improve.", expected,
+            "Athletes should push through pain to improve.",
+            expected,
         )
         assert len(violations) == 1
         assert "push through pain" in violations[0]
@@ -476,7 +484,9 @@ class TestHarnessRunnerMetrics:
                 persona_id="a",
                 approved=True,
                 retry_count=1,
-                final_scores=ReviewerScores(safety=90, progression=85, specificity=80, feasibility=80),
+                final_scores=ReviewerScores(
+                    safety=90, progression=85, specificity=80, feasibility=80
+                ),
                 planner_input_tokens=50_000,
                 planner_output_tokens=5_000,
             ),
@@ -484,7 +494,9 @@ class TestHarnessRunnerMetrics:
                 persona_id="b",
                 approved=True,
                 retry_count=2,
-                final_scores=ReviewerScores(safety=80, progression=75, specificity=75, feasibility=70),
+                final_scores=ReviewerScores(
+                    safety=80, progression=75, specificity=75, feasibility=70
+                ),
                 planner_input_tokens=60_000,
                 planner_output_tokens=6_000,
             ),

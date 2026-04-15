@@ -15,16 +15,15 @@ pipeline without API costs or network dependencies.
 from __future__ import annotations
 
 import json
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.planner import PlannerAgent, PlannerResult
-from src.agents.shared import build_registry
+from src.agents.planner import PlannerAgent
 from src.agents.prompts import PLANNER_SYSTEM_PROMPT
-from src.agents.validation import ValidationResult, validate_plan_output
-from src.models.athlete import AthleteProfile, RiskTolerance
+from src.agents.shared import build_registry
+from src.agents.validation import validate_plan_output
+from src.models.athlete import AthleteProfile
 from src.tools.registry import ToolRegistry
 from tests.helpers import (
     MockContentBlock,
@@ -33,7 +32,6 @@ from tests.helpers import (
     make_end_turn_response,
     make_tool_use_response,
 )
-
 
 # sample_athlete fixture is provided by tests/conftest.py
 
@@ -47,6 +45,7 @@ def registry() -> ToolRegistry:
 # ---------------------------------------------------------------------------
 # Tests: Registry builds correctly
 # ---------------------------------------------------------------------------
+
 
 class TestBuildRegistry:
     """Verify build_registry() creates a valid registry with all 6 tools."""
@@ -78,6 +77,7 @@ class TestBuildRegistry:
 # Tests: Agent loop with mocked API
 # ---------------------------------------------------------------------------
 
+
 class TestPlannerAgentLoop:
     """Test the planner agent loop with mocked Anthropic client."""
 
@@ -90,7 +90,9 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_single_turn_no_tools(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent returns immediately when Claude doesn't use tools.
 
@@ -114,23 +116,27 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_tool_use_then_end_turn(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent executes tool calls and returns the final response."""
         # First call: Claude wants to use compute_training_stress
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 45.0,
-                "intensity": 0.6,
-            },
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 45.0,
+                        "intensity": 0.6,
+                    },
+                }
+            ]
+        )
 
         # Second call: Claude returns the final plan
-        final_response = make_end_turn_response(
-            "# Training Plan\nWeek 1: Easy run, TSS=27.0"
-        )
+        final_response = make_end_turn_response("# Training Plan\nWeek 1: Easy run, TSS=27.0")
 
         mock_agent._transport.create_message = AsyncMock(
             side_effect=[tool_response, final_response]
@@ -151,29 +157,33 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_multiple_tool_calls_in_one_turn(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent handles multiple tool calls in a single response."""
-        tool_response = make_tool_use_response([
-            {
-                "name": "compute_training_stress",
-                "input": {
-                    "workout_type": "easy",
-                    "duration_minutes": 45.0,
-                    "intensity": 0.5,
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 45.0,
+                        "intensity": 0.5,
+                    },
+                    "id": "toolu_0001",
                 },
-                "id": "toolu_0001",
-            },
-            {
-                "name": "compute_training_stress",
-                "input": {
-                    "workout_type": "tempo",
-                    "duration_minutes": 35.0,
-                    "intensity": 0.8,
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "tempo",
+                        "duration_minutes": 35.0,
+                        "intensity": 0.8,
+                    },
+                    "id": "toolu_0002",
                 },
-                "id": "toolu_0002",
-            },
-        ])
+            ]
+        )
 
         final_response = make_end_turn_response("Plan with two workouts computed.")
 
@@ -188,27 +198,37 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_tool_call_with_validation(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent calls both stress and validation tools."""
         # Turn 1: compute stress
-        stress_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 45.0,
-                "intensity": 0.5,
-            },
-        }])
+        stress_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 45.0,
+                        "intensity": 0.5,
+                    },
+                }
+            ]
+        )
 
         # Turn 2: validate progression
-        validate_response = make_tool_use_response([{
-            "name": "validate_progression_constraints",
-            "input": {
-                "weekly_loads": [100.0, 105.0, 108.0, 112.0],
-                "risk_tolerance": "moderate",
-            },
-        }])
+        validate_response = make_tool_use_response(
+            [
+                {
+                    "name": "validate_progression_constraints",
+                    "input": {
+                        "weekly_loads": [100.0, 105.0, 108.0, 112.0],
+                        "risk_tolerance": "moderate",
+                    },
+                }
+            ]
+        )
 
         # Turn 3: final plan
         final_response = make_end_turn_response("Plan validated and ready.")
@@ -226,22 +246,26 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_max_iterations_cap(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent stops after max_iterations and returns an error."""
         # Every response asks for more tool calls (infinite loop scenario)
-        infinite_tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 30.0,
-                "intensity": 0.5,
-            },
-        }])
-
-        mock_agent._transport.create_message = AsyncMock(
-            return_value=infinite_tool_response
+        infinite_tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 30.0,
+                        "intensity": 0.5,
+                    },
+                }
+            ]
         )
+
+        mock_agent._transport.create_message = AsyncMock(return_value=infinite_tool_response)
         mock_agent._max_iterations = 3
 
         result = await mock_agent.generate_plan(sample_athlete)
@@ -252,13 +276,19 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_unknown_tool_handled_gracefully(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent handles unknown tool calls without crashing."""
-        tool_response = make_tool_use_response([{
-            "name": "nonexistent_tool",
-            "input": {"foo": "bar"},
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "nonexistent_tool",
+                    "input": {"foo": "bar"},
+                }
+            ]
+        )
 
         final_response = make_end_turn_response("Plan despite tool error.")
 
@@ -274,17 +304,23 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_token_tracking(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent accumulates token usage across iterations."""
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 30.0,
-                "intensity": 0.5,
-            },
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 30.0,
+                        "intensity": 0.5,
+                    },
+                }
+            ]
+        )
         final_response = make_end_turn_response("Done.")
 
         mock_agent._transport.create_message = AsyncMock(
@@ -299,7 +335,9 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_tool_results_sent_in_correct_format(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Verify tool_result blocks are sent back with correct structure.
 
@@ -307,15 +345,19 @@ class TestPlannerAgentLoop:
         tool_result blocks with tool_use_id, content (JSON string), and
         is_error fields.
         """
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {
-                "workout_type": "easy",
-                "duration_minutes": 45.0,
-                "intensity": 0.6,
-            },
-            "id": "toolu_test_123",
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {
+                        "workout_type": "easy",
+                        "duration_minutes": 45.0,
+                        "intensity": 0.6,
+                    },
+                    "id": "toolu_test_123",
+                }
+            ]
+        )
         final_response = make_end_turn_response("Done.")
 
         mock_agent._transport.create_message = AsyncMock(
@@ -352,7 +394,9 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_error_path_has_validation(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Error-path PlannerResults should have validation != None."""
         import anthropic
@@ -373,7 +417,9 @@ class TestPlannerAgentLoop:
 
     @pytest.mark.asyncio
     async def test_unexpected_stop_reason(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """Agent handles unexpected stop reasons (e.g., max_tokens)."""
         response = MockResponse(
@@ -395,13 +441,19 @@ class TestPlannerAgentLoop:
 # Tests: Output validation
 # ---------------------------------------------------------------------------
 
+
 class TestOutputValidation:
     """Test validate_plan_output() catches missing tool usage."""
 
     def test_valid_output_passes(self) -> None:
         tool_calls = [
             {"name": "compute_training_stress", "input": {}, "output": {}, "success": True},
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
         ]
         result = validate_plan_output("Here is a plan.", tool_calls)
         assert result.passed is True
@@ -410,7 +462,12 @@ class TestOutputValidation:
     def test_empty_text_fails(self) -> None:
         tool_calls = [
             {"name": "compute_training_stress", "input": {}, "output": {}, "success": True},
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
         ]
         result = validate_plan_output("", tool_calls)
         assert result.passed is False
@@ -419,7 +476,12 @@ class TestOutputValidation:
     def test_no_stress_call_passes(self) -> None:
         """compute_training_stress is no longer required — TSS is computed post-hoc."""
         tool_calls = [
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
         ]
         result = validate_plan_output("Plan text.", tool_calls)
         assert result.passed is True
@@ -435,7 +497,12 @@ class TestOutputValidation:
     def test_failed_tool_call_fails(self) -> None:
         tool_calls = [
             {"name": "compute_training_stress", "input": {}, "output": {}, "success": True},
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": False},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": False,
+            },
         ]
         result = validate_plan_output("Plan text.", tool_calls)
         assert result.passed is False
@@ -450,7 +517,12 @@ class TestOutputValidation:
         """Extra tool calls beyond the required ones are fine."""
         tool_calls = [
             {"name": "compute_training_stress", "input": {}, "output": {}, "success": True},
-            {"name": "validate_progression_constraints", "input": {}, "output": {}, "success": True},
+            {
+                "name": "validate_progression_constraints",
+                "input": {},
+                "output": {},
+                "success": True,
+            },
             {"name": "simulate_race_outcomes", "input": {}, "output": {}, "success": True},
             {"name": "evaluate_fatigue_state", "input": {}, "output": {}, "success": True},
         ]
@@ -461,6 +533,7 @@ class TestOutputValidation:
 # ---------------------------------------------------------------------------
 # Tests: System prompt
 # ---------------------------------------------------------------------------
+
 
 class TestSystemPrompt:
     """Verify the planner system prompt has the required content."""
@@ -489,6 +562,7 @@ class TestSystemPrompt:
 # ---------------------------------------------------------------------------
 # Tests: User message building
 # ---------------------------------------------------------------------------
+
 
 class TestUserMessageBuilding:
     """Test the _build_user_message static method."""
@@ -533,6 +607,7 @@ class TestUserMessageBuilding:
 # Tests: Plan revision
 # ---------------------------------------------------------------------------
 
+
 class TestPlanRevision:
     """Test revise_plan() and _build_revision_message()."""
 
@@ -555,40 +630,61 @@ class TestPlanRevision:
         assert "No rest days in week 3" in msg
         assert "ACWR exceeds 1.3" in msg
 
-    def test_revision_message_contains_athlete_profile(self, sample_athlete: AthleteProfile) -> None:
+    def test_revision_message_contains_athlete_profile(
+        self, sample_athlete: AthleteProfile
+    ) -> None:
         msg = PlannerAgent._build_revision_message(
-            sample_athlete, "plan", "critique", ["issue"],
+            sample_athlete,
+            "plan",
+            "critique",
+            ["issue"],
         )
         assert sample_athlete.name in msg
         assert "```json" in msg
 
     def test_revision_message_contains_prior_plan(self, sample_athlete: AthleteProfile) -> None:
         msg = PlannerAgent._build_revision_message(
-            sample_athlete, "UNIQUE_PLAN_CONTENT_XYZ", "critique", [],
+            sample_athlete,
+            "UNIQUE_PLAN_CONTENT_XYZ",
+            "critique",
+            [],
         )
         assert "UNIQUE_PLAN_CONTENT_XYZ" in msg
 
     def test_revision_message_empty_issues(self, sample_athlete: AthleteProfile) -> None:
         msg = PlannerAgent._build_revision_message(
-            sample_athlete, "plan", "critique", [],
+            sample_athlete,
+            "plan",
+            "critique",
+            [],
         )
         assert "(no specific issues listed)" in msg
 
     @pytest.mark.asyncio
     async def test_revise_plan_runs_agent_loop(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """revise_plan() goes through the same agent loop as generate_plan()."""
         # Turn 1: tool call
-        tool_response = make_tool_use_response([{
-            "name": "compute_training_stress",
-            "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
-        }])
+        tool_response = make_tool_use_response(
+            [
+                {
+                    "name": "compute_training_stress",
+                    "input": {"workout_type": "easy", "duration_minutes": 45.0, "intensity": 0.6},
+                }
+            ]
+        )
         # Turn 2: validation + final
-        validate_response = make_tool_use_response([{
-            "name": "validate_progression_constraints",
-            "input": {"weekly_loads": [100, 105, 108, 112], "risk_tolerance": "moderate"},
-        }])
+        validate_response = make_tool_use_response(
+            [
+                {
+                    "name": "validate_progression_constraints",
+                    "input": {"weekly_loads": [100, 105, 108, 112], "risk_tolerance": "moderate"},
+                }
+            ]
+        )
         final_response = make_end_turn_response("Revised plan with fixes.")
 
         mock_agent._transport.create_message = AsyncMock(
@@ -610,7 +706,9 @@ class TestPlanRevision:
 
     @pytest.mark.asyncio
     async def test_revise_plan_validates_output(
-        self, mock_agent: PlannerAgent, sample_athlete: AthleteProfile,
+        self,
+        mock_agent: PlannerAgent,
+        sample_athlete: AthleteProfile,
     ) -> None:
         """revise_plan() runs validation on the revised output."""
         # No tool calls -> validation will fail
@@ -618,7 +716,10 @@ class TestPlanRevision:
         mock_agent._transport.create_message = AsyncMock(return_value=final_response)
 
         result = await mock_agent.revise_plan(
-            sample_athlete, "Old plan", "Critique.", ["Issue"],
+            sample_athlete,
+            "Old plan",
+            "Critique.",
+            ["Issue"],
         )
 
         assert result.validation is not None
@@ -632,6 +733,7 @@ class TestCLIExampleProfiles:
     @pytest.mark.parametrize("name", ["beginner", "intermediate", "advanced", "aggressive"])
     def test_example_profile_validates(self, name: str) -> None:
         from src.cli import EXAMPLE_PROFILES
+
         profile = AthleteProfile.model_validate(EXAMPLE_PROFILES[name])
         assert profile.name
         assert profile.goal_distance

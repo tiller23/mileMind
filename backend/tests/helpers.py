@@ -92,12 +92,14 @@ def make_tool_use_response(
     if text_before:
         blocks.append(MockContentBlock(type="text", text=text_before))
     for i, tc in enumerate(tool_calls):
-        blocks.append(MockContentBlock(
-            type="tool_use",
-            name=tc["name"],
-            input=tc["input"],
-            id=tc.get("id", f"toolu_{i:04d}"),
-        ))
+        blocks.append(
+            MockContentBlock(
+                type="tool_use",
+                name=tc["name"],
+                input=tc["input"],
+                id=tc.get("id", f"toolu_{i:04d}"),
+            )
+        )
     return MockResponse(content=blocks, stop_reason="tool_use", usage=MockUsage())
 
 

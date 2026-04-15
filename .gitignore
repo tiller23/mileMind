@@ -1,3 +1,6 @@
+# Personal notes (not project artifacts)
+notes/
+
 # Python
 __pycache__/
 *.py[cod]

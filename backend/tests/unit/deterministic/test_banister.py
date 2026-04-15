@@ -71,11 +71,14 @@ class TestComputeCTL:
         # 10 days of rest from CTL=50 should decay but stay well above 0
         assert 30.0 < ctl_with_initial < 50.0
 
-    @pytest.mark.parametrize("tau,expected_range", [
-        (42, (20, 30)),    # Standard fitness decay
-        (7, (45, 52)),     # Fast adaptation (acts like ATL)
-        (100, (10, 18)),   # Very slow adaptation
-    ])
+    @pytest.mark.parametrize(
+        "tau,expected_range",
+        [
+            (42, (20, 30)),  # Standard fitness decay
+            (7, (45, 52)),  # Fast adaptation (acts like ATL)
+            (100, (10, 18)),  # Very slow adaptation
+        ],
+    )
     def test_ctl_varies_with_tau(
         self,
         steady_state_load: list[float],
@@ -319,20 +322,23 @@ class TestEdgeCases:
 class TestClassifyRecoveryStatus:
     """Tests for TSB-based recovery classification."""
 
-    @pytest.mark.parametrize("tsb,expected", [
-        (25.0, "fresh"),
-        (11.0, "fresh"),
-        (10.01, "fresh"),
-        (10.0, "neutral"),      # boundary: exactly 10 is neutral, not fresh
-        (0.0, "neutral"),
-        (-10.0, "neutral"),     # boundary: exactly -10 is neutral
-        (-10.01, "fatigued"),
-        (-15.0, "fatigued"),
-        (-20.0, "fatigued"),    # boundary: exactly -20 is fatigued
-        (-20.01, "very_fatigued"),
-        (-30.0, "very_fatigued"),
-        (-100.0, "very_fatigued"),
-    ])
+    @pytest.mark.parametrize(
+        "tsb,expected",
+        [
+            (25.0, "fresh"),
+            (11.0, "fresh"),
+            (10.01, "fresh"),
+            (10.0, "neutral"),  # boundary: exactly 10 is neutral, not fresh
+            (0.0, "neutral"),
+            (-10.0, "neutral"),  # boundary: exactly -10 is neutral
+            (-10.01, "fatigued"),
+            (-15.0, "fatigued"),
+            (-20.0, "fatigued"),  # boundary: exactly -20 is fatigued
+            (-20.01, "very_fatigued"),
+            (-30.0, "very_fatigued"),
+            (-100.0, "very_fatigued"),
+        ],
+    )
     def test_classification_boundaries(self, tsb: float, expected: str) -> None:
         """Each TSB value maps to the correct recovery status."""
         assert classify_recovery_status(tsb) == expected

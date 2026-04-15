@@ -14,7 +14,8 @@ class TestTrainingPhase:
         assert len(TrainingPhase) == 5
 
     @pytest.mark.parametrize(
-        "value", ["base", "build", "peak", "taper", "recovery"],
+        "value",
+        ["base", "build", "peak", "taper", "recovery"],
     )
     def test_valid_values(self, value: str) -> None:
         assert TrainingPhase(value).value == value
@@ -24,12 +25,19 @@ class TestPlanWeek:
     """Tests for PlanWeek model and computed properties."""
 
     def _make_workout(
-        self, day: int = 1, wtype: WorkoutType = WorkoutType.EASY,
-        distance: float = 8.0, duration: float = 45.0, intensity: float = 0.5,
+        self,
+        day: int = 1,
+        wtype: WorkoutType = WorkoutType.EASY,
+        distance: float = 8.0,
+        duration: float = 45.0,
+        intensity: float = 0.5,
     ) -> Workout:
         return Workout(
-            day=day, workout_type=wtype, distance_km=distance,
-            duration_minutes=duration, intensity=intensity,
+            day=day,
+            workout_type=wtype,
+            distance_km=distance,
+            duration_minutes=duration,
+            intensity=intensity,
         )
 
     def test_week_number_must_be_positive(self) -> None:

@@ -24,4 +24,5 @@ class TestPlanChangeType:
 
     def test_importable_from_package(self) -> None:
         from src.models import PlanChangeType as imported
+
         assert imported is PlanChangeType

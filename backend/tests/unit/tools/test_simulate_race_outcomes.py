@@ -21,13 +21,12 @@ from pydantic import ValidationError
 from src.deterministic.daniels import RACE_DISTANCES
 from src.tools.registry import ToolRegistry
 from src.tools.simulate_race_outcomes import (
+    _DESCRIPTION,
     SimulateRaceInput,
     SimulateRaceOutput,
-    _DESCRIPTION,
     register,
     simulate_race_outcomes_handler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -242,9 +241,7 @@ class TestSimulateRaceInputErrors:
     def test_elevation_gain_negative_raises(self):
         """Negative elevation gain raises ValidationError."""
         with pytest.raises(ValidationError):
-            SimulateRaceInput(
-                vdot=50.0, target_distance="5K", elevation_gain_m=-10.0
-            )
+            SimulateRaceInput(vdot=50.0, target_distance="5K", elevation_gain_m=-10.0)
 
 
 # ---------------------------------------------------------------------------
@@ -376,9 +373,7 @@ class TestHandlerVdotPath:
     @pytest.mark.parametrize("distance_key", list(RACE_DISTANCES.keys()))
     def test_all_distances_produce_result(self, distance_key: str):
         """Every canonical distance key is handled correctly."""
-        m = SimulateRaceInput(
-            vdot=50.0, target_distance=distance_key, num_simulations=100, seed=0
-        )
+        m = SimulateRaceInput(vdot=50.0, target_distance=distance_key, num_simulations=100, seed=0)
         r = simulate_race_outcomes_handler(m.model_dump())
         assert r["median_time_minutes"] > 0
 
@@ -512,16 +507,12 @@ class TestHandlerFitnessFactor:
 
     def test_positive_tsb_gives_factor_below_one(self):
         """Being fresh (positive TSB) speeds up predicted finish time."""
-        r = simulate_race_outcomes_handler(
-            SimulateRaceInput(**self._BASE, tsb=20.0).model_dump()
-        )
+        r = simulate_race_outcomes_handler(SimulateRaceInput(**self._BASE, tsb=20.0).model_dump())
         assert r["fitness_factor"] < 1.0
 
     def test_negative_tsb_gives_factor_above_one(self):
         """Being fatigued (negative TSB) slows predicted finish time."""
-        r = simulate_race_outcomes_handler(
-            SimulateRaceInput(**self._BASE, tsb=-20.0).model_dump()
-        )
+        r = simulate_race_outcomes_handler(SimulateRaceInput(**self._BASE, tsb=-20.0).model_dump())
         assert r["fitness_factor"] > 1.0
 
     def test_fresh_athlete_faster_than_fatigued(self):
@@ -713,10 +704,18 @@ class TestRegistryExecute:
         assert result.success is True
         out = result.output
         time_keys = [
-            "median_time_minutes", "mean_time_minutes", "std_time_minutes",
-            "p5_time_minutes", "p25_time_minutes", "p75_time_minutes",
-            "p95_time_minutes", "fastest_time_minutes", "slowest_time_minutes",
-            "baseline_time_minutes", "environment_factor", "fitness_factor",
+            "median_time_minutes",
+            "mean_time_minutes",
+            "std_time_minutes",
+            "p5_time_minutes",
+            "p25_time_minutes",
+            "p75_time_minutes",
+            "p95_time_minutes",
+            "fastest_time_minutes",
+            "slowest_time_minutes",
+            "baseline_time_minutes",
+            "environment_factor",
+            "fitness_factor",
         ]
         for key in time_keys:
             assert isinstance(out[key], float), f"{key} should be float, got {type(out[key])}"

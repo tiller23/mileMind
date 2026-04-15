@@ -16,7 +16,7 @@ import math
 
 import pytest
 
-from src.deterministic.daniels import RACE_DISTANCES, compute_vdot, predict_race_time
+from src.deterministic.daniels import RACE_DISTANCES, compute_vdot
 from src.deterministic.monte_carlo import (
     DEFAULT_NUM_SIMULATIONS,
     DEFAULT_PACE_CV,
@@ -88,15 +88,21 @@ class TestSimulateRace:
 
     def test_returns_simulation_result(self) -> None:
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=100,
+            seed=42,
         )
         assert isinstance(result, SimulationResult)
 
     def test_result_has_all_fields(self) -> None:
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=100,
+            seed=42,
         )
         assert result.median_time_minutes > 0
         assert result.mean_time_minutes > 0
@@ -113,8 +119,11 @@ class TestSimulateRace:
     def test_same_distance_baseline_near_reference(self) -> None:
         """Simulating the same distance as reference should predict ~same time."""
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=5000, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=5000,
+            seed=42,
         )
         # Median should be close to the reference time
         assert result.median_time_minutes == pytest.approx(self.REF_TIME, abs=1.0)
@@ -122,24 +131,36 @@ class TestSimulateRace:
     def test_longer_distance_slower(self) -> None:
         """A marathon should be predicted much slower than a 5K."""
         result_5k = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=100,
+            seed=42,
         )
         result_marathon = simulate_race(
-            RACE_DISTANCES["marathon"], self.FIVE_K, self.REF_TIME,
-            num_simulations=100, seed=42,
+            RACE_DISTANCES["marathon"],
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=100,
+            seed=42,
         )
         assert result_marathon.median_time_minutes > result_5k.median_time_minutes * 5
 
     def test_seeded_reproducibility(self) -> None:
         """Same seed should produce identical results."""
         r1 = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=12345,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=12345,
         )
         r2 = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=12345,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=12345,
         )
         assert r1.median_time_minutes == r2.median_time_minutes
         assert r1.mean_time_minutes == r2.mean_time_minutes
@@ -147,20 +168,29 @@ class TestSimulateRace:
     def test_different_seeds_different_results(self) -> None:
         """Different seeds should (almost certainly) produce different results."""
         r1 = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=1,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=1,
         )
         r2 = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=2,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=2,
         )
         assert r1.median_time_minutes != r2.median_time_minutes
 
     def test_percentile_ordering(self) -> None:
         """Percentiles should be in ascending order."""
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=1000, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=1000,
+            seed=42,
         )
         assert result.fastest_time_minutes <= result.p5_time_minutes
         assert result.p5_time_minutes <= result.p25_time_minutes
@@ -172,8 +202,12 @@ class TestSimulateRace:
     def test_zero_pace_cv_no_variance(self) -> None:
         """With zero variance, all simulations should produce the same time."""
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            pace_cv=0.0, num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            pace_cv=0.0,
+            num_simulations=100,
+            seed=42,
         )
         assert result.std_time_minutes == pytest.approx(0.0, abs=1e-10)
         assert result.fastest_time_minutes == result.slowest_time_minutes
@@ -181,19 +215,30 @@ class TestSimulateRace:
     def test_higher_cv_wider_spread(self) -> None:
         """Higher pace_cv should produce wider finish-time spread."""
         r_narrow = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            pace_cv=0.02, num_simulations=1000, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            pace_cv=0.02,
+            num_simulations=1000,
+            seed=42,
         )
         r_wide = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            pace_cv=0.10, num_simulations=1000, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            pace_cv=0.10,
+            num_simulations=1000,
+            seed=42,
         )
         assert r_wide.std_time_minutes > r_narrow.std_time_minutes
 
     def test_num_simulations_respected(self) -> None:
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=50, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=50,
+            seed=42,
         )
         assert result.num_simulations == 50
 
@@ -203,8 +248,10 @@ class TestSimulateRaceFromVDOT:
 
     def test_basic_simulation(self) -> None:
         result = simulate_race_from_vdot(
-            vdot=50.0, distance_meters=5000.0,
-            num_simulations=100, seed=42,
+            vdot=50.0,
+            distance_meters=5000.0,
+            num_simulations=100,
+            seed=42,
         )
         assert isinstance(result, SimulationResult)
         assert result.median_time_minutes > 0
@@ -214,12 +261,17 @@ class TestSimulateRaceFromVDOT:
         # 5K in 20:00 gives VDOT ~49.8
         vdot = compute_vdot(5000.0, 20.0)
         result_vdot = simulate_race_from_vdot(
-            vdot=vdot, distance_meters=5000.0,
-            num_simulations=1000, seed=42,
+            vdot=vdot,
+            distance_meters=5000.0,
+            num_simulations=1000,
+            seed=42,
         )
         result_race = simulate_race(
-            5000.0, 5000.0, 20.0,
-            num_simulations=1000, seed=42,
+            5000.0,
+            5000.0,
+            20.0,
+            num_simulations=1000,
+            seed=42,
         )
         # Baselines should be identical
         assert result_vdot.baseline_time_minutes == pytest.approx(
@@ -228,12 +280,16 @@ class TestSimulateRaceFromVDOT:
 
     def test_higher_vdot_faster_times(self) -> None:
         r_low = simulate_race_from_vdot(
-            vdot=40.0, distance_meters=5000.0,
-            num_simulations=100, seed=42,
+            vdot=40.0,
+            distance_meters=5000.0,
+            num_simulations=100,
+            seed=42,
         )
         r_high = simulate_race_from_vdot(
-            vdot=60.0, distance_meters=5000.0,
-            num_simulations=100, seed=42,
+            vdot=60.0,
+            distance_meters=5000.0,
+            num_simulations=100,
+            seed=42,
         )
         assert r_high.median_time_minutes < r_low.median_time_minutes
 
@@ -247,27 +303,39 @@ class TestEnvironmentEffects:
     def test_heat_slows_pace(self) -> None:
         """Hot conditions should produce slower predicted times."""
         r_cool = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(temperature_c=18.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         r_hot = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(temperature_c=35.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         assert r_hot.median_time_minutes > r_cool.median_time_minutes
 
     def test_cool_no_penalty(self) -> None:
         """Below-baseline temperature should have no heat penalty."""
         r_default = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=42,
         )
         r_cool = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(temperature_c=10.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         # Should be the same — no cold penalty modeled
         assert r_cool.environment_factor == r_default.environment_factor
@@ -275,66 +343,93 @@ class TestEnvironmentEffects:
     def test_elevation_slows_pace(self) -> None:
         """Course with elevation gain should be slower."""
         r_flat = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(elevation_gain_m=0.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         r_hilly = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(elevation_gain_m=300.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         assert r_hilly.median_time_minutes > r_flat.median_time_minutes
 
     def test_headwind_slows_pace(self) -> None:
         """Headwind should produce slower times."""
         r_calm = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(headwind_ms=0.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         r_windy = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(headwind_ms=5.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         assert r_windy.median_time_minutes > r_calm.median_time_minutes
 
     def test_tailwind_helps(self) -> None:
         """Tailwind (negative headwind) should produce faster times."""
         r_calm = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(headwind_ms=0.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         r_tailwind = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(headwind_ms=-3.0),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         assert r_tailwind.median_time_minutes < r_calm.median_time_minutes
 
     def test_environment_factor_neutral_by_default(self) -> None:
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=100,
+            seed=42,
         )
         assert result.environment_factor == pytest.approx(1.0, abs=1e-10)
 
     def test_combined_adverse_conditions(self) -> None:
         """Multiple adverse factors should compound."""
         r_default = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            num_simulations=500,
+            seed=42,
         )
         r_adverse = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
             environment=EnvironmentConditions(
                 temperature_c=32.0,
                 elevation_gain_m=200.0,
                 headwind_ms=4.0,
             ),
-            num_simulations=500, seed=42,
+            num_simulations=500,
+            seed=42,
         )
         assert r_adverse.environment_factor > r_default.environment_factor
 
@@ -348,40 +443,64 @@ class TestFitnessEffects:
     def test_positive_tsb_faster(self) -> None:
         """Positive TSB (fresh) should predict faster times."""
         r_neutral = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=0.0, num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=0.0,
+            num_simulations=500,
+            seed=42,
         )
         r_fresh = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=20.0, num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=20.0,
+            num_simulations=500,
+            seed=42,
         )
         assert r_fresh.median_time_minutes < r_neutral.median_time_minutes
 
     def test_negative_tsb_slower(self) -> None:
         """Negative TSB (fatigued) should predict slower times."""
         r_neutral = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=0.0, num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=0.0,
+            num_simulations=500,
+            seed=42,
         )
         r_fatigued = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=-30.0, num_simulations=500, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=-30.0,
+            num_simulations=500,
+            seed=42,
         )
         assert r_fatigued.median_time_minutes > r_neutral.median_time_minutes
 
     def test_zero_tsb_neutral(self) -> None:
         """Zero TSB should produce fitness_factor of 1.0."""
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=0.0, num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=0.0,
+            num_simulations=100,
+            seed=42,
         )
         assert result.fitness_factor == pytest.approx(1.0, abs=1e-10)
 
     def test_fitness_factor_floored(self) -> None:
         """Extreme positive TSB should not produce factor below 0.8."""
         result = simulate_race(
-            self.FIVE_K, self.FIVE_K, self.REF_TIME,
-            tsb=500.0, num_simulations=100, seed=42,
+            self.FIVE_K,
+            self.FIVE_K,
+            self.REF_TIME,
+            tsb=500.0,
+            num_simulations=100,
+            seed=42,
         )
         assert result.fitness_factor >= 0.8
 
@@ -481,8 +600,11 @@ class TestEdgeCases:
     def test_single_simulation(self) -> None:
         """A single simulation should still produce valid output."""
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
-            num_simulations=1, seed=42,
+            5000.0,
+            5000.0,
+            20.0,
+            num_simulations=1,
+            seed=42,
         )
         assert result.num_simulations == 1
         assert result.fastest_time_minutes == result.slowest_time_minutes
@@ -490,8 +612,11 @@ class TestEdgeCases:
     def test_very_short_distance(self) -> None:
         """Very short race distance should not crash."""
         result = simulate_race(
-            1500.0, 5000.0, 20.0,
-            num_simulations=100, seed=42,
+            1500.0,
+            5000.0,
+            20.0,
+            num_simulations=100,
+            seed=42,
         )
         assert result.median_time_minutes > 0
         assert result.median_time_minutes < 20.0  # Shorter than 5K
@@ -499,23 +624,33 @@ class TestEdgeCases:
     def test_very_long_distance(self) -> None:
         """Marathon-length simulation should work."""
         result = simulate_race(
-            42195.0, 5000.0, 20.0,
-            num_simulations=100, seed=42,
+            42195.0,
+            5000.0,
+            20.0,
+            num_simulations=100,
+            seed=42,
         )
         assert result.median_time_minutes > 100  # Marathons take 2+ hours
 
     def test_all_times_positive(self) -> None:
         """All simulated times should be positive even with high variance."""
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
-            pace_cv=0.20, num_simulations=1000, seed=42,
+            5000.0,
+            5000.0,
+            20.0,
+            pace_cv=0.20,
+            num_simulations=1000,
+            seed=42,
         )
         assert result.fastest_time_minutes > 0
 
     def test_simulation_result_frozen(self) -> None:
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
-            num_simulations=10, seed=42,
+            5000.0,
+            5000.0,
+            20.0,
+            num_simulations=10,
+            seed=42,
         )
         with pytest.raises(AttributeError):
             result.median_time_minutes = 999.0  # type: ignore[misc]
@@ -523,9 +658,12 @@ class TestEdgeCases:
     def test_extreme_heat(self) -> None:
         """Extreme heat should slow but not break simulation."""
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
+            5000.0,
+            5000.0,
+            20.0,
             environment=EnvironmentConditions(temperature_c=45.0),
-            num_simulations=100, seed=42,
+            num_simulations=100,
+            seed=42,
         )
         assert result.environment_factor > 1.0
         assert math.isfinite(result.median_time_minutes)
@@ -533,9 +671,12 @@ class TestEdgeCases:
     def test_extreme_elevation(self) -> None:
         """Extreme elevation gain should slow but not break simulation."""
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
+            5000.0,
+            5000.0,
+            20.0,
             environment=EnvironmentConditions(elevation_gain_m=2000.0),
-            num_simulations=100, seed=42,
+            num_simulations=100,
+            seed=42,
         )
         assert result.environment_factor > 1.0
         assert math.isfinite(result.median_time_minutes)
@@ -543,8 +684,11 @@ class TestEdgeCases:
     def test_strong_tailwind_factor_floored(self) -> None:
         """Extreme tailwind should not produce environment factor below 0.5."""
         result = simulate_race(
-            5000.0, 5000.0, 20.0,
+            5000.0,
+            5000.0,
+            20.0,
             environment=EnvironmentConditions(headwind_ms=-200.0),
-            num_simulations=100, seed=42,
+            num_simulations=100,
+            seed=42,
         )
         assert result.environment_factor >= 0.5

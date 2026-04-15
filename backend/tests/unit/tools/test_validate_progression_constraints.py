@@ -15,19 +15,15 @@ import pytest
 from pydantic import ValidationError
 
 from src.deterministic.acwr import (
-    SAFE_LOWER,
-    SAFE_UPPER,
-    SPIKE_THRESHOLD_PCT,
-    WARNING_UPPER,
     check_safety,
     validate_weekly_increase,
 )
 from src.tools.registry import ToolRegistry
 from src.tools.validate_progression_constraints import (
-    ValidateProgressionInput,
-    ValidateProgressionOutput,
     _TOOL_DESCRIPTION,
     _TOOL_NAME,
+    ValidateProgressionInput,
+    ValidateProgressionOutput,
     register,
     validate_progression_constraints_handler,
 )
@@ -88,9 +84,7 @@ class TestValidateProgressionInput:
 
     def test_aggressive_risk_tolerance_accepted(self) -> None:
         """'aggressive' is a valid risk tolerance."""
-        m = ValidateProgressionInput(
-            weekly_loads=_UNIFORM_LOADS, risk_tolerance="aggressive"
-        )
+        m = ValidateProgressionInput(weekly_loads=_UNIFORM_LOADS, risk_tolerance="aggressive")
         assert m.risk_tolerance == "aggressive"
 
     def test_too_few_weekly_loads_rejected(self) -> None:
@@ -106,30 +100,22 @@ class TestValidateProgressionInput:
     def test_invalid_risk_tolerance_rejected(self) -> None:
         """An unrecognised risk tolerance string must be rejected."""
         with pytest.raises(ValidationError, match="risk_tolerance"):
-            ValidateProgressionInput(
-                weekly_loads=_UNIFORM_LOADS, risk_tolerance="risky"
-            )
+            ValidateProgressionInput(weekly_loads=_UNIFORM_LOADS, risk_tolerance="risky")
 
     def test_zero_max_weekly_increase_rejected(self) -> None:
         """max_weekly_increase_pct must be > 0."""
         with pytest.raises(ValidationError):
-            ValidateProgressionInput(
-                weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=0.0
-            )
+            ValidateProgressionInput(weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=0.0)
 
     def test_max_weekly_increase_above_ceiling_rejected(self) -> None:
         """max_weekly_increase_pct must be <= 0.20."""
         with pytest.raises(ValidationError):
-            ValidateProgressionInput(
-                weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=0.21
-            )
+            ValidateProgressionInput(weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=0.21)
 
     @pytest.mark.parametrize("pct", [0.01, 0.10, 0.15, 0.20])
     def test_max_weekly_increase_boundary_values_accepted(self, pct: float) -> None:
         """Boundary values for max_weekly_increase_pct should all be accepted."""
-        m = ValidateProgressionInput(
-            weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=pct
-        )
+        m = ValidateProgressionInput(weekly_loads=_UNIFORM_LOADS, max_weekly_increase_pct=pct)
         assert m.max_weekly_increase_pct == pytest.approx(pct)
 
     def test_zero_loads_are_valid(self) -> None:
@@ -216,11 +202,13 @@ class TestValidateProgressionConstraintsHandler:
     """Handler produces results consistent with the underlying acwr functions."""
 
     def _call(self, weekly_loads, risk_tolerance="moderate", max_pct=0.10) -> dict:
-        return validate_progression_constraints_handler({
-            "weekly_loads": weekly_loads,
-            "risk_tolerance": risk_tolerance,
-            "max_weekly_increase_pct": max_pct,
-        })
+        return validate_progression_constraints_handler(
+            {
+                "weekly_loads": weekly_loads,
+                "risk_tolerance": risk_tolerance,
+                "max_weekly_increase_pct": max_pct,
+            }
+        )
 
     # --- Baseline: uniform load → safe, no violations ---
 
@@ -369,19 +357,23 @@ class TestValidateProgressionConstraintsHandler:
     def test_handler_raises_for_too_few_loads(self) -> None:
         """Handler should propagate ValueError from acwr.check_safety."""
         with pytest.raises(ValueError, match="at least 4"):
-            validate_progression_constraints_handler({
-                "weekly_loads": [50.0, 50.0, 50.0],
-                "risk_tolerance": "moderate",
-                "max_weekly_increase_pct": 0.10,
-            })
+            validate_progression_constraints_handler(
+                {
+                    "weekly_loads": [50.0, 50.0, 50.0],
+                    "risk_tolerance": "moderate",
+                    "max_weekly_increase_pct": 0.10,
+                }
+            )
 
     def test_handler_raises_for_unknown_risk_tolerance(self) -> None:
         with pytest.raises(ValueError):
-            validate_progression_constraints_handler({
-                "weekly_loads": _UNIFORM_LOADS,
-                "risk_tolerance": "extreme",
-                "max_weekly_increase_pct": 0.10,
-            })
+            validate_progression_constraints_handler(
+                {
+                    "weekly_loads": _UNIFORM_LOADS,
+                    "risk_tolerance": "extreme",
+                    "max_weekly_increase_pct": 0.10,
+                }
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -424,9 +416,7 @@ class TestRegistration:
         tool_def = next(t for t in tools if t["name"] == _TOOL_NAME)
         assert "title" not in tool_def["input_schema"]
 
-    def test_anthropic_schema_lists_weekly_loads_property(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_anthropic_schema_lists_weekly_loads_property(self, registry: ToolRegistry) -> None:
         tools = registry.get_anthropic_tools()
         tool_def = next(t for t in tools if t["name"] == _TOOL_NAME)
         assert "weekly_loads" in tool_def["input_schema"]["properties"]
@@ -464,8 +454,14 @@ class TestRegistryExecute:
             _TOOL_NAME,
             {"weekly_loads": _UNIFORM_LOADS},
         )
-        required_keys = {"passed", "acwr", "acwr_ewma", "zone", "violations",
-                         "weekly_increase_pct"}
+        required_keys = {
+            "passed",
+            "acwr",
+            "acwr_ewma",
+            "zone",
+            "violations",
+            "weekly_increase_pct",
+        }
         assert required_keys.issubset(result.output.keys())
 
     def test_execute_fails_on_invalid_input_type(self, registry: ToolRegistry) -> None:
@@ -486,9 +482,7 @@ class TestRegistryExecute:
         assert result.success is False
         assert "Unknown tool" in result.output["error"]
 
-    def test_execute_danger_loads_returns_violations(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_execute_danger_loads_returns_violations(self, registry: ToolRegistry) -> None:
         result = registry.execute(
             _TOOL_NAME,
             {
@@ -512,9 +506,7 @@ class TestRegistryExecute:
         parsed = json.loads(result.to_content_block())
         assert isinstance(parsed, dict)
 
-    def test_execute_with_defaults_uses_moderate_tolerance(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_execute_with_defaults_uses_moderate_tolerance(self, registry: ToolRegistry) -> None:
         """Omitting optional fields should default to moderate/10%."""
         result = registry.execute(
             _TOOL_NAME,

@@ -20,6 +20,7 @@ import type {
   ProfileUpdate,
   StravaSyncResponse,
   StravaStatusResponse,
+  StrengthPlaybookResponse,
   UserResponse,
   WorkoutLogResponse,
 } from "./types";
@@ -282,6 +283,17 @@ export const invite = {
 
 // ---------------------------------------------------------------------------
 // Demo (public, no auth)
+// ---------------------------------------------------------------------------
+
+export const strength = {
+  /** Fetch the current user's strength playbook. */
+  playbook(): Promise<StrengthPlaybookResponse> {
+    return request<StrengthPlaybookResponse>("/strength/playbook");
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Demo
 // ---------------------------------------------------------------------------
 
 export const demo = {

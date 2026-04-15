@@ -11,16 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import DBAthleteProfile, User
 
-
 pytestmark = pytest.mark.asyncio
 
 
 class TestGeneratePlan:
     """Tests for POST /api/v1/plans/generate."""
 
-    async def test_returns_403_without_invite_code(
-        self, client: AsyncClient
-    ):
+    async def test_returns_403_without_invite_code(self, client: AsyncClient):
         """Generating a plan without an invite code returns 403."""
         resp = await client.post("/api/v1/plans/generate")
         assert resp.status_code == 403

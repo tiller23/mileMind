@@ -117,9 +117,7 @@ class TestCLIDryRunExamples:
         before any real API call is made.
         """
         result = _run_cli("--example", example, "--dry-run")
-        assert result.returncode == 0, (
-            f"--example {example} --dry-run failed: {result.stderr}"
-        )
+        assert result.returncode == 0, f"--example {example} --dry-run failed: {result.stderr}"
 
     def test_dry_run_shows_dry_run_header(self) -> None:
         """--dry-run output must include the 'DRY RUN' banner."""
@@ -211,6 +209,7 @@ class TestParseArgs:
     def test_example_beginner(self) -> None:
         """parse_args accepts --example beginner and sets example='beginner'."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner"]):
             args = parse_args()
         assert args.example == "beginner"
@@ -219,6 +218,7 @@ class TestParseArgs:
     def test_example_intermediate(self) -> None:
         """parse_args accepts --example intermediate."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "intermediate"]):
             args = parse_args()
         assert args.example == "intermediate"
@@ -226,6 +226,7 @@ class TestParseArgs:
     def test_dry_run_flag(self) -> None:
         """parse_args sets dry_run=True when --dry-run is passed."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner", "--dry-run"]):
             args = parse_args()
         assert args.dry_run is True
@@ -233,6 +234,7 @@ class TestParseArgs:
     def test_change_type_defaults_to_full(self) -> None:
         """parse_args default change_type is 'full' when --change-type is omitted."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner"]):
             args = parse_args()
         assert args.change_type == "full"
@@ -240,6 +242,7 @@ class TestParseArgs:
     def test_change_type_tweak(self) -> None:
         """parse_args accepts --change-type tweak."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner", "--change-type", "tweak"]):
             args = parse_args()
         assert args.change_type == "tweak"
@@ -247,6 +250,7 @@ class TestParseArgs:
     def test_yes_flag(self) -> None:
         """parse_args sets yes=True when -y is passed."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner", "-y"]):
             args = parse_args()
         assert args.yes is True
@@ -254,6 +258,7 @@ class TestParseArgs:
     def test_max_iterations_default(self) -> None:
         """parse_args default max_iterations is 15."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner"]):
             args = parse_args()
         assert args.max_iterations == 15
@@ -261,6 +266,7 @@ class TestParseArgs:
     def test_max_retries_default(self) -> None:
         """parse_args default max_retries is 3."""
         from src.cli import parse_args
+
         with patch("sys.argv", ["cli", "--example", "beginner"]):
             args = parse_args()
         assert args.max_retries == 3
@@ -274,7 +280,9 @@ class TestParseArgs:
 class TestLoadAthlete:
     """Direct unit tests for the load_athlete() function."""
 
-    @pytest.mark.parametrize("example_name", ["beginner", "intermediate", "advanced", "aggressive"])
+    @pytest.mark.parametrize(
+        "example_name", ["beginner", "intermediate", "advanced", "aggressive"]
+    )
     def test_load_example_profile(self, example_name: str) -> None:
         """load_athlete returns a valid AthleteProfile for every built-in example.
 
@@ -365,9 +373,7 @@ class TestPrintDryRun:
 
         args = argparse.Namespace(example="beginner", profile=None)
         athlete = load_athlete(args)
-        output = self._capture(
-            athlete, "claude-sonnet-4-20250514", 15, review=True
-        )
+        output = self._capture(athlete, "claude-sonnet-4-20250514", 15, review=True)
         assert len(output) > 0
 
     def test_print_dry_run_without_review_does_not_crash(self) -> None:
@@ -376,9 +382,7 @@ class TestPrintDryRun:
 
         args = argparse.Namespace(example="beginner", profile=None)
         athlete = load_athlete(args)
-        output = self._capture(
-            athlete, "claude-sonnet-4-20250514", 15, review=False
-        )
+        output = self._capture(athlete, "claude-sonnet-4-20250514", 15, review=False)
         assert len(output) > 0
 
     def test_print_dry_run_shows_reviewer_disabled_when_no_review(self) -> None:
@@ -387,9 +391,7 @@ class TestPrintDryRun:
 
         args = argparse.Namespace(example="beginner", profile=None)
         athlete = load_athlete(args)
-        output = self._capture(
-            athlete, "claude-sonnet-4-20250514", 15, review=False
-        )
+        output = self._capture(athlete, "claude-sonnet-4-20250514", 15, review=False)
         assert "DISABLED" in output
 
     def test_print_dry_run_shows_reviewer_model_when_review_enabled(self) -> None:
@@ -413,9 +415,7 @@ class TestPrintDryRun:
 
         args = argparse.Namespace(example="beginner", profile=None)
         athlete = load_athlete(args)
-        output = self._capture(
-            athlete, "claude-sonnet-4-20250514", 15, review=True
-        )
+        output = self._capture(athlete, "claude-sonnet-4-20250514", 15, review=True)
         # The planner prompt contains "CRITICAL CONSTRAINTS" — confirm it's printed
         assert "CRITICAL CONSTRAINTS" in output
 
@@ -425,9 +425,7 @@ class TestPrintDryRun:
 
         args = argparse.Namespace(example="beginner", profile=None)
         athlete = load_athlete(args)
-        output = self._capture(
-            athlete, "claude-sonnet-4-20250514", 15, review=True
-        )
+        output = self._capture(athlete, "claude-sonnet-4-20250514", 15, review=True)
         for tool in [
             "compute_training_stress",
             "evaluate_fatigue_state",

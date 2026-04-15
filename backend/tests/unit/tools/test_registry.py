@@ -20,10 +20,9 @@ from __future__ import annotations
 import json
 
 import pytest
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from src.tools.registry import ToolDefinition, ToolError, ToolRegistry, ToolResult
-
 
 # ---------------------------------------------------------------------------
 # Mock Pydantic models and handlers — no real tools imported
@@ -152,9 +151,7 @@ class TestRegister:
 class TestGet:
     """ToolRegistry.get() retrieves registered tools by name."""
 
-    def test_get_registered_tool_returns_definition(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_get_registered_tool_returns_definition(self, registry_with_add: ToolRegistry) -> None:
         """get() returns the ToolDefinition for a known tool name."""
         tool = registry_with_add.get("add_numbers")
         assert tool is not None
@@ -222,9 +219,7 @@ class TestToolNames:
         """tool_names returns a list, not another iterable type."""
         assert isinstance(registry_with_add.tool_names, list)
 
-    def test_tool_names_does_not_mutate_registry(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_tool_names_does_not_mutate_registry(self, registry_with_add: ToolRegistry) -> None:
         """Modifying the returned list must not affect the registry internals."""
         names = registry_with_add.tool_names
         names.clear()
@@ -249,9 +244,7 @@ class TestGetAnthropicTools:
         tools = registry_with_add.get_anthropic_tools()
         assert len(tools) == 1
 
-    def test_two_tools_returns_two_entries(
-        self, registry_with_two_tools: ToolRegistry
-    ) -> None:
+    def test_two_tools_returns_two_entries(self, registry_with_two_tools: ToolRegistry) -> None:
         """Two registered tools produce a list with two entries."""
         tools = registry_with_two_tools.get_anthropic_tools()
         assert len(tools) == 2
@@ -271,9 +264,7 @@ class TestGetAnthropicTools:
         tools = registry_with_add.get_anthropic_tools()
         assert "input_schema" in tools[0]
 
-    def test_name_value_matches_registered_name(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_name_value_matches_registered_name(self, registry_with_add: ToolRegistry) -> None:
         """The 'name' value must equal the name passed at registration time."""
         tools = registry_with_add.get_anthropic_tools()
         assert tools[0]["name"] == "add_numbers"
@@ -338,9 +329,7 @@ class TestExecuteSuccess:
         result = registry_with_add.execute("add_numbers", {"a": 3.0, "b": 4.0})
         assert result.success is True
 
-    def test_execute_output_contains_expected_key(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_execute_output_contains_expected_key(self, registry_with_add: ToolRegistry) -> None:
         """Output dict contains the 'result' key from _add_handler."""
         result = registry_with_add.execute("add_numbers", {"a": 3.0, "b": 4.0})
         assert "result" in result.output
@@ -386,9 +375,7 @@ class TestExecuteUnknownTool:
         result = registry_with_add.execute("mystery_tool", {})
         assert "mystery_tool" in result.output["error"]
 
-    def test_unknown_tool_result_tool_name_echoed(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_unknown_tool_result_tool_name_echoed(self, registry_with_add: ToolRegistry) -> None:
         """ToolResult.tool_name is set to the (unknown) name that was requested."""
         result = registry_with_add.execute("mystery_tool", {})
         assert result.tool_name == "mystery_tool"
@@ -407,38 +394,28 @@ class TestExecuteUnknownTool:
 class TestExecuteValidationFailure:
     """execute() returns failure ToolResult when input fails Pydantic validation."""
 
-    def test_missing_required_field_returns_failure(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_missing_required_field_returns_failure(self, registry_with_add: ToolRegistry) -> None:
         """Omitting a required field (here 'b') causes validation failure."""
         result = registry_with_add.execute("add_numbers", {"a": 1.0})  # 'b' missing
         assert result.success is False
 
-    def test_validation_failure_has_error_key(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_validation_failure_has_error_key(self, registry_with_add: ToolRegistry) -> None:
         """Validation failure output must have an 'error' key."""
         result = registry_with_add.execute("add_numbers", {"a": -1.0, "b": 0.0})
         assert result.success is False
         assert "error" in result.output
 
-    def test_validation_failure_has_details_key(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_validation_failure_has_details_key(self, registry_with_add: ToolRegistry) -> None:
         """Validation failure output must include 'details' with Pydantic error list."""
         result = registry_with_add.execute("add_numbers", {"a": -1.0, "b": 0.0})
         assert "details" in result.output
 
-    def test_validation_failure_details_is_list(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_validation_failure_details_is_list(self, registry_with_add: ToolRegistry) -> None:
         """The 'details' value must be a list (Pydantic error dicts)."""
         result = registry_with_add.execute("add_numbers", {"a": -1.0, "b": 0.0})
         assert isinstance(result.output["details"], list)
 
-    def test_wrong_type_causes_validation_failure(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_wrong_type_causes_validation_failure(self, registry_with_add: ToolRegistry) -> None:
         """Passing a string where a float is required causes validation failure."""
         result = registry_with_add.execute("add_numbers", {"a": "not_a_number", "b": 1.0})
         # Pydantic v2 may coerce or reject — either is fine as long as success is False
@@ -447,9 +424,7 @@ class TestExecuteValidationFailure:
         if not result.success:
             assert "error" in result.output
 
-    def test_empty_dict_causes_validation_failure(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_empty_dict_causes_validation_failure(self, registry_with_add: ToolRegistry) -> None:
         """An empty dict fails because both 'a' and 'b' are required."""
         result = registry_with_add.execute("add_numbers", {})
         assert result.success is False
@@ -482,14 +457,10 @@ class TestExecuteHandlerValueError:
     @pytest.fixture
     def registry_with_error_tool(self, empty_registry: ToolRegistry) -> ToolRegistry:
         """Registry with a tool whose handler always raises ValueError."""
-        empty_registry.register(
-            _make_tool(name="error_tool", handler=_value_error_handler)
-        )
+        empty_registry.register(_make_tool(name="error_tool", handler=_value_error_handler))
         return empty_registry
 
-    def test_value_error_returns_failure(
-        self, registry_with_error_tool: ToolRegistry
-    ) -> None:
+    def test_value_error_returns_failure(self, registry_with_error_tool: ToolRegistry) -> None:
         """A ValueError from the handler produces success=False."""
         result = registry_with_error_tool.execute("error_tool", {"a": 1.0, "b": 1.0})
         assert result.success is False
@@ -501,16 +472,12 @@ class TestExecuteHandlerValueError:
         result = registry_with_error_tool.execute("error_tool", {"a": 1.0, "b": 1.0})
         assert "error" in result.output
 
-    def test_value_error_message_in_output(
-        self, registry_with_error_tool: ToolRegistry
-    ) -> None:
+    def test_value_error_message_in_output(self, registry_with_error_tool: ToolRegistry) -> None:
         """The ValueError message text is included in the 'error' field."""
         result = registry_with_error_tool.execute("error_tool", {"a": 1.0, "b": 1.0})
         assert "domain constraint violated" in result.output["error"]
 
-    def test_value_error_tool_name_echoed(
-        self, registry_with_error_tool: ToolRegistry
-    ) -> None:
+    def test_value_error_tool_name_echoed(self, registry_with_error_tool: ToolRegistry) -> None:
         """ToolResult.tool_name is still set correctly even when handler raises."""
         result = registry_with_error_tool.execute("error_tool", {"a": 1.0, "b": 1.0})
         assert result.tool_name == "error_tool"
@@ -578,26 +545,20 @@ class TestExecuteHandlerUnexpectedError:
 class TestToolResultToContentBlock:
     """ToolResult.to_content_block() serializes output as a JSON string."""
 
-    def test_to_content_block_returns_string(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_to_content_block_returns_string(self, registry_with_add: ToolRegistry) -> None:
         """to_content_block() must return a str, not bytes or dict."""
         result = registry_with_add.execute("add_numbers", {"a": 1.0, "b": 2.0})
         block = result.to_content_block()
         assert isinstance(block, str)
 
-    def test_to_content_block_is_valid_json(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_to_content_block_is_valid_json(self, registry_with_add: ToolRegistry) -> None:
         """to_content_block() must produce parseable JSON."""
         result = registry_with_add.execute("add_numbers", {"a": 1.0, "b": 2.0})
         block = result.to_content_block()
         parsed = json.loads(block)  # raises if not valid JSON
         assert isinstance(parsed, dict)
 
-    def test_to_content_block_contains_output_data(
-        self, registry_with_add: ToolRegistry
-    ) -> None:
+    def test_to_content_block_contains_output_data(self, registry_with_add: ToolRegistry) -> None:
         """Parsed JSON from to_content_block() must contain the handler's output."""
         result = registry_with_add.execute("add_numbers", {"a": 4.0, "b": 6.0})
         parsed = json.loads(result.to_content_block())
@@ -707,11 +668,14 @@ class TestToolError:
         with pytest.raises(Exception):
             raise ToolError("test_tool", "test message")
 
-    @pytest.mark.parametrize("tool_name,message", [
-        ("compute_training_stress", "duration must be positive"),
-        ("evaluate_fatigue_state", "fatigue_tau must be less than fitness_tau"),
-        ("reallocate_week_load", "swap_day not found"),
-    ])
+    @pytest.mark.parametrize(
+        "tool_name,message",
+        [
+            ("compute_training_stress", "duration must be positive"),
+            ("evaluate_fatigue_state", "fatigue_tau must be less than fitness_tau"),
+            ("reallocate_week_load", "swap_day not found"),
+        ],
+    )
     def test_parametrized_tool_errors(self, tool_name: str, message: str) -> None:
         """ToolError attributes are correctly set for various tool/message combos."""
         err = ToolError(tool_name, message)

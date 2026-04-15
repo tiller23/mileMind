@@ -6,12 +6,13 @@ PUT creates the profile if it doesn't exist, or updates it.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.shared import sanitize_prompt_text
 from src.api.deps import get_current_user, get_db
+from src.api.rate_limit import limiter
 from src.api.schemas import ProfileResponse, ProfileUpdate
 from src.db.models import DBAthleteProfile, User
 
@@ -48,7 +49,11 @@ async def get_profile(
 
 
 @router.put("", response_model=ProfileResponse, status_code=status.HTTP_200_OK)
+# Bound rapid profile-shape cycling that would defeat per-shape caches on
+# downstream endpoints (e.g., /strength/playbook). Generous for legit edits.
+@limiter.limit("20/minute")
 async def upsert_profile(
+    request: Request,
     data: ProfileUpdate,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
@@ -70,6 +75,9 @@ async def upsert_profile(
     sanitized["name"] = sanitize_prompt_text(sanitized["name"])
     sanitized["injury_history"] = sanitize_prompt_text(sanitized["injury_history"])
     sanitized["goal_distance"] = sanitize_prompt_text(sanitized["goal_distance"])
+    sanitized["current_injury_description"] = sanitize_prompt_text(
+        sanitized.get("current_injury_description", "")
+    )
 
     result = await session.execute(
         select(DBAthleteProfile).where(DBAthleteProfile.user_id == user.id)

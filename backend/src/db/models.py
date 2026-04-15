@@ -22,11 +22,14 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import (
+    text as sa_text,
+)
 from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
-from src.models.athlete import AthleteProfile, RiskTolerance
+from src.models.athlete import AthleteProfile, InjuryTag, RiskTolerance
 
 # Use JSONB on Postgres, plain JSON on SQLite (tests)
 JSONB = PG_JSONB().with_variant(JSON, "sqlite")
@@ -155,6 +158,15 @@ class DBAthleteProfile(Base):
     long_run_cap_pct: Mapped[float] = mapped_column(Float, default=0.30, nullable=False)
     preferred_units: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
     plan_duration_weeks: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
+    injury_tags: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, nullable=False, server_default=sa_text("'[]'")
+    )
+    current_acute_injury: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
+    current_injury_description: Mapped[str] = mapped_column(
+        Text, default="", nullable=False, server_default=""
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -200,6 +212,9 @@ class DBAthleteProfile(Base):
             long_run_cap_pct=self.long_run_cap_pct,
             preferred_units=self.preferred_units,
             plan_duration_weeks=self.plan_duration_weeks,
+            injury_tags=tuple(InjuryTag(t) for t in (self.injury_tags or [])),
+            current_acute_injury=self.current_acute_injury,
+            current_injury_description=self.current_injury_description,
         )
 
 

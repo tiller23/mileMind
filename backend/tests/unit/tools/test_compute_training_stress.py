@@ -19,23 +19,28 @@ import pytest
 from pydantic import ValidationError
 
 from src.deterministic.training_stress import (
-    DEFAULT_THRESHOLD_HR as _DEFAULT_THRESHOLD_HR,
     _TSS_EASY_UPPER as _EASY_CEILING,
+)
+from src.deterministic.training_stress import (
     _TSS_HARD_UPPER as _HARD_CEILING,
+)
+from src.deterministic.training_stress import (
     _TSS_MODERATE_UPPER as _MODERATE_CEILING,
+)
+from src.deterministic.training_stress import (
+    DEFAULT_THRESHOLD_HR as _DEFAULT_THRESHOLD_HR,
 )
 from src.models.workout import WorkoutType
 from src.tools.compute_training_stress import (
+    ComputeTrainingStressInput,
+    ComputeTrainingStressOutput,
     _classify_load,
     _compute_tss,
     _resolve_intensity_factor,
     compute_training_stress_handler,
-    ComputeTrainingStressInput,
-    ComputeTrainingStressOutput,
     register,
 )
 from src.tools.registry import ToolRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -305,20 +310,23 @@ class TestResolvIntensityFactor:
 class TestClassifyLoad:
     """Unit tests for _classify_load."""
 
-    @pytest.mark.parametrize("tss,expected", [
-        (0.0, "easy"),
-        (49.99, "easy"),
-        (_EASY_CEILING - 0.001, "easy"),
-        (_EASY_CEILING, "moderate"),
-        (75.0, "moderate"),
-        (_MODERATE_CEILING - 0.001, "moderate"),
-        (_MODERATE_CEILING, "hard"),
-        (150.0, "hard"),
-        (_HARD_CEILING - 0.001, "hard"),
-        (_HARD_CEILING, "very_hard"),
-        (300.0, "very_hard"),
-        (1000.0, "very_hard"),
-    ])
+    @pytest.mark.parametrize(
+        "tss,expected",
+        [
+            (0.0, "easy"),
+            (49.99, "easy"),
+            (_EASY_CEILING - 0.001, "easy"),
+            (_EASY_CEILING, "moderate"),
+            (75.0, "moderate"),
+            (_MODERATE_CEILING - 0.001, "moderate"),
+            (_MODERATE_CEILING, "hard"),
+            (150.0, "hard"),
+            (_HARD_CEILING - 0.001, "hard"),
+            (_HARD_CEILING, "very_hard"),
+            (300.0, "very_hard"),
+            (1000.0, "very_hard"),
+        ],
+    )
     def test_classification_boundary(self, tss: float, expected: str) -> None:
         """Each TSS value should map to the correct classification."""
         assert _classify_load(tss) == expected
@@ -354,12 +362,15 @@ class TestComputeTSS:
         tss_long = _compute_tss(60.0, 0.75)
         assert tss_long == pytest.approx(2 * tss_short, rel=1e-10)
 
-    @pytest.mark.parametrize("minutes,intensity,expected_tss", [
-        (30.0, 0.60, 18.0),      # 30 min easy: (1800 * 0.36) / 3600 * 100 = 18
-        (60.0, 0.75, 56.25),     # 60 min tempo-ish: (3600 * 0.5625) / 3600 * 100 = 56.25
-        (90.0, 0.85, 108.375),   # 90 min hard: (5400 * 0.7225) / 3600 * 100 = 108.375
-        (45.0, 1.0, 75.0),       # 45 min at threshold: (2700 * 1.0) / 3600 * 100 = 75
-    ])
+    @pytest.mark.parametrize(
+        "minutes,intensity,expected_tss",
+        [
+            (30.0, 0.60, 18.0),  # 30 min easy: (1800 * 0.36) / 3600 * 100 = 18
+            (60.0, 0.75, 56.25),  # 60 min tempo-ish: (3600 * 0.5625) / 3600 * 100 = 56.25
+            (90.0, 0.85, 108.375),  # 90 min hard: (5400 * 0.7225) / 3600 * 100 = 108.375
+            (45.0, 1.0, 75.0),  # 45 min at threshold: (2700 * 1.0) / 3600 * 100 = 75
+        ],
+    )
     def test_tss_formula_known_values(
         self, minutes: float, intensity: float, expected_tss: float
     ) -> None:
@@ -405,9 +416,7 @@ class TestComputeTrainingStressHandler:
     def test_intensity_factor_with_hr_overrides_intensity(self) -> None:
         """With avg_heart_rate, intensity_factor should be HR-derived, not intensity."""
         hr = 140
-        result = compute_training_stress_handler(
-            _make_input(intensity=0.99, avg_heart_rate=hr)
-        )
+        result = compute_training_stress_handler(_make_input(intensity=0.99, avg_heart_rate=hr))
         expected_if = hr / _DEFAULT_THRESHOLD_HR
         assert result["intensity_factor"] == pytest.approx(expected_if)
 
@@ -427,9 +436,7 @@ class TestComputeTrainingStressHandler:
 
     def test_rest_workout_yields_zero_tss(self) -> None:
         """REST workout type must produce TSS=0 regardless of other inputs."""
-        result = compute_training_stress_handler(
-            _make_input(workout_type="rest", intensity=0.8)
-        )
+        result = compute_training_stress_handler(_make_input(workout_type="rest", intensity=0.8))
         assert result["tss"] == pytest.approx(0.0)
 
     def test_output_passes_pydantic_validation(self) -> None:
@@ -447,11 +454,14 @@ class TestComputeTrainingStressHandler:
             )
             assert result["tss"] >= 0.0
 
-    @pytest.mark.parametrize("duration,intensity,expected_tss", [
-        (60.0, 1.0, 100.0),
-        (120.0, 1.0, 200.0),
-        (30.0, 0.6, 18.0),
-    ])
+    @pytest.mark.parametrize(
+        "duration,intensity,expected_tss",
+        [
+            (60.0, 1.0, 100.0),
+            (120.0, 1.0, 200.0),
+            (30.0, 0.6, 18.0),
+        ],
+    )
     def test_handler_formula_correctness(
         self, duration: float, intensity: float, expected_tss: float
     ) -> None:
@@ -556,6 +566,7 @@ class TestRegistration:
     def test_to_content_block_is_valid_json(self, registry: ToolRegistry) -> None:
         """ToolResult.to_content_block should return valid JSON."""
         import json
+
         result = registry.execute("compute_training_stress", _make_input())
         block = result.to_content_block()
         parsed = json.loads(block)
@@ -584,16 +595,12 @@ class TestNumericalEdgeCases:
 
     def test_very_short_duration_non_zero_tss(self) -> None:
         """Even a 1-minute workout at high intensity should produce non-zero TSS."""
-        result = compute_training_stress_handler(
-            _make_input(duration_minutes=1.0, intensity=1.0)
-        )
+        result = compute_training_stress_handler(_make_input(duration_minutes=1.0, intensity=1.0))
         assert result["tss"] == pytest.approx(100.0 / 60.0, rel=1e-8)
 
     def test_hr_exactly_at_default_threshold(self) -> None:
         """HR == _DEFAULT_THRESHOLD_HR should give IF=1.0, not > 1."""
-        result = compute_training_stress_handler(
-            _make_input(avg_heart_rate=_DEFAULT_THRESHOLD_HR)
-        )
+        result = compute_training_stress_handler(_make_input(avg_heart_rate=_DEFAULT_THRESHOLD_HR))
         assert result["intensity_factor"] == pytest.approx(1.0)
 
     def test_easy_workout_below_50_tss(self) -> None:
@@ -623,9 +630,7 @@ class TestNumericalEdgeCases:
 
     def test_tss_boundary_exactly_100(self) -> None:
         """TSS == 100 should land in 'hard', not 'moderate'."""
-        result = compute_training_stress_handler(
-            _make_input(duration_minutes=60.0, intensity=1.0)
-        )
+        result = compute_training_stress_handler(_make_input(duration_minutes=60.0, intensity=1.0))
         assert result["tss"] == pytest.approx(100.0, rel=1e-8)
         assert result["load_classification"] == "hard"
 

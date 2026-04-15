@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Job, User
 
-
 pytestmark = pytest.mark.asyncio
 
 
@@ -24,7 +23,10 @@ class TestGetJobStatus:
         assert resp.status_code == 404
 
     async def test_returns_job_from_database(
-        self, client: AsyncClient, db_session: AsyncSession, test_user: User,
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
     ):
         """Returns job status from database for completed jobs."""
         job = Job(
@@ -45,7 +47,9 @@ class TestGetJobStatus:
         assert len(data["progress"]) == 1
 
     async def test_returns_404_for_other_users_job(
-        self, client: AsyncClient, db_session: AsyncSession,
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
     ):
         """Cannot access another user's job."""
         other_user_id = uuid.uuid4()
@@ -72,7 +76,10 @@ class TestStreamJobEvents:
         assert resp.status_code == 404
 
     async def test_returns_410_for_completed_job(
-        self, client: AsyncClient, db_session: AsyncSession, test_user: User,
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
     ):
         """Completed jobs return 410 Gone (use GET for final status)."""
         job = Job(

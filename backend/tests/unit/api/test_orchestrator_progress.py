@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.agents.orchestrator import Orchestrator
-from src.models.progress import ProgressEvent, ProgressEventType
 from src.models.athlete import AthleteProfile
 from src.models.decision_log import ReviewerScores
 from src.models.plan_change import PlanChangeType
-
+from src.models.progress import ProgressEvent, ProgressEventType
 
 pytestmark = pytest.mark.asyncio
 

@@ -1,0 +1,306 @@
+{
+  "blocks": {
+    "posterior_chain": {
+      "title": "Posterior Chain",
+      "rationale_fallback": "Runners are quad-dominant by default. Training the glutes, hamstrings, and lower back balances that out and protects your stride over long mileage."
+    },
+    "single_leg_stability": {
+      "title": "Single-Leg Stability",
+      "rationale_fallback": "Running is a single-leg sport. Stability work on one leg at a time translates directly to a more efficient stride and fewer compensations."
+    },
+    "hip_glute": {
+      "title": "Hip & Glute Activation",
+      "rationale_fallback": "Weak or lazy glute medius is the source of a lot of running pain (IT band, knee, hip). These are low-load activations you can do any day."
+    },
+    "core_anti_rotation": {
+      "title": "Core & Anti-Rotation",
+      "rationale_fallback": "A stable trunk keeps your energy going forward instead of leaking sideways. Anti-rotation beats crunches for runners."
+    },
+    "calf_achilles": {
+      "title": "Calf & Achilles Resilience",
+      "rationale_fallback": "Your calves and Achilles take the biggest single load in running. Progressive eccentric work builds tendons that can handle the mileage."
+    }
+  },
+  "exercises": [
+    {
+      "id": "glute_bridge",
+      "name": "Glute Bridge",
+      "block_id": "posterior_chain",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["it_band", "hip", "lower_back", "knee"],
+      "contraindicated_for": [],
+      "search_query": "glute bridge proper form running"
+    },
+    {
+      "id": "single_leg_rdl",
+      "name": "Single-Leg Romanian Deadlift",
+      "block_id": "posterior_chain",
+      "equipment": ["bodyweight", "dumbbells", "kettlebell"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["hamstring", "hip", "lower_back"],
+      "contraindicated_for": [],
+      "search_query": "single leg romanian deadlift runners form"
+    },
+    {
+      "id": "hip_thrust",
+      "name": "Barbell or Dumbbell Hip Thrust",
+      "block_id": "posterior_chain",
+      "equipment": ["dumbbells", "barbell"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["it_band", "hip", "hamstring"],
+      "contraindicated_for": [],
+      "search_query": "hip thrust form runners"
+    },
+    {
+      "id": "good_morning",
+      "name": "Good Morning",
+      "block_id": "posterior_chain",
+      "equipment": ["barbell", "bands"],
+      "difficulty": "advanced",
+      "beneficial_for": ["hamstring", "lower_back"],
+      "contraindicated_for": ["lower_back"],
+      "search_query": "good morning exercise form"
+    },
+    {
+      "id": "bulgarian_split_squat",
+      "name": "Bulgarian Split Squat",
+      "block_id": "single_leg_stability",
+      "equipment": ["bodyweight", "dumbbells"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["hip", "knee"],
+      "contraindicated_for": [],
+      "search_query": "bulgarian split squat form runners"
+    },
+    {
+      "id": "step_up",
+      "name": "Step-Up",
+      "block_id": "single_leg_stability",
+      "equipment": ["bodyweight", "dumbbells"],
+      "difficulty": "beginner",
+      "beneficial_for": ["knee", "hip"],
+      "contraindicated_for": [],
+      "search_query": "step up exercise proper form runners"
+    },
+    {
+      "id": "single_leg_squat_to_box",
+      "name": "Single-Leg Squat to Box",
+      "block_id": "single_leg_stability",
+      "equipment": ["bodyweight"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["knee", "it_band", "hip"],
+      "contraindicated_for": [],
+      "search_query": "single leg squat to box form"
+    },
+    {
+      "id": "pistol_squat_progression",
+      "name": "Pistol Squat Progression",
+      "block_id": "single_leg_stability",
+      "equipment": ["bodyweight"],
+      "difficulty": "advanced",
+      "beneficial_for": ["knee", "hip"],
+      "contraindicated_for": ["knee"],
+      "search_query": "pistol squat progression tutorial"
+    },
+    {
+      "id": "clamshell",
+      "name": "Clamshell",
+      "block_id": "hip_glute",
+      "equipment": ["bodyweight", "bands"],
+      "difficulty": "beginner",
+      "beneficial_for": ["it_band", "hip", "knee"],
+      "contraindicated_for": [],
+      "search_query": "clamshell exercise glute medius form"
+    },
+    {
+      "id": "monster_walk",
+      "name": "Monster Walk (Banded)",
+      "block_id": "hip_glute",
+      "equipment": ["bands"],
+      "difficulty": "beginner",
+      "beneficial_for": ["it_band", "hip", "knee"],
+      "contraindicated_for": [],
+      "search_query": "banded monster walk form"
+    },
+    {
+      "id": "side_lying_leg_raise",
+      "name": "Side-Lying Leg Raise",
+      "block_id": "hip_glute",
+      "equipment": ["bodyweight", "bands"],
+      "difficulty": "beginner",
+      "beneficial_for": ["it_band", "hip"],
+      "contraindicated_for": [],
+      "search_query": "side lying leg raise glute medius"
+    },
+    {
+      "id": "fire_hydrant",
+      "name": "Fire Hydrant",
+      "block_id": "hip_glute",
+      "equipment": ["bodyweight", "bands"],
+      "difficulty": "beginner",
+      "beneficial_for": ["hip", "it_band"],
+      "contraindicated_for": [],
+      "search_query": "fire hydrant exercise form"
+    },
+    {
+      "id": "single_leg_glute_bridge",
+      "name": "Single-Leg Glute Bridge",
+      "block_id": "hip_glute",
+      "equipment": ["bodyweight"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["it_band", "hip", "hamstring", "lower_back"],
+      "contraindicated_for": [],
+      "search_query": "single leg glute bridge form"
+    },
+    {
+      "id": "pallof_press",
+      "name": "Pallof Press",
+      "block_id": "core_anti_rotation",
+      "equipment": ["bands", "cables"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["lower_back", "hip"],
+      "contraindicated_for": [],
+      "search_query": "pallof press form runners"
+    },
+    {
+      "id": "dead_bug",
+      "name": "Dead Bug",
+      "block_id": "core_anti_rotation",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["lower_back"],
+      "contraindicated_for": [],
+      "search_query": "dead bug exercise proper form"
+    },
+    {
+      "id": "bird_dog",
+      "name": "Bird Dog",
+      "block_id": "core_anti_rotation",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["lower_back", "hip"],
+      "contraindicated_for": [],
+      "search_query": "bird dog exercise form"
+    },
+    {
+      "id": "side_plank",
+      "name": "Side Plank",
+      "block_id": "core_anti_rotation",
+      "equipment": ["bodyweight"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["it_band", "hip", "lower_back"],
+      "contraindicated_for": [],
+      "search_query": "side plank form for runners"
+    },
+    {
+      "id": "suitcase_carry",
+      "name": "Suitcase Carry",
+      "block_id": "core_anti_rotation",
+      "equipment": ["dumbbells", "kettlebell"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["lower_back", "hip"],
+      "contraindicated_for": [],
+      "search_query": "suitcase carry form"
+    },
+    {
+      "id": "eccentric_heel_drop",
+      "name": "Eccentric Heel Drop",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["achilles", "plantar_fasciitis"],
+      "contraindicated_for": [],
+      "search_query": "alfredson eccentric heel drop protocol"
+    },
+    {
+      "id": "standing_calf_raise",
+      "name": "Standing Calf Raise",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight", "dumbbells"],
+      "difficulty": "beginner",
+      "beneficial_for": ["achilles", "shin_splints"],
+      "contraindicated_for": [],
+      "search_query": "standing calf raise form"
+    },
+    {
+      "id": "seated_calf_raise",
+      "name": "Seated Calf Raise (Soleus)",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight", "dumbbells"],
+      "difficulty": "beginner",
+      "beneficial_for": ["achilles", "shin_splints"],
+      "contraindicated_for": [],
+      "search_query": "seated calf raise soleus form"
+    },
+    {
+      "id": "single_leg_calf_raise",
+      "name": "Single-Leg Calf Raise",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["achilles", "plantar_fasciitis", "shin_splints"],
+      "contraindicated_for": [],
+      "search_query": "single leg calf raise runners"
+    },
+    {
+      "id": "toe_yoga",
+      "name": "Toe Yoga / Short Foot",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["plantar_fasciitis", "shin_splints"],
+      "contraindicated_for": [],
+      "search_query": "toe yoga short foot exercise runners"
+    },
+    {
+      "id": "kettlebell_swing",
+      "name": "Kettlebell Swing",
+      "block_id": "posterior_chain",
+      "equipment": ["kettlebell"],
+      "difficulty": "intermediate",
+      "beneficial_for": ["hamstring", "hip", "lower_back"],
+      "contraindicated_for": ["lower_back"],
+      "search_query": "kettlebell swing hardstyle form"
+    },
+    {
+      "id": "reverse_lunge",
+      "name": "Reverse Lunge",
+      "block_id": "single_leg_stability",
+      "equipment": ["bodyweight", "dumbbells"],
+      "difficulty": "beginner",
+      "beneficial_for": ["knee", "hip"],
+      "contraindicated_for": [],
+      "search_query": "reverse lunge form runners"
+    },
+    {
+      "id": "copenhagen_plank",
+      "name": "Copenhagen Plank",
+      "block_id": "core_anti_rotation",
+      "equipment": ["bodyweight"],
+      "difficulty": "advanced",
+      "beneficial_for": ["hip", "hamstring"],
+      "contraindicated_for": ["hip"],
+      "search_query": "copenhagen plank adductor exercise"
+    },
+    {
+      "id": "banded_hip_abduction",
+      "name": "Banded Standing Hip Abduction",
+      "block_id": "hip_glute",
+      "equipment": ["bands"],
+      "difficulty": "beginner",
+      "beneficial_for": ["it_band", "hip", "knee"],
+      "contraindicated_for": [],
+      "search_query": "standing banded hip abduction form"
+    },
+    {
+      "id": "tibialis_raise",
+      "name": "Tibialis Raise",
+      "block_id": "calf_achilles",
+      "equipment": ["bodyweight"],
+      "difficulty": "beginner",
+      "beneficial_for": ["shin_splints"],
+      "contraindicated_for": [],
+      "search_query": "tibialis raise shin splints exercise"
+    }
+  ]
+}

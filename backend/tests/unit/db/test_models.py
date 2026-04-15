@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import (
-    Base,
     ChatMessage,
     DBAthleteProfile,
     Job,
-    StravaToken,
     TrainingPlan,
     User,
     WorkoutLog,
@@ -68,9 +64,7 @@ class TestUserModel:
 class TestDBAthleteProfile:
     """Tests for the DBAthleteProfile ORM model."""
 
-    async def test_create_profile(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_create_profile(self, db_session: AsyncSession, test_user: User) -> None:
         """Profile can be created with valid fields."""
         profile = DBAthleteProfile(
             user_id=test_user.id,
@@ -106,9 +100,7 @@ class TestDBAthleteProfile:
         assert snapshot.long_run_cap_pct == 0.30
         assert snapshot.max_weekly_increase_pct == 0.10
 
-    async def test_to_athlete_profile_frozen(
-        self, test_profile: DBAthleteProfile
-    ) -> None:
+    async def test_to_athlete_profile_frozen(self, test_profile: DBAthleteProfile) -> None:
         """Snapshot is frozen (immutable)."""
         snapshot = test_profile.to_athlete_profile()
         with pytest.raises(Exception):
@@ -167,9 +159,7 @@ class TestDBAthleteProfile:
 class TestTrainingPlan:
     """Tests for the TrainingPlan ORM model."""
 
-    async def test_create_plan(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_create_plan(self, db_session: AsyncSession, test_user: User) -> None:
         """Plan can be created with JSONB fields."""
         plan = TrainingPlan(
             user_id=test_user.id,
@@ -190,9 +180,7 @@ class TestTrainingPlan:
         assert plan.status == "active"
         assert plan.plan_data["weeks"][0]["number"] == 1
 
-    async def test_plan_default_status(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_plan_default_status(self, db_session: AsyncSession, test_user: User) -> None:
         """Default status is 'active'."""
         plan = TrainingPlan(
             user_id=test_user.id,
@@ -208,9 +196,7 @@ class TestTrainingPlan:
 class TestWorkoutLog:
     """Tests for the WorkoutLog ORM model."""
 
-    async def test_create_workout_log(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_create_workout_log(self, db_session: AsyncSession, test_user: User) -> None:
         """Workout log can be created."""
         log = WorkoutLog(
             user_id=test_user.id,
@@ -231,9 +217,7 @@ class TestWorkoutLog:
 class TestJob:
     """Tests for the Job ORM model."""
 
-    async def test_create_job(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_create_job(self, db_session: AsyncSession, test_user: User) -> None:
         """Job can be created with defaults."""
         job = Job(user_id=test_user.id)
         db_session.add(job)
@@ -249,9 +233,7 @@ class TestJob:
 class TestChatMessage:
     """Tests for the ChatMessage ORM model."""
 
-    async def test_create_chat_message(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
+    async def test_create_chat_message(self, db_session: AsyncSession, test_user: User) -> None:
         """Chat message can be created linked to a plan."""
         plan = TrainingPlan(
             user_id=test_user.id,
@@ -288,9 +270,7 @@ class TestCascadeDeletes:
         await db_session.commit()
 
         result = await db_session.execute(
-            select(DBAthleteProfile).where(
-                DBAthleteProfile.user_id == test_user.id
-            )
+            select(DBAthleteProfile).where(DBAthleteProfile.user_id == test_user.id)
         )
         assert result.scalar_one_or_none() is None
 

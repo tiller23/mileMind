@@ -6,8 +6,7 @@ activity import with deduplication, and weekly mileage estimation.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -18,8 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.db.models import StravaToken, WorkoutLog
 from src.services.strava import (
-    STRAVA_DEAUTH_URL,
-    STRAVA_TOKEN_URL,
     StravaActivity,
     StravaService,
     StravaTokenData,
@@ -45,7 +42,7 @@ def strava_token_row(test_user, db_session: AsyncSession) -> StravaToken:
         strava_athlete_id=12345,
         access_token="strava-access-token",
         refresh_token="strava-refresh-token",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=6),
+        expires_at=datetime.now(UTC) + timedelta(hours=6),
         scope="activity:read_all",
     )
     return token
@@ -177,7 +174,7 @@ class TestEnsureValidToken:
         strava_token_row,
     ) -> None:
         """Does not refresh a token that hasn't expired."""
-        strava_token_row.expires_at = datetime.now(timezone.utc) + timedelta(hours=5)
+        strava_token_row.expires_at = datetime.now(UTC) + timedelta(hours=5)
         db_session.add(strava_token_row)
         await db_session.commit()
 
@@ -197,7 +194,7 @@ class TestEnsureValidToken:
         strava_token_row,
     ) -> None:
         """Refreshes a token that is past expiry."""
-        strava_token_row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        strava_token_row.expires_at = datetime.now(UTC) - timedelta(minutes=1)
         db_session.add(strava_token_row)
         await db_session.commit()
 
@@ -226,9 +223,7 @@ class TestEnsureValidToken:
 class TestFetchActivities:
     """Tests for StravaService.fetch_activities."""
 
-    async def test_filters_runs_only(
-        self, settings: Settings, db_session: AsyncSession
-    ) -> None:
+    async def test_filters_runs_only(self, settings: Settings, db_session: AsyncSession) -> None:
         """Only returns Run/TrailRun/VirtualRun activities."""
         service = StravaService(settings, db_session)
         activities_response = [
@@ -339,7 +334,7 @@ class TestImportActivities:
             strava_activity_id=100,
             actual_distance_km=5.0,
             actual_duration_minutes=30.0,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
         db_session.add(existing)
         await db_session.commit()
@@ -347,12 +342,20 @@ class TestImportActivities:
         service = StravaService(settings, db_session)
         activities = [
             StravaActivity(
-                id=100, name="Dup", sport_type="Run",
-                distance=5000, moving_time=1800, start_date="2026-03-20T08:00:00Z",
+                id=100,
+                name="Dup",
+                sport_type="Run",
+                distance=5000,
+                moving_time=1800,
+                start_date="2026-03-20T08:00:00Z",
             ),
             StravaActivity(
-                id=101, name="New", sport_type="Run",
-                distance=8000, moving_time=2400, start_date="2026-03-21T08:00:00Z",
+                id=101,
+                name="New",
+                sport_type="Run",
+                distance=8000,
+                moving_time=2400,
+                start_date="2026-03-21T08:00:00Z",
             ),
         ]
 
@@ -377,7 +380,7 @@ class TestEstimateWeeklyMileage:
         test_user,
     ) -> None:
         """Computes average weekly mileage from recent Strava logs."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for i in range(4):
             log = WorkoutLog(
                 user_id=test_user.id,

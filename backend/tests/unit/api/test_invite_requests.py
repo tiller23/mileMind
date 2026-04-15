@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -12,7 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import InviteCode, InviteRequest, User
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -61,7 +60,7 @@ class TestRequestInvite:
         req = InviteRequest(
             user_id=test_user.id,
             status="denied",
-            updated_at=datetime.now(timezone.utc) - timedelta(days=5),
+            updated_at=datetime.now(UTC) - timedelta(days=5),
         )
         db_session.add(req)
         await db_session.commit()
@@ -77,7 +76,7 @@ class TestRequestInvite:
         req = InviteRequest(
             user_id=test_user.id,
             status="denied",
-            updated_at=datetime.now(timezone.utc) - timedelta(days=31),
+            updated_at=datetime.now(UTC) - timedelta(days=31),
         )
         db_session.add(req)
         await db_session.commit()
@@ -103,9 +102,7 @@ class TestRequestInvite:
 class TestGetRequestStatus:
     """Tests for GET /api/v1/invite/request/status."""
 
-    async def test_no_request_returns_null(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_no_request_returns_null(self, client: AsyncClient) -> None:
         """No request returns null."""
         resp = await client.get("/api/v1/invite/request/status")
         assert resp.status_code == 200
@@ -128,24 +125,18 @@ class TestGetRequestStatus:
 class TestAdminInviteRequests:
     """Tests for admin request management."""
 
-    async def test_list_requests_requires_admin(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_list_requests_requires_admin(self, client: AsyncClient) -> None:
         """Non-admin gets 403."""
         resp = await client.get("/api/v1/invite/admin/requests")
         assert resp.status_code == 403
 
-    async def test_approve_requires_admin(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_approve_requires_admin(self, client: AsyncClient) -> None:
         """Non-admin gets 403."""
         fake_id = str(uuid.uuid4())
         resp = await client.post(f"/api/v1/invite/admin/requests/{fake_id}/approve")
         assert resp.status_code == 403
 
-    async def test_deny_requires_admin(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_deny_requires_admin(self, client: AsyncClient) -> None:
         """Non-admin gets 403."""
         fake_id = str(uuid.uuid4())
         resp = await client.post(f"/api/v1/invite/admin/requests/{fake_id}/deny")
@@ -181,9 +172,7 @@ class TestAdminInviteRequests:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("src.api.notifications.send_approval_email", new_callable=AsyncMock):
-                resp = await client.post(
-                    f"/api/v1/invite/admin/requests/{req.id}/approve"
-                )
+                resp = await client.post(f"/api/v1/invite/admin/requests/{req.id}/approve")
         assert resp.status_code == 200
         assert "Approved" in resp.json()["detail"]
 
@@ -215,9 +204,7 @@ class TestAdminInviteRequests:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(
-                f"/api/v1/invite/admin/requests/{req.id}/deny"
-            )
+            resp = await client.post(f"/api/v1/invite/admin/requests/{req.id}/deny")
         assert resp.status_code == 200
         assert "denied" in resp.json()["detail"]
 
@@ -236,9 +223,7 @@ class TestAdminInviteRequests:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(
-                f"/api/v1/invite/admin/requests/{req.id}/approve"
-            )
+            resp = await client.post(f"/api/v1/invite/admin/requests/{req.id}/approve")
         assert resp.status_code == 400
 
     async def test_approve_not_found_404(
@@ -251,18 +236,14 @@ class TestAdminInviteRequests:
         fake_id = str(uuid.uuid4())
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            resp = await client.post(
-                f"/api/v1/invite/admin/requests/{fake_id}/approve"
-            )
+            resp = await client.post(f"/api/v1/invite/admin/requests/{fake_id}/approve")
         assert resp.status_code == 404
 
 
 class TestAuthMeInviteFields:
     """Tests for has_invite and invite_request_status on /auth/me."""
 
-    async def test_me_no_invite_no_request(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_me_no_invite_no_request(self, client: AsyncClient) -> None:
         """/auth/me returns has_invite=false, invite_request_status=null by default."""
         resp = await client.get("/api/v1/auth/me")
         assert resp.status_code == 200

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { StravaConnect } from "@/components/StravaConnect";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
-import type { PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
+import type { InjuryTag, PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
 
 const KM_TO_MILES = 0.621371;
 const MILES_TO_KM = 1.60934;
@@ -63,7 +63,21 @@ const DEFAULTS: ProfileUpdate = {
   long_run_cap_pct: 0.3,
   preferred_units: "imperial",
   plan_duration_weeks: 12,
+  injury_tags: [],
+  current_acute_injury: false,
+  current_injury_description: "",
 };
+
+const INJURY_TAG_OPTIONS: { value: InjuryTag; label: string }[] = [
+  { value: "knee", label: "Knee" },
+  { value: "it_band", label: "IT Band" },
+  { value: "plantar_fasciitis", label: "Plantar Fasciitis" },
+  { value: "achilles", label: "Achilles" },
+  { value: "hip", label: "Hip" },
+  { value: "lower_back", label: "Lower Back" },
+  { value: "hamstring", label: "Hamstring" },
+  { value: "shin_splints", label: "Shin Splints" },
+];
 
 const inputClass =
   "w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors";
@@ -81,7 +95,14 @@ export default function OnboardingPage() {
       const displayMileage = existing.preferred_units === "imperial"
         ? Math.round(existing.weekly_mileage_base * KM_TO_MILES * 10) / 10
         : existing.weekly_mileage_base;
-      setForm({ ...existing, weekly_mileage_base: displayMileage });
+      setForm({
+        ...existing,
+        weekly_mileage_base: displayMileage,
+        // Guard against legacy rows missing the newer columns.
+        injury_tags: existing.injury_tags ?? [],
+        current_acute_injury: existing.current_acute_injury ?? false,
+        current_injury_description: existing.current_injury_description ?? "",
+      });
     }
   }, [existing]);
 
@@ -339,6 +360,72 @@ export default function OnboardingPage() {
                   placeholder="Anything we should know about — past or current"
                   className={inputClass}
                 />
+              </div>
+
+              <div>
+                <span className="block text-sm font-medium text-gray-700 mb-2">
+                  Injury tags (select any that apply)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {INJURY_TAG_OPTIONS.map((opt) => {
+                    const selected = form.injury_tags.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          const next = selected
+                            ? form.injury_tags.filter((t) => t !== opt.value)
+                            : [...form.injury_tags, opt.value];
+                          update("injury_tags", next);
+                        }}
+                        className={
+                          "px-3 py-1.5 rounded-full border text-sm transition-colors " +
+                          (selected
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50")
+                        }
+                        aria-pressed={selected}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Used by the strength playbook to tailor exercises to your history.
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.current_acute_injury}
+                    onChange={(e) =>
+                      update("current_acute_injury", e.target.checked)
+                    }
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-gray-700">
+                    I have a <strong>current</strong> injury right now (not just
+                    past history). We&apos;ll recommend seeing a PT before
+                    starting new strength work.
+                  </span>
+                </label>
+                {form.current_acute_injury && (
+                  <textarea
+                    aria-label="Describe your current injury"
+                    value={form.current_injury_description}
+                    onChange={(e) =>
+                      update("current_injury_description", e.target.value)
+                    }
+                    maxLength={500}
+                    rows={2}
+                    placeholder="Briefly, what's going on? (optional)"
+                    className={inputClass + " mt-2"}
+                  />
+                )}
               </div>
 
               <div>

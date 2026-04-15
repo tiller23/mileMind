@@ -5,12 +5,11 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import TrainingPlan, User
 from src.demo.constants import DEMO_PLAN_IDS, DEMO_USER_ID
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -48,7 +47,13 @@ async def demo_plan(db_session: AsyncSession, demo_user: User) -> TrainingPlan:
                 "iteration": 1,
                 "timestamp": "2026-03-22T14:30:00Z",
                 "outcome": "approved",
-                "scores": {"safety": 88, "progression": 85, "specificity": 82, "feasibility": 90, "overall": 86.6},
+                "scores": {
+                    "safety": 88,
+                    "progression": 85,
+                    "specificity": 82,
+                    "feasibility": 90,
+                    "overall": 86.6,
+                },
                 "critique": "Good plan.",
                 "issues": [],
                 "planner_input_tokens": 2800,
@@ -59,7 +64,13 @@ async def demo_plan(db_session: AsyncSession, demo_user: User) -> TrainingPlan:
                 "reviewer_tool_calls": 2,
             }
         ],
-        scores={"safety": 88, "progression": 85, "specificity": 82, "feasibility": 90, "overall": 86.6},
+        scores={
+            "safety": 88,
+            "progression": 85,
+            "specificity": 82,
+            "feasibility": 90,
+            "overall": 86.6,
+        },
         approved=True,
         total_tokens=10950,
         estimated_cost_usd=1.42,

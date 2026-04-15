@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import InviteCode, User
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -27,9 +23,7 @@ class TestRedeemInviteCode:
         db_session.add(code)
         await db_session.commit()
 
-        resp = await client.post(
-            "/api/v1/invite/redeem", json={"code": "MILE-AAAA"}
-        )
+        resp = await client.post("/api/v1/invite/redeem", json={"code": "MILE-AAAA"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["redeemed"] is True
@@ -39,9 +33,7 @@ class TestRedeemInviteCode:
         await db_session.refresh(test_user)
         assert test_user.invite_code_used == "MILE-AAAA"
 
-        result = await db_session.execute(
-            select(InviteCode).where(InviteCode.code == "MILE-AAAA")
-        )
+        result = await db_session.execute(select(InviteCode).where(InviteCode.code == "MILE-AAAA"))
         saved = result.scalar_one()
         assert saved.use_count == 1
 
@@ -53,18 +45,12 @@ class TestRedeemInviteCode:
         db_session.add(code)
         await db_session.commit()
 
-        resp = await client.post(
-            "/api/v1/invite/redeem", json={"code": "mile-bbbb"}
-        )
+        resp = await client.post("/api/v1/invite/redeem", json={"code": "mile-bbbb"})
         assert resp.status_code == 200
 
-    async def test_redeem_invalid_code_returns_404(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_redeem_invalid_code_returns_404(self, client: AsyncClient) -> None:
         """Invalid code returns 404."""
-        resp = await client.post(
-            "/api/v1/invite/redeem", json={"code": "FAKE-CODE"}
-        )
+        resp = await client.post("/api/v1/invite/redeem", json={"code": "FAKE-CODE"})
         assert resp.status_code == 404
         assert "Invalid invite code" in resp.json()["detail"]
 
@@ -76,9 +62,7 @@ class TestRedeemInviteCode:
         db_session.add(code)
         await db_session.commit()
 
-        resp = await client.post(
-            "/api/v1/invite/redeem", json={"code": "MILE-FULL"}
-        )
+        resp = await client.post("/api/v1/invite/redeem", json={"code": "MILE-FULL"})
         assert resp.status_code == 400
         assert "maximum uses" in resp.json()["detail"]
 
@@ -89,9 +73,7 @@ class TestRedeemInviteCode:
         test_user.invite_code_used = "MILE-PREV"
         await db_session.commit()
 
-        resp = await client.post(
-            "/api/v1/invite/redeem", json={"code": "MILE-NEW1"}
-        )
+        resp = await client.post("/api/v1/invite/redeem", json={"code": "MILE-NEW1"})
         assert resp.status_code == 400
         assert "already redeemed" in resp.json()["detail"]
 
@@ -99,9 +81,7 @@ class TestRedeemInviteCode:
 class TestAdminInviteCodes:
     """Tests for admin invite code management."""
 
-    async def test_create_codes_requires_admin(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_codes_requires_admin(self, client: AsyncClient) -> None:
         """Non-admin users get 403."""
         resp = await client.post(
             "/api/v1/invite/admin/codes",
@@ -110,9 +90,7 @@ class TestAdminInviteCodes:
         assert resp.status_code == 403
         assert "Admin access required" in resp.json()["detail"]
 
-    async def test_list_codes_requires_admin(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_list_codes_requires_admin(self, client: AsyncClient) -> None:
         """Non-admin users get 403."""
         resp = await client.get("/api/v1/invite/admin/codes")
         assert resp.status_code == 403

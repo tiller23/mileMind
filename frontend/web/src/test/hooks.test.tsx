@@ -59,7 +59,7 @@ beforeEach(() => {
 
 describe("useUser", () => {
   it("returns user data on success", async () => {
-    const user = { id: "1", email: "test@example.com", name: "Test", avatar_url: null };
+    const user = { id: "1", email: "test@example.com", name: "Test", avatar_url: null, role: "user" as const, has_invite: true, invite_request_status: null };
     vi.mocked(auth.me).mockResolvedValue(user);
 
     const { result } = renderHook(() => useUser(), { wrapper: createWrapper() });
@@ -87,7 +87,7 @@ describe("useAuthGuard", () => {
   });
 
   it("does not redirect when authenticated", async () => {
-    const user = { id: "1", email: "test@example.com", name: "Test", avatar_url: null };
+    const user = { id: "1", email: "test@example.com", name: "Test", avatar_url: null, role: "user" as const, has_invite: true, invite_request_status: null };
     vi.mocked(auth.me).mockResolvedValue(user);
 
     const { result } = renderHook(() => useAuthGuard(), { wrapper: createWrapper() });

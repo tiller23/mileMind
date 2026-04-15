@@ -111,6 +111,13 @@ class ProfileUpdate(BaseModel):
     long_run_cap_pct: float = Field(default=0.30, ge=0.15, le=0.50)
     preferred_units: str = Field(default="metric", pattern=r"^(metric|imperial)$")
     plan_duration_weeks: int = Field(default=12, ge=4, le=24)
+    injury_tags: list[str] = Field(
+        default_factory=list,
+        max_length=9,
+        description="Structured injury tags (knee, it_band, plantar_fasciitis, achilles, hip, lower_back, hamstring, shin_splints, none)",
+    )
+    current_acute_injury: bool = Field(default=False)
+    current_injury_description: str = Field(default="", max_length=500)
 
 
 class ProfileResponse(BaseModel):
@@ -155,6 +162,9 @@ class ProfileResponse(BaseModel):
     long_run_cap_pct: float
     preferred_units: str
     plan_duration_weeks: int
+    injury_tags: list[str] = Field(default_factory=list)
+    current_acute_injury: bool = False
+    current_injury_description: str = ""
     created_at: datetime
     updated_at: datetime
 
@@ -429,6 +439,75 @@ class WorkoutLogResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Strength Playbook
+# ---------------------------------------------------------------------------
+
+
+class ExerciseOut(BaseModel):
+    """Public representation of one catalog exercise.
+
+    Attributes:
+        id: Stable catalog id.
+        name: Display name.
+        equipment: Equipment options.
+        difficulty: beginner/intermediate/advanced.
+        search_query: Phrase suitable for a video/form search link.
+    """
+
+    id: str
+    name: str
+    equipment: list[str]
+    difficulty: str
+    search_query: str
+
+
+class BlockOut(BaseModel):
+    """One block in the playbook response.
+
+    Attributes:
+        block_id: Stable block key.
+        title: Display title.
+        rationale: LLM-generated blurb or static fallback.
+        exercises: Selected exercises for this block.
+        matched_injury_tags: Injury tags that boosted this block.
+    """
+
+    block_id: str
+    title: str
+    rationale: str
+    exercises: list[ExerciseOut]
+    matched_injury_tags: list[str]
+
+
+class AcuteGate(BaseModel):
+    """Acute-injury gate state shown at the top of the playbook.
+
+    Attributes:
+        active: When True, the frontend shows a "see a PT first" notice.
+        description: Optional user-provided description.
+    """
+
+    active: bool
+    description: str = ""
+
+
+class StrengthPlaybookResponse(BaseModel):
+    """Full strength playbook response.
+
+    Attributes:
+        acute_injury_gate: Acute-injury gate state.
+        blocks: Ordered list of exercise blocks.
+        catalog_version: Short SHA-256 of the catalog at render time.
+        profile_summary: Inputs that drove selection (debug aid).
+    """
+
+    acute_injury_gate: AcuteGate
+    blocks: list[BlockOut]
+    catalog_version: str
+    profile_summary: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------

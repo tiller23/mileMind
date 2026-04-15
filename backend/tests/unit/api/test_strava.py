@@ -6,8 +6,7 @@ endpoints using the test app fixtures.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,7 +15,6 @@ from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import create_access_token
 from src.api.main import create_app
 from src.config import Settings
 from src.db.models import StravaToken, User, WorkoutLog
@@ -32,6 +30,7 @@ def _test_env(monkeypatch) -> None:
     monkeypatch.setenv("STRAVA_CLIENT_SECRET", "test-strava-secret")
     # Clear cached settings
     from src.config import get_settings
+
     get_settings.cache_clear()
 
 
@@ -81,7 +80,7 @@ async def strava_token(db_session: AsyncSession, test_user: User) -> StravaToken
         strava_athlete_id=12345,
         access_token="test-access-token",
         refresh_token="test-refresh-token",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=6),
+        expires_at=datetime.now(UTC) + timedelta(hours=6),
         scope="activity:read_all",
     )
     db_session.add(token)
@@ -106,9 +105,7 @@ class TestStravaConnect:
         assert "client_id=test-strava-client" in data["auth_url"]
         assert "activity:read_all" in data["auth_url"]
 
-    async def test_state_token_is_valid_jwt(
-        self, client: AsyncClient, settings: Settings
-    ) -> None:
+    async def test_state_token_is_valid_jwt(self, client: AsyncClient, settings: Settings) -> None:
         """State token is a valid JWT with strava_oauth_state type."""
         resp = await client.get("/api/v1/strava/connect")
         data = resp.json()
@@ -144,7 +141,7 @@ class TestStravaCallback:
         state_token = jwt.encode(
             {
                 "state": "test-state",
-                "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+                "exp": datetime.now(UTC) + timedelta(minutes=10),
                 "type": "strava_oauth_state",
             },
             settings.jwt_secret,
@@ -154,14 +151,10 @@ class TestStravaCallback:
         mock_token_data = MagicMock()
         mock_token_data.access_token = "new-access"
         mock_token_data.refresh_token = "new-refresh"
-        mock_token_data.expires_at = int(
-            (datetime.now(timezone.utc) + timedelta(hours=6)).timestamp()
-        )
+        mock_token_data.expires_at = int((datetime.now(UTC) + timedelta(hours=6)).timestamp())
         mock_token_data.athlete_id = 99999
 
-        with patch(
-            "src.api.routes.strava.StravaService"
-        ) as mock_service_cls:
+        with patch("src.api.routes.strava.StravaService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.exchange_code = AsyncMock(return_value=mock_token_data)
             mock_service_cls.return_value = mock_service
@@ -195,9 +188,7 @@ class TestStravaStatus:
         assert data["connected"] is False
         assert data["athlete_id"] is None
 
-    async def test_connected(
-        self, client: AsyncClient, strava_token: StravaToken
-    ) -> None:
+    async def test_connected(self, client: AsyncClient, strava_token: StravaToken) -> None:
         """Returns connected=true with athlete ID when token exists."""
         resp = await client.get("/api/v1/strava/status")
         assert resp.status_code == 200
@@ -214,9 +205,7 @@ class TestStravaSync:
         self, client: AsyncClient, strava_token: StravaToken
     ) -> None:
         """Sync returns the number of imported activities."""
-        with patch(
-            "src.api.routes.strava.StravaService"
-        ) as mock_service_cls:
+        with patch("src.api.routes.strava.StravaService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.import_activities = AsyncMock(return_value=(3, 5))
             mock_service.estimate_weekly_mileage = AsyncMock(return_value=25.5)
@@ -232,9 +221,7 @@ class TestStravaSync:
 
     async def test_not_connected_returns_404(self, client: AsyncClient) -> None:
         """Sync returns 404 when Strava is not connected."""
-        with patch(
-            "src.api.routes.strava.StravaService"
-        ) as mock_service_cls:
+        with patch("src.api.routes.strava.StravaService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.import_activities = AsyncMock(
                 side_effect=ValueError("Strava not connected")
@@ -258,9 +245,7 @@ class TestStravaDisconnect:
         strava_token: StravaToken,
     ) -> None:
         """Disconnect removes the StravaToken from the database."""
-        with patch(
-            "src.api.routes.strava.StravaService"
-        ) as mock_service_cls:
+        with patch("src.api.routes.strava.StravaService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.disconnect = AsyncMock()
             mock_service_cls.return_value = mock_service
@@ -288,7 +273,7 @@ class TestStravaActivities:
             strava_activity_id=555,
             actual_distance_km=8.0,
             actual_duration_minutes=45.0,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
             notes="Evening run",
         )
         db_session.add(log)
@@ -314,7 +299,7 @@ class TestStravaActivities:
             source="manual",
             actual_distance_km=5.0,
             actual_duration_minutes=30.0,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
         strava_log = WorkoutLog(
             user_id=test_user.id,
@@ -322,7 +307,7 @@ class TestStravaActivities:
             strava_activity_id=666,
             actual_distance_km=10.0,
             actual_duration_minutes=55.0,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
         db_session.add_all([manual_log, strava_log])
         await db_session.commit()
@@ -346,7 +331,7 @@ class TestStravaActivities:
                 strava_activity_id=700 + i,
                 actual_distance_km=5.0,
                 actual_duration_minutes=30.0,
-                completed_at=datetime.now(timezone.utc) - timedelta(days=i),
+                completed_at=datetime.now(UTC) - timedelta(days=i),
             )
             db_session.add(log)
         await db_session.commit()

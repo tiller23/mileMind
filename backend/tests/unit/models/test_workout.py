@@ -15,8 +15,17 @@ class TestWorkoutType:
     @pytest.mark.parametrize(
         "value",
         [
-            "easy", "long_run", "tempo", "interval", "repetition",
-            "recovery", "marathon_pace", "fartlek", "hill", "rest", "cross_train",
+            "easy",
+            "long_run",
+            "tempo",
+            "interval",
+            "repetition",
+            "recovery",
+            "marathon_pace",
+            "fartlek",
+            "hill",
+            "rest",
+            "cross_train",
         ],
     )
     def test_valid_values(self, value: str) -> None:
@@ -30,7 +39,8 @@ class TestPaceZone:
         assert len(PaceZone) == 5
 
     @pytest.mark.parametrize(
-        "value", ["easy", "marathon", "threshold", "interval", "repetition"],
+        "value",
+        ["easy", "marathon", "threshold", "interval", "repetition"],
     )
     def test_valid_values(self, value: str) -> None:
         assert PaceZone(value).value == value

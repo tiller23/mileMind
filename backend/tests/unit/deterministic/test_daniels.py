@@ -31,7 +31,6 @@ from src.deterministic.daniels import (
     vo2_to_velocity,
 )
 
-
 # -----------------------------------------------------------------------
 # Precomputed reference values from the Daniels-Gilbert equations
 # -----------------------------------------------------------------------
@@ -353,7 +352,9 @@ class TestHRZones:
     def test_zones_are_ordered(self) -> None:
         """Higher-intensity zones should have higher HR targets."""
         zones = compute_hr_zones(190, 50)
-        assert zones["easy"][1] <= zones["threshold"][0] or zones["easy"][1] <= zones["threshold"][1]
+        assert (
+            zones["easy"][1] <= zones["threshold"][0] or zones["easy"][1] <= zones["threshold"][1]
+        )
         assert zones["threshold"][1] <= zones["interval"][1]
 
     def test_easy_zone_values(self) -> None:

@@ -58,6 +58,11 @@ ignore = [
     "UP042",  # str+Enum -> StrEnum (intentional for JSON serialization compat)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Test files use PascalCase for Mock/patched-class locals and have
+# legitimate reasons to diverge from PEP8 naming.
+"tests/**" = ["N801", "N806", "N811", "N813"]
+
 [tool.black]
 target-version = ["py312"]
 line-length = 99
