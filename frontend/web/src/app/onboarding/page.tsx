@@ -5,38 +5,10 @@ import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { StravaConnect } from "@/components/StravaConnect";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
-import type { InjuryTag, PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
+import type { InjuryTag, ProfileUpdate } from "@/lib/types";
 import { INJURY_TAG_LABEL } from "@/lib/labels";
-
-const KM_TO_MILES = 0.621371;
-const MILES_TO_KM = 1.60934;
-
-const GOAL_OPTIONS: { value: string; label: string }[] = [
-  { value: "general_fitness", label: "General fitness (no specific race)" },
-  { value: "5K", label: "5K" },
-  { value: "10K", label: "10K" },
-  { value: "half_marathon", label: "Half Marathon" },
-  { value: "marathon", label: "Marathon" },
-  { value: "ultra", label: "Ultra" },
-];
-
-const RISK_OPTIONS: { value: RiskTolerance; label: string; desc: string }[] = [
-  {
-    value: "conservative",
-    label: "Conservative",
-    desc: "Build gradually. Prioritizes staying healthy.",
-  },
-  {
-    value: "moderate",
-    label: "Moderate",
-    desc: "Steady progress with a good balance of challenge and recovery.",
-  },
-  {
-    value: "aggressive",
-    label: "Aggressive",
-    desc: "Faster progression. Higher performance potential.",
-  },
-];
+import { KM_TO_MILES, MILES_TO_KM } from "@/lib/units";
+import { GOAL_OPTIONS, RISK_OPTIONS } from "@/lib/enums";
 
 const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 8, label: "8 weeks" },

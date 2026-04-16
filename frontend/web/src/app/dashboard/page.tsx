@@ -7,25 +7,12 @@ import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
 import { InviteCodeBanner } from "@/components/InviteCodeBanner";
 import { ShoeIcon, RunnerIcon } from "@/components/Icons";
 import { StrengthCallout } from "@/components/StrengthCallout";
+import { GOAL_LABELS, RISK_LABELS } from "@/lib/enums";
+import { formatWorkoutType } from "@/lib/workouts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate, useStravaStatus, useStravaActivities, useUser } from "@/lib/hooks";
 import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse, WorkoutLogResponse } from "@/lib/types";
-import { formatDistance } from "@/lib/units";
-
-const GOAL_LABELS: Record<string, string> = {
-  general_fitness: "General Fitness",
-  "5K": "5K",
-  "10K": "10K",
-  half_marathon: "Half Marathon",
-  marathon: "Marathon",
-  ultra: "Ultra",
-};
-
-const RISK_LABELS: Record<string, string> = {
-  conservative: "Conservative",
-  moderate: "Moderate",
-  aggressive: "Aggressive",
-};
+import { KM_TO_MILES, formatDistance } from "@/lib/units";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -38,14 +25,6 @@ const WORKOUT_DOT_COLORS: Record<string, string> = {
   hill: "bg-orange-400",
   rest: "bg-gray-200",
 };
-
-function formatWorkoutType(type: string): string {
-  const names: Record<string, string> = {
-    easy: "Easy Run", recovery: "Recovery", long_run: "Long Run",
-    tempo: "Tempo", interval: "Intervals", hill: "Hills", rest: "Rest",
-  };
-  return names[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 /** Compute the calendar date for a given week/day in the plan. */
 function getPlanDayDate(planStartDate: string, weekNumber: number, dayIndex: number): string {
@@ -362,7 +341,7 @@ function ThisWeekCard({ week, weekNumber, totalWeeks, phase, planId, units, plan
                       <span className="font-medium">
                         {(() => {
                           const dist = units === "imperial"
-                            ? actual.actual_distance_km * 0.621371
+                            ? actual.actual_distance_km * KM_TO_MILES
                             : actual.actual_distance_km;
                           const paceMin = actual.actual_duration_minutes / dist;
                           const mins = Math.floor(paceMin);
@@ -414,7 +393,7 @@ function ConfirmGeneratePanel({ profile, startDate, onStartDateChange, onConfirm
   isPending: boolean;
 }) {
   const mileageDisplay = profile.preferred_units === "imperial"
-    ? `${(profile.weekly_mileage_base * 0.621371).toFixed(0)} mi/week`
+    ? `${(profile.weekly_mileage_base * KM_TO_MILES).toFixed(0)} mi/week`
     : `${profile.weekly_mileage_base} km/week`;
 
   return (

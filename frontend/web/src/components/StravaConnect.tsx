@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ApiError, strava } from "@/lib/api";
 import { useStravaStatus, useStravaSync, useStravaDisconnect } from "@/lib/hooks";
-import { formatDistance } from "@/lib/units";
+import { KM_TO_MILES, formatDistance } from "@/lib/units";
 import type { PreferredUnits } from "@/lib/types";
 
 /** Strava brand orange per their brand guidelines. */
@@ -192,7 +192,7 @@ export function StravaConnect({
               Based on your Strava data, your average weekly mileage is{" "}
               <strong>
                 {units === "imperial"
-                  ? `${(syncResult.mileage * 0.621371).toFixed(0)} mi`
+                  ? `${(syncResult.mileage * KM_TO_MILES).toFixed(0)} mi`
                   : `${syncResult.mileage.toFixed(0)} km`}
               </strong>
               .
