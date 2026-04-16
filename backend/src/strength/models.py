@@ -22,6 +22,7 @@ class Exercise:
         beneficial_for: Injury tags that this exercise tends to help.
         contraindicated_for: Injury tags that exclude this exercise.
         search_query: Suggested phrase for a form/video search link.
+        why_runners: One-sentence runner-facing justification (catalog copy).
     """
 
     id: str
@@ -32,6 +33,7 @@ class Exercise:
     beneficial_for: tuple[str, ...]
     contraindicated_for: tuple[str, ...]
     search_query: str
+    why_runners: str = ""
 
 
 @dataclass(frozen=True)

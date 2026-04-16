@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { PlanGenerationLoader } from "@/components/PlanGenerationLoader";
 import { InviteCodeBanner } from "@/components/InviteCodeBanner";
 import { ShoeIcon, RunnerIcon } from "@/components/Icons";
+import { StrengthCallout } from "@/components/StrengthCallout";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthGuard, useActiveJob, useGeneratePlan, usePlans, usePlan, useProfile, useUpdatePlanStartDate, useStravaStatus, useStravaActivities, useUser } from "@/lib/hooks";
 import type { PlanWeek, PlanWorkout, PreferredUnits, ProfileResponse, WorkoutLogResponse } from "@/lib/types";
@@ -646,6 +647,10 @@ export default function DashboardPage() {
               }}
             />
           </div>
+        )}
+
+        {profileData && hasInvite && !activeJobId && !showConfirm && !needsOnboarding && (
+          <StrengthCallout injuryTagCount={profileData.injury_tags.length} />
         )}
 
         {/* This Week card */}

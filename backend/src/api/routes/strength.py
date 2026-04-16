@@ -64,26 +64,14 @@ async def get_playbook(
 
     athlete = profile_db.to_athlete_profile()
 
-    # Safety: when an acute injury is flagged, suppress exercise content
-    # server-side. The UI shows a PT-referral gate; the API mirrors that
-    # by returning no blocks so a direct API caller cannot bypass it.
-    if athlete.current_acute_injury:
-        return StrengthPlaybookResponse(
-            acute_injury_gate=AcuteGate(
-                active=True,
-                description=athlete.current_injury_description,
-            ),
-            blocks=[],
-            catalog_version="",
-            profile_summary={"current_acute_injury": True},
-        )
-
     playbook = build_playbook(athlete)
     narrative_map = await generate_narrative(
         playbook,
         athlete,
         api_key=settings.anthropic_api_key,
     )
+
+    user_injury_tags = {tag.value for tag in athlete.injury_tags}
 
     blocks_out = [
         BlockOut(
@@ -97,6 +85,8 @@ async def get_playbook(
                     equipment=list(e.equipment),
                     difficulty=e.difficulty,
                     search_query=e.search_query,
+                    why_runners=e.why_runners,
+                    beneficial_for_user=sorted(set(e.beneficial_for) & user_injury_tags),
                 )
                 for e in b.exercises
             ],

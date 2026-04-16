@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use } from "react";
 import { Navbar } from "@/components/Navbar";
 import { PlanCalendar } from "@/components/PlanCalendar";
+import { StrengthCallout } from "@/components/StrengthCallout";
 import { useArchivePlan, useAuthGuard, usePlan, useProfile } from "@/lib/hooks";
 
 interface PlanPageProps {
@@ -147,12 +148,16 @@ export default function PlanPage({ params }: PlanPageProps) {
           </div>
         )}
 
-        {/* Supplementary notes */}
+        {/* Supplementary notes (cross-training, nutrition, injury-prevention) */}
         {supplementaryNotes && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-1">Additional Notes</h2>
             <p className="text-sm text-gray-600 leading-relaxed">{supplementaryNotes}</p>
           </div>
+        )}
+
+        {profileData && (
+          <StrengthCallout injuryTagCount={profileData.injury_tags.length} />
         )}
       </main>
     </>
