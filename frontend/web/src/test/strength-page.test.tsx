@@ -48,6 +48,15 @@ vi.mock("@/lib/hooks", () => ({
               beneficial_for_user: ["it_band"],
             },
             {
+              id: "hip_thrust",
+              name: "Hip Thrust",
+              equipment: ["bench"],
+              difficulty: "beginner",
+              search_query: "hip thrust form",
+              why_runners: "Loaded glute extension.",
+              beneficial_for_user: [],
+            },
+            {
               id: "single_leg_rdl",
               name: "Single-Leg RDL",
               equipment: ["dumbbells"],
@@ -87,8 +96,12 @@ describe("StrengthPage", () => {
     expect(screen.getByText(/Tailored for: IT Band/)).toBeInTheDocument();
   });
 
-  it("hides alternates until the user expands them", () => {
+  it("shows the first two exercises by default and hides the rest behind a toggle", () => {
     renderPage();
+    // Primary two visible.
+    expect(screen.getByRole("link", { name: "Glute Bridge" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hip Thrust" })).toBeInTheDocument();
+    // Third is hidden.
     expect(screen.queryByRole("link", { name: "Single-Leg RDL" })).not.toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: /Show 1 more alternate/i });
     fireEvent.click(toggle);
