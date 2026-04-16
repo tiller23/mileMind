@@ -455,6 +455,10 @@ class ExerciseOut(BaseModel):
         equipment: Equipment options.
         difficulty: beginner/intermediate/advanced.
         search_query: Phrase suitable for a video/form search link.
+        why_runners: One-sentence runner-facing justification.
+        beneficial_for_user: Subset of this athlete's injury tags that this
+            exercise directly targets. Empty when the athlete has no matching
+            flagged injuries; the frontend uses this to highlight relevance.
     """
 
     id: str
@@ -462,6 +466,8 @@ class ExerciseOut(BaseModel):
     equipment: list[str]
     difficulty: str
     search_query: str
+    why_runners: str = ""
+    beneficial_for_user: list[str] = []
 
 
 class BlockOut(BaseModel):

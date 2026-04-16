@@ -62,6 +62,7 @@ def _all_exercises() -> tuple[Exercise, ...]:
             beneficial_for=tuple(item.get("beneficial_for", ())),
             contraindicated_for=tuple(item.get("contraindicated_for", ())),
             search_query=item["search_query"],
+            why_runners=item.get("why_runners", ""),
         )
         for item in catalog["exercises"]
     )

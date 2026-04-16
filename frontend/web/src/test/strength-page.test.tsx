@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import StrengthPage from "@/app/strength/page";
 
@@ -44,6 +44,17 @@ vi.mock("@/lib/hooks", () => ({
               equipment: ["bodyweight"],
               difficulty: "beginner",
               search_query: "glute bridge form",
+              why_runners: "Teaches your glutes to fire.",
+              beneficial_for_user: ["it_band"],
+            },
+            {
+              id: "single_leg_rdl",
+              name: "Single-Leg RDL",
+              equipment: ["dumbbells"],
+              difficulty: "intermediate",
+              search_query: "single leg rdl form",
+              why_runners: "Balance under load.",
+              beneficial_for_user: [],
             },
           ],
         },
@@ -71,16 +82,24 @@ describe("StrengthPage", () => {
     expect(screen.getByText("Runners need a strong backside.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Glute Bridge" })).toBeInTheDocument();
     expect(screen.getByText("bodyweight")).toBeInTheDocument();
+    expect(screen.getByText("Teaches your glutes to fire.")).toBeInTheDocument();
+    expect(screen.getByText(/For your: IT Band/)).toBeInTheDocument();
+    expect(screen.getByText(/Tailored for: IT Band/)).toBeInTheDocument();
+  });
+
+  it("hides alternates until the user expands them", () => {
+    renderPage();
+    expect(screen.queryByRole("link", { name: "Single-Leg RDL" })).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: /Show 1 more alternate/i });
+    fireEvent.click(toggle);
+    expect(screen.getByRole("link", { name: "Single-Leg RDL" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Hide alternates/i })).toBeInTheDocument();
   });
 });
 
-describe("StrengthPage acute gate", () => {
-  beforeEach(() => {
+describe("StrengthPage acute caution banner", () => {
+  it("shows a persistent caution banner AND the playbook when acute injury is flagged", async () => {
     vi.resetModules();
-    window.sessionStorage.clear();
-  });
-
-  it("shows the PT gate when acute injury is flagged", async () => {
     vi.doMock("@/lib/hooks", () => ({
       useAuthGuard: () => ({ isLoading: false, isAuthenticated: true }),
       useUser: () => ({ data: { id: "u1", name: "R", email: "r@x", avatar_url: null, role: "user", has_invite: true, invite_request_status: null } }),
@@ -89,7 +108,7 @@ describe("StrengthPage acute gate", () => {
           id: "p1",
           user_id: "u1",
           name: "R",
-          injury_tags: [],
+          injury_tags: ["it_band"],
           current_acute_injury: true,
           current_injury_description: "knee tweak",
         },
@@ -104,9 +123,19 @@ describe("StrengthPage acute gate", () => {
             {
               block_id: "posterior_chain",
               title: "Posterior Chain",
-              rationale: "x",
-              matched_injury_tags: [],
-              exercises: [],
+              rationale: "Runners need a strong backside.",
+              matched_injury_tags: ["it_band"],
+              exercises: [
+                {
+                  id: "glute_bridge",
+                  name: "Glute Bridge",
+                  equipment: ["bodyweight"],
+                  difficulty: "beginner",
+                  search_query: "glute bridge form",
+                  why_runners: "Teaches your glutes to fire.",
+                  beneficial_for_user: ["it_band"],
+                },
+              ],
             },
           ],
         },
@@ -122,15 +151,21 @@ describe("StrengthPage acute gate", () => {
         <Page />
       </QueryClientProvider>,
     );
+    // Banner copy: action-framed, not blame-framed.
     expect(
-      screen.getByText(/You flagged a current injury/i),
+      screen.getByText(/See a physical therapist before starting/i),
     ).toBeInTheDocument();
-    const ack = screen.getByRole("button", {
-      name: /i understand/i,
-    });
-    fireEvent.click(ack);
-    await waitFor(() => {
-      expect(screen.queryByText(/You flagged a current injury/i)).not.toBeInTheDocument();
-    });
+    // User's own note is reflected back.
+    expect(screen.getByText(/knee tweak/i)).toBeInTheDocument();
+    // Update-status CTA is the single action; NO dismiss button.
+    expect(
+      screen.getByRole("link", { name: /update injury status/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /i understand/i }),
+    ).not.toBeInTheDocument();
+    // Blocks still render alongside the banner.
+    expect(screen.getByText("Posterior Chain")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Glute Bridge" })).toBeInTheDocument();
   });
 });

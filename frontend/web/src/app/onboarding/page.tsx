@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { StravaConnect } from "@/components/StravaConnect";
 import { useAuthGuard, useProfile, useUpsertProfile } from "@/lib/hooks";
 import type { InjuryTag, PreferredUnits, ProfileUpdate, RiskTolerance } from "@/lib/types";
+import { INJURY_TAG_LABEL } from "@/lib/labels";
 
 const KM_TO_MILES = 0.621371;
 const MILES_TO_KM = 1.60934;
@@ -68,16 +69,9 @@ const DEFAULTS: ProfileUpdate = {
   current_injury_description: "",
 };
 
-const INJURY_TAG_OPTIONS: { value: InjuryTag; label: string }[] = [
-  { value: "knee", label: "Knee" },
-  { value: "it_band", label: "IT Band" },
-  { value: "plantar_fasciitis", label: "Plantar Fasciitis" },
-  { value: "achilles", label: "Achilles" },
-  { value: "hip", label: "Hip" },
-  { value: "lower_back", label: "Lower Back" },
-  { value: "hamstring", label: "Hamstring" },
-  { value: "shin_splints", label: "Shin Splints" },
-];
+const INJURY_TAG_OPTIONS: { value: InjuryTag; label: string }[] = (
+  Object.entries(INJURY_TAG_LABEL) as [InjuryTag, string][]
+).map(([value, label]) => ({ value, label }));
 
 const inputClass =
   "w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors";

@@ -30,7 +30,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["it_band", "hip", "lower_back", "knee"],
       "contraindicated_for": [],
-      "search_query": "glute bridge proper form running"
+      "search_query": "glute bridge proper form running",
+      "why_runners": "Teaches your glutes to fire without your low back taking over — cheap insurance against IT band, knee, and hip pain."
     },
     {
       "id": "single_leg_rdl",
@@ -40,7 +41,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["hamstring", "hip", "lower_back"],
       "contraindicated_for": [],
-      "search_query": "single leg romanian deadlift runners form"
+      "search_query": "single leg romanian deadlift runners form",
+      "why_runners": "Trains the hamstrings and posterior chain under a single-leg balance load — exactly what running demands."
     },
     {
       "id": "hip_thrust",
@@ -50,7 +52,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["it_band", "hip", "hamstring"],
       "contraindicated_for": [],
-      "search_query": "hip thrust form runners"
+      "search_query": "hip thrust form runners",
+      "why_runners": "The strongest hip-extension exercise available. Builds the glutes to drive your stride — stop asking your hamstrings to do the glutes' job."
     },
     {
       "id": "good_morning",
@@ -60,7 +63,8 @@
       "difficulty": "advanced",
       "beneficial_for": ["hamstring", "lower_back"],
       "contraindicated_for": ["lower_back"],
-      "search_query": "good morning exercise form"
+      "search_query": "good morning exercise form",
+      "why_runners": "Builds the hamstrings and low back that keep your posture intact late in a long run. Earn it with clean hinging form first."
     },
     {
       "id": "bulgarian_split_squat",
@@ -70,7 +74,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["hip", "knee"],
       "contraindicated_for": [],
-      "search_query": "bulgarian split squat form runners"
+      "search_query": "bulgarian split squat form runners",
+      "why_runners": "Single-leg strength with more range than most squats. Exposes imbalances between legs that running only hides."
     },
     {
       "id": "step_up",
@@ -80,7 +85,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["knee", "hip"],
       "contraindicated_for": [],
-      "search_query": "step up exercise proper form runners"
+      "search_query": "step up exercise proper form runners",
+      "why_runners": "Mimics the push-off phase of your stride. Drives quad and glute coordination with almost no skill barrier."
     },
     {
       "id": "single_leg_squat_to_box",
@@ -90,7 +96,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["knee", "it_band", "hip"],
       "contraindicated_for": [],
-      "search_query": "single leg squat to box form"
+      "search_query": "single leg squat to box form",
+      "why_runners": "A controlled single-leg squat teaches your knee to track over your toes — the exact pattern that breaks down with fatigue."
     },
     {
       "id": "pistol_squat_progression",
@@ -100,7 +107,8 @@
       "difficulty": "advanced",
       "beneficial_for": ["knee", "hip"],
       "contraindicated_for": ["knee"],
-      "search_query": "pistol squat progression tutorial"
+      "search_query": "pistol squat progression tutorial",
+      "why_runners": "Full-range single-leg strength that punishes the whole chain — hips, knees, ankles, balance — all at once."
     },
     {
       "id": "clamshell",
@@ -110,7 +118,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["it_band", "hip", "knee"],
       "contraindicated_for": [],
-      "search_query": "clamshell exercise glute medius form"
+      "search_query": "clamshell exercise glute medius form",
+      "why_runners": "Activates the glute medius — the small hip muscle that keeps your knee from collapsing inward on every stride."
     },
     {
       "id": "monster_walk",
@@ -120,7 +129,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["it_band", "hip", "knee"],
       "contraindicated_for": [],
-      "search_query": "banded monster walk form"
+      "search_query": "banded monster walk form",
+      "why_runners": "Keeps the glutes fighting against the band the whole time you move. Great primer for hip stability before a run."
     },
     {
       "id": "side_lying_leg_raise",
@@ -130,7 +140,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["it_band", "hip"],
       "contraindicated_for": [],
-      "search_query": "side lying leg raise glute medius"
+      "search_query": "side lying leg raise glute medius",
+      "why_runners": "Targets the glute medius directly. Boring but effective, especially for runners with hip or IT band issues."
     },
     {
       "id": "fire_hydrant",
@@ -140,7 +151,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["hip", "it_band"],
       "contraindicated_for": [],
-      "search_query": "fire hydrant exercise form"
+      "search_query": "fire hydrant exercise form",
+      "why_runners": "Works hip abduction and rotation together. A staple for anyone with a cranky IT band or tight hip."
     },
     {
       "id": "single_leg_glute_bridge",
@@ -150,7 +162,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["it_band", "hip", "hamstring", "lower_back"],
       "contraindicated_for": [],
-      "search_query": "single leg glute bridge form"
+      "search_query": "single leg glute bridge form",
+      "why_runners": "The glute bridge minus the free leg — which means twice the load on the working side. A natural step before hip thrusts."
     },
     {
       "id": "pallof_press",
@@ -160,7 +173,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["lower_back", "hip"],
       "contraindicated_for": [],
-      "search_query": "pallof press form runners"
+      "search_query": "pallof press form runners",
+      "why_runners": "Teaches your core to resist rotation, which is what actually happens every time your foot hits the ground at speed."
     },
     {
       "id": "dead_bug",
@@ -170,7 +184,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["lower_back"],
       "contraindicated_for": [],
-      "search_query": "dead bug exercise proper form"
+      "search_query": "dead bug exercise proper form",
+      "why_runners": "A safe way to load the deep core while keeping the low back flat — useful if long mileage brings on low-back fatigue."
     },
     {
       "id": "bird_dog",
@@ -180,7 +195,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["lower_back", "hip"],
       "contraindicated_for": [],
-      "search_query": "bird dog exercise form"
+      "search_query": "bird dog exercise form",
+      "why_runners": "Trains you to move your limbs without losing trunk position — exactly what fails in the last miles of a long run."
     },
     {
       "id": "side_plank",
@@ -190,7 +206,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["it_band", "hip", "lower_back"],
       "contraindicated_for": [],
-      "search_query": "side plank form for runners"
+      "search_query": "side plank form for runners",
+      "why_runners": "Hits the deep hip stabilizers and obliques together. One of the best single moves for runners with IT band flare-ups."
     },
     {
       "id": "suitcase_carry",
@@ -200,7 +217,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["lower_back", "hip"],
       "contraindicated_for": [],
-      "search_query": "suitcase carry form"
+      "search_query": "suitcase carry form",
+      "why_runners": "Walking with a weight in one hand forces your core to resist side-bending. Quiet but serious core work."
     },
     {
       "id": "eccentric_heel_drop",
@@ -210,7 +228,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["achilles", "plantar_fasciitis"],
       "contraindicated_for": [],
-      "search_query": "alfredson eccentric heel drop protocol"
+      "search_query": "alfredson eccentric heel drop protocol",
+      "why_runners": "The Alfredson protocol — clinically validated for Achilles tendinopathy. Slow, controlled drops rebuild tendon capacity."
     },
     {
       "id": "standing_calf_raise",
@@ -220,7 +239,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["achilles", "shin_splints"],
       "contraindicated_for": [],
-      "search_query": "standing calf raise form"
+      "search_query": "standing calf raise form",
+      "why_runners": "Builds the gastrocnemius — the calf muscle that handles most of your push-off on faster runs."
     },
     {
       "id": "seated_calf_raise",
@@ -230,7 +250,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["achilles", "shin_splints"],
       "contraindicated_for": [],
-      "search_query": "seated calf raise soleus form"
+      "search_query": "seated calf raise soleus form",
+      "why_runners": "Targets the soleus specifically — it takes the most load during steady-state running and is often the weak link."
     },
     {
       "id": "single_leg_calf_raise",
@@ -240,7 +261,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["achilles", "plantar_fasciitis", "shin_splints"],
       "contraindicated_for": [],
-      "search_query": "single leg calf raise runners"
+      "search_query": "single leg calf raise runners",
+      "why_runners": "Each calf takes your full bodyweight with every stride — train them that way rather than two at a time."
     },
     {
       "id": "toe_yoga",
@@ -250,7 +272,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["plantar_fasciitis", "shin_splints"],
       "contraindicated_for": [],
-      "search_query": "toe yoga short foot exercise runners"
+      "search_query": "toe yoga short foot exercise runners",
+      "why_runners": "Wakes up the small foot muscles that hold your arch. Unglamorous, but one of the few fixes that actually moves the needle on plantar and shin pain."
     },
     {
       "id": "kettlebell_swing",
@@ -260,7 +283,8 @@
       "difficulty": "intermediate",
       "beneficial_for": ["hamstring", "hip", "lower_back"],
       "contraindicated_for": ["lower_back"],
-      "search_query": "kettlebell swing hardstyle form"
+      "search_query": "kettlebell swing hardstyle form",
+      "why_runners": "Trains hip extension under explosive load — close to the power demand of a finishing kick or a hill sprint."
     },
     {
       "id": "reverse_lunge",
@@ -270,7 +294,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["knee", "hip"],
       "contraindicated_for": [],
-      "search_query": "reverse lunge form runners"
+      "search_query": "reverse lunge form runners",
+      "why_runners": "Less knee stress than a forward lunge, and it exposes single-leg weakness without heavy loading."
     },
     {
       "id": "copenhagen_plank",
@@ -280,7 +305,8 @@
       "difficulty": "advanced",
       "beneficial_for": ["hip", "hamstring"],
       "contraindicated_for": ["hip"],
-      "search_query": "copenhagen plank adductor exercise"
+      "search_query": "copenhagen plank adductor exercise",
+      "why_runners": "Loads the adductors — the forgotten hip group — in a position runners almost never train otherwise."
     },
     {
       "id": "banded_hip_abduction",
@@ -290,7 +316,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["it_band", "hip", "knee"],
       "contraindicated_for": [],
-      "search_query": "standing banded hip abduction form"
+      "search_query": "standing banded hip abduction form",
+      "why_runners": "Glute medius work on your feet, against a band. Standing turns it into a whole-hip stability drill — not just an isolation move."
     },
     {
       "id": "tibialis_raise",
@@ -300,7 +327,8 @@
       "difficulty": "beginner",
       "beneficial_for": ["shin_splints"],
       "contraindicated_for": [],
-      "search_query": "tibialis raise shin splints exercise"
+      "search_query": "tibialis raise shin splints exercise",
+      "why_runners": "The front-of-shin muscle that shin splints love to wreck. Direct training here is one of the few things that actually helps."
     }
   ]
 }

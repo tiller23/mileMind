@@ -58,9 +58,15 @@ async def test_playbook_returns_blocks(client, db_session: AsyncSession, test_us
         assert block["rationale"].startswith("stub ")
 
 
-async def test_playbook_acute_gate_active(
+async def test_playbook_acute_gate_active_still_returns_blocks(
     client, db_session: AsyncSession, test_user: User
 ) -> None:
+    """Acute-injury flag surfaces a gate flag but does NOT hide exercises.
+
+    The UI renders a caution banner (see-a-PT, not medical advice) on top of
+    the playbook. Hiding exercises entirely creates a dead state and the
+    "not medical advice" footer + banner is the industry-standard posture.
+    """
     profile = DBAthleteProfile(
         user_id=test_user.id,
         name="Runner",
@@ -79,18 +85,17 @@ async def test_playbook_acute_gate_active(
     body = response.json()
     assert body["acute_injury_gate"]["active"] is True
     assert "knee" in body["acute_injury_gate"]["description"]
-    # Server-side suppression: no exercises are returned while acute.
-    assert body["blocks"] == []
+    assert len(body["blocks"]) > 0
+    assert body["catalog_version"]
 
 
-async def test_acute_flag_returns_empty_even_after_prior_cache(
+async def test_acute_flag_does_not_invalidate_cached_blocks(
     client, db_session: AsyncSession, test_user: User
 ) -> None:
-    """Verifying the server suppresses exercises regardless of cache state.
+    """Flipping acute on after a cached non-acute request keeps the same blocks.
 
-    Even if a previous (non-acute) request populated the narrative cache,
-    flipping current_acute_injury to True must return blocks=[] — i.e., the
-    suppression happens before any cache lookup.
+    Cache stability across the acute flag matters because the flag only drives
+    the UI caution banner — it must not change what exercises the user sees.
     """
     profile = DBAthleteProfile(
         user_id=test_user.id,
@@ -103,20 +108,22 @@ async def test_acute_flag_returns_empty_even_after_prior_cache(
     db_session.add(profile)
     await db_session.commit()
 
-    # Warm the cache with a normal request.
     first = await client.get("/api/v1/strength/playbook")
     assert first.status_code == 200
-    assert len(first.json()["blocks"]) > 0
+    first_body = first.json()
+    assert len(first_body["blocks"]) > 0
+    assert first_body["acute_injury_gate"]["active"] is False
 
-    # Flip acute on; expect empty blocks.
     profile.current_acute_injury = True
     profile.current_injury_description = "knee"
     await db_session.commit()
 
     second = await client.get("/api/v1/strength/playbook")
     assert second.status_code == 200
-    assert second.json()["blocks"] == []
-    assert second.json()["acute_injury_gate"]["active"] is True
+    second_body = second.json()
+    assert second_body["acute_injury_gate"]["active"] is True
+    # Blocks must be identical — only the gate flag changed.
+    assert second_body["blocks"] == first_body["blocks"]
 
 
 async def test_prompt_injection_in_injury_description_does_not_leak(

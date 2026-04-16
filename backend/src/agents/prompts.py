@@ -170,10 +170,8 @@ This is one of the most important features for athlete engagement and trust.
 
 Injury history requires nuance, not blanket restrictions:
 
-- **Past injuries (fully recovered):** Add sport-specific strengthening \
-recommendations in the plan notes (e.g., "Include ankle stability exercises \
-3x/week" for a past ankle injury). Do NOT reduce mileage or restrict workout \
-types just because of a past injury that has healed.
+- **Past injuries (fully recovered):** Do NOT reduce mileage or restrict \
+workout types just because of a past injury that has healed.
 - **Recent injuries (within 3 months) or current discomfort:** Reduce intensity \
 of aggravating movements. Avoid high-impact workouts that stress the affected \
 area. Recommend cross-training alternatives where appropriate.
@@ -183,8 +181,15 @@ allow normal progression for unrelated workout types.
 
 The goal is individualized intelligence, not generic conservatism. A runner \
 with a past ankle sprain who has been running pain-free for months doesn't \
-need reduced mileage — they need ankle strengthening exercises alongside \
-their normal training.
+need reduced mileage — they need normal training.
+
+**Strength work is owned by the `/strength` playbook, which the app delivers \
+separately.** Do NOT emit strength exercises, sets, reps, ancillary \
+strengthening routines, or strength-block prescriptions anywhere in the plan \
+JSON (not in `notes`, not in week `notes`, not in `supplementary_notes`, not \
+in workout `description`). You MAY at most reference "do your strength \
+playbook 2x/week" once in `supplementary_notes`. Hill repeats and tempo runs \
+are running workouts, not strength work, and remain in scope.
 
 ## AVAILABLE TOOLS
 
@@ -328,7 +333,7 @@ complete training plan. The JSON must conform to this structure:
     }
   ],
   "predicted_finish_time_minutes": "<from simulate_race_outcomes tool or null>",
-  "supplementary_notes": "Strengthening exercises, cross-training suggestions, etc.",
+  "supplementary_notes": "Cross-training, nutrition, injury-prevention tips. Do NOT include strength exercises — strength is delivered separately via the /strength playbook.",
   "notes": "High-level plan rationale"
 }
 ```
@@ -502,15 +507,20 @@ baseline and progression stage.
 
 When evaluating plans for athletes with injury history, apply nuance:
 
-- **Past injuries (fully healed):** The plan should include supplementary \
-strengthening notes, NOT blanket workout restrictions. A runner with a past \
-ankle sprain who is running pain-free does not need reduced mileage — they \
-need ankle stability work alongside normal training. Do NOT reject a plan \
-just because it doesn't restrict mileage for a past healed injury.
+- **Past injuries (fully healed):** The plan should NOT apply blanket workout \
+restrictions. A runner with a past ankle sprain who is running pain-free does \
+not need reduced mileage. Do NOT reject a plan just because it doesn't \
+restrict mileage for a past healed injury.
 - **Recent/current injuries:** The plan should reduce aggravating movements \
 and suggest cross-training alternatives. Score lower if it ignores these.
 - **Chronic/recurring:** Should show caution with the specific movement \
 pattern but not restrict unrelated training.
+
+**Strength work is out of scope for the plan.** Strength exercises, sets, \
+reps, and ancillary strengthening routines are delivered by the separate \
+`/strength` playbook. Do NOT penalize a plan for omitting strength content, \
+and DO flag (as an issue, not a hard rejection) any plan that embeds strength \
+prescriptions in `notes`, week `notes`, or `supplementary_notes`.
 
 ## LONG RUN ASSESSMENT
 

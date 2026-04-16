@@ -276,6 +276,8 @@ export interface StrengthExercise {
   equipment: string[];
   difficulty: "beginner" | "intermediate" | "advanced";
   search_query: string;
+  why_runners: string;
+  beneficial_for_user: InjuryTag[];
 }
 
 export interface StrengthBlock {

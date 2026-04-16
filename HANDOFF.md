@@ -1,89 +1,167 @@
-# Session Handoff — 2026-04-14
+# Session Handoff — 2026-04-16 (pass 2)
 
-**Branch:** `main`
-**Tests:** 1953 backend + 56 frontend = 2009 total
-**Status:** DEPLOYED — strength training playbook live at `milemind.app/strength`
+**Branch:** `feature/strength-polish` — ready to merge pending browser verification.
+**Tests:** 308 backend strength/api/agents tests + 57 frontend tests passing; ruff + black + tsc clean.
+**Status:** All three remaining polish items from the prior handoff shipped. Code-review pass done, W1/W2 fixes applied, suggestions rolled in.
 
 ## What Shipped This Session
 
-### Strength Training Playbook (new feature)
-- `/strength` page: deterministic running-specific exercise selection driven by injury tags + goal + experience tier
-- LLM (Haiku) only writes block rationale blurbs, with static fallbacks on API failure or prescriptive-language drift
-- Server-enforced PT gate when `current_acute_injury=true` (returns `blocks=[]` so direct API callers can't bypass)
-- 5 blocks: posterior chain, single-leg stability, hip/glute, calf/Achilles, core anti-rotation (last is conditional on goal distance + injury tags)
-- ~28 exercises in catalog, tagged with equipment + difficulty + injury beneficial/contraindicated
-- Onboarding extended: injury-tag chip multi-select + acute-injury toggle with optional description
-- Cost: ~$0.001 per playbook view (Haiku, with cache + in-flight dedupe)
+### A. Acute-injury gate → persistent caution banner
 
-### Lint Hygiene (structural fix)
-- `.pre-commit-config.yaml` added — ruff + black on backend, `tsc --noEmit` on frontend
-- CI expanded to lint `tests/` (was `src/` only)
-- Per-file ruff ignores for tests (legitimate Mock/PascalCase)
-- Documented in CLAUDE.md
-- **Setup once per clone:** `pip install pre-commit && pre-commit install`
+Replaced the two-stage "You flagged an injury → click I understand → empty page"
+flow with a persistent amber caution banner. Blocks always render; banner just
+sits above them. No dismiss button.
 
-### Pass-2 Hardening (from second-round code review)
-- Narrative cache: in-flight Future map deduplicates concurrent calls (no thundering herd)
-- `/strength` rate limit: 10/min per user
-- `/profile` PUT rate limit: 20/min per user (bounds rapid profile-shape cycling)
-- Migration: dialect-aware JSONB default (`'[]'::jsonb` on Postgres)
-- Removed `InjuryTag.NONE` footgun
-- Profile mutation invalidates `["strength-playbook"]` query
+- **`backend/src/api/routes/strength.py`** — removed the `blocks=[]` early
+  return when `current_acute_injury=true`. Route now always builds + returns
+  the playbook; `acute_injury_gate.active` is still populated for the UI.
+- **`frontend/web/src/app/strength/page.tsx`** — deleted sessionStorage,
+  `acuteAcknowledged` state, and the `useEffect`. Banner heading reframed to
+  "See a physical therapist before starting" (action-framed, not blame-framed).
+  User's own injury note is reflected back. Single CTA: "Update injury status".
+- **`backend/tests/unit/api/test_strength.py`** — rewrote two tests. Acute
+  flag now asserts blocks ARE returned alongside `gate.active=true`. Cache-
+  stability test asserts `first_body["blocks"] == second_body["blocks"]` after
+  flipping acute on — proves the flag only drives UI, not cache invalidation.
+- **`frontend/web/src/test/strength-page.test.tsx`** — rewrote into "acute
+  caution banner" test: asserts banner, asserts NO dismiss button, asserts
+  blocks render alongside the banner.
 
-### Misc
-- `notes/` folder gitignored (personal craft notes — see directory for current contents)
+**Product rationale:** hiding info created a dead state; caution banner +
+"not medical advice" footer is the industry-standard posture for consumer
+fitness. Tyler called it: "as long as we have should see a PT / this is not
+final advice that should cover our behinds."
 
-## Prod Testing Findings — Strength Page (Tyler's notes from live test)
+### B + C. StrengthCallout component + plan-detail/dashboard placement
 
-These are the items to address NEXT SESSION. Page works, no rollback needed — polish + UX pass.
+New component **`frontend/web/src/components/StrengthCallout.tsx`** —
+reusable card linking to `/strength`. Copy varies on `injuryTagCount`
+(tailored vs. generic). Placed on:
 
-1. **"Tailored for: shin_splints"** uses raw enum value, not natural-language label. Need a label map (`shin_splints → "Shin Splints"`, `it_band → "IT Band"`, etc.) on the frontend block badge.
-2. **PT-gate state is misleading at first glance.** The user-facing copy / framing of the held/gated state isn't clear enough on first read. Worth rewriting and possibly redesigning the visual hierarchy.
-3. **Overlap with the bottom of the plan page.** Tyler's note: "that with the bottom bit on the plan kind of overlap if that makes sense" — open both pages side-by-side and figure out whether it's a thematic overlap (strength content duplicating plan content) or a literal layout collision.
-4. **Discoverability:** add a link to `/strength` from the dashboard and/or plan detail pages. Currently only reachable via the navbar, easy to miss.
+- **Plan detail** (`plan/[id]/page.tsx`) — below the existing "Additional
+  Notes" box. Guarded on `profileData` so it doesn't flash the non-tailored
+  copy during profile fetch.
+- **Dashboard** (`dashboard/page.tsx`) — between invite banner area and
+  ThisWeek card, gated on `profileData && hasInvite && !activeJobId &&
+  !showConfirm && !needsOnboarding`.
 
-## Open Items (carried from prior sessions)
+### Planner prompt carve-out — stop generating strength content
 
-### Should Do
-1. Strava webhooks (still polling/manual sync; public URL available)
-2. Monitor Railway logs
-3. Verify Strava token encryption on prod
+**`backend/src/agents/prompts.py`** — three coordinated edits:
 
-### Feature Backlog (ordered by value)
-4. **Strength training polish** ← TOP, see findings above
-5. Plan negotiation UI ("change up this week")
-6. Plan adaptation loop — feed actual Strava workouts back into planner
-7. Bidirectional Strava sync (push planned workouts)
-8. Mobile app (React Native/Expo)
+1. Line 331 — narrowed `supplementary_notes` description to explicitly
+   exclude strength work ("Cross-training, nutrition, injury-prevention tips.
+   Do NOT include strength exercises…").
+2. Lines 169–196 (Injury History Guidelines, planner) — removed the
+   "Add sport-specific strengthening recommendations in plan notes" bullet.
+   Added an explicit "Strength work is owned by the `/strength` playbook"
+   paragraph forbidding strength emission in `notes`, week `notes`,
+   `supplementary_notes`, or workout `description`. Allows at most a single
+   "do your strength playbook 2x/week" reference.
+3. Lines 501–520 (Injury History Assessment, reviewer) — matching carve-out
+   so the reviewer doesn't penalize plans for omitting strength notes; told
+   to flag (as an issue, not a hard rejection) plans that embed strength
+   prescriptions.
 
-### Prompt Tuning Backlog
-9. Recovery week load reduction tied to athlete level
-10. Zone 3 "easy" classification nuance
-11. Workout variety enforcement in reviewer
-12. User-selectable experience level
+**Expected impact:** shorter plans, fewer tokens, no content overlap between
+the plan detail "Additional Notes" box and `/strength`. Previous duplication
+was the root cause of Tyler's "the bottom bit on the plan kind of overlaps"
+comment.
 
-## Known Issues
-- Railway port: custom domain targets 8080, not 8000
-- `DATABASE_URL` had trailing whitespace on first paste — watch on future edits
-- Strava webhooks not yet implemented
+## Code review findings addressed
 
-## Local Dev Setup
+Ran `code-reviewer` subagent on this session's diff. Findings:
+
+- **W1** (`StrengthCallout` flashes non-tailored copy during profile load on
+  plan detail) → fixed by gating on `profileData`.
+- **W2** (prompts elsewhere still told the LLM to emit strength) → fixed by
+  editing the planner + reviewer prompt sections listed above.
+- **W3** (free-text injury description length) → already handled:
+  `current_injury_description` has `max_length=500` on the Pydantic schema.
+- **S1** (cache-stability test was weak) → strengthened with block-equality
+  assertion.
+- **S3** (PT directive buried) → bolded "clear anything new with a PT first".
+- **S4** (bolt icon off-brand) → swapped to shield-check (Heroicons).
+- **S5** (opaque "cheap in injury cost" phrasing) → changed to "cuts your
+  injury risk".
+
+Not addressed (judgment calls):
+- **W4** (extract dashboard steady-state predicate) — non-blocking; current
+  inline conditions match the existing "New Plan" button gating, internally
+  consistent.
+- **S2** (h2 banner vs. h2 block — arguable) — left as h2. `role="alert"`
+  covers prominence.
+- **S6** (duplicate "not medical advice" copy on `/strength`) — left as
+  belt-and-suspenders for health copy.
+
+## Verification not done this session
+
+- **Browser test of `/strength`, dashboard, and plan detail** — prior
+  handoff flagged that `npm run dev` renders blank white due to `.env.local`
+  pointing at production. Tests + typecheck + lint all pass. Next step is
+  for Tyler to run locally and confirm the three surfaces look right before
+  merging:
+  - `/strength` — caution banner renders when acute injury flagged; blocks
+    still render below it; no dismiss button; "Update injury status" link
+    goes to onboarding.
+  - `/dashboard` — `StrengthCallout` appears with "Tailored for you" chip
+    when user has injury tags; plain copy when no tags.
+  - `/plan/[id]` — callout appears below any existing supplementary notes;
+    no overlap/duplicated content.
+
+## Next up: thorough codebase sweep for dupe / unused code
+
+Tyler's follow-up ask: "After we are finished with this we'll do a thorough
+review to make sure we have no dupe or unused code in our codebase."
+
+Suggested scope for the sweep:
+
+1. **Dead exports / unused components** — ripgrep pass on `components/` and
+   `lib/` to find anything not imported.
+2. **Duplicate label maps** — enum label maps exist in
+   `frontend/web/src/lib/labels.ts` now (single source of truth for injury
+   tags). Audit other enums (risk tolerance, goal distance, workout types)
+   for scattered duplicates and consolidate.
+3. **Demo plan JSONs** (`backend/src/demo/plans/*.json`) — contain strength
+   content baked into `supplementary_notes`. Now stale relative to the new
+   prompt carve-out. Decide: regenerate or leave as static seeds.
+4. **Commented-out / TODO code** — sweep for FIXMEs and TODOs older than
+   a month.
+5. **Backend API routes** — any endpoints defined but not hit by frontend.
+6. **Evaluation harness** (`backend/src/evaluation/`) — still references
+   `supplementary_notes` in `report.py`. Verify it still produces useful
+   output now that the field is narrower.
+
+## Test Commands
+
 ```bash
-# One-time:
-pip install pre-commit && pre-commit install
+# Backend — strength + agents + api (what this session touched)
+cd backend && /Users/tylerdavis/anaconda3/envs/milemind/bin/python \
+  -m pytest tests/unit/strength/ tests/unit/api/ tests/unit/agents/ -q
 
-# Backend (terminal 1)
-cd backend && uvicorn src.api.main:create_app --factory --reload
+# Frontend
+cd frontend/web && npm test -- --run
 
-# Frontend (terminal 2)
+# Typecheck
+cd frontend/web && npx tsc --noEmit
+```
+
+## Dev Servers
+
+```bash
+# Backend
+cd backend && /Users/tylerdavis/anaconda3/envs/milemind/bin/python \
+  -m uvicorn src.api.main:create_app --factory --reload
+
+# Frontend (NOTE: check .env.local if pages render blank white)
 cd frontend/web && npm run dev
 ```
 
-Conda env: `milemind` (Python 3.12). PostgreSQL with `milemind` database, Google OAuth + Strava creds in `backend/.env`.
+## Conventions (carried forward)
 
-## Notes (`notes/`, gitignored)
-Personal craft notes started this session — pair-on-notes pattern with Claude. Current files:
-- `working-with-claude-code.md` — plan modes, two-pass review, subagent patterns
-- `dev-workflow-lessons.md` — fix the system not the instances, cheap defenses beat clever ones
-- `cross-session-prompt-escalation.md` — CC → web Claude → CC handoff pattern
-- `adversarial-brainstorming.md` — "pick this apart" framing
+- No `Co-Authored-By` on commits.
+- Push to remote after every commit.
+- Code review before every commit (done this session).
+- `frontend/web/AGENTS.md`: Next.js has breaking changes from training data;
+  read `node_modules/next/dist/docs/` before writing Next-specific code.
+- Pre-commit hooks: `pip install pre-commit && pre-commit install`.
