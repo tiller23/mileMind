@@ -3,34 +3,23 @@
 import { memo, useState } from "react";
 import type { PlanWeek, PlanWorkout, PreferredUnits } from "@/lib/types";
 import { formatDistance } from "@/lib/units";
+import { WORKOUT_TYPE_LABELS, formatWorkoutType } from "@/lib/workouts";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const WORKOUT_TYPES = [
-  { key: "easy", label: "Easy Run", dot: "bg-emerald-400" },
-  { key: "recovery", label: "Recovery", dot: "bg-emerald-400" },
-  { key: "long_run", label: "Long Run", dot: "bg-blue-400" },
-  { key: "tempo", label: "Tempo", dot: "bg-amber-400" },
-  { key: "interval", label: "Intervals", dot: "bg-red-400" },
-  { key: "hill", label: "Hills", dot: "bg-orange-400" },
-  { key: "fartlek", label: "Speed Play", dot: "bg-amber-400" },
-  { key: "rest", label: "Rest", dot: "bg-gray-300" },
-] as const;
-
-/** Map workout_type values to user-friendly display names. */
-const DISPLAY_NAMES: Record<string, string> = {
-  easy: "Easy Run",
-  recovery: "Recovery",
-  long_run: "Long Run",
-  tempo: "Tempo",
-  interval: "Intervals",
-  hill: "Hills",
-  repetition: "Speed Work",
-  fartlek: "Mixed Pace",
-  marathon_pace: "Marathon Pace",
-  cross_train: "Cross Training",
-  rest: "Rest",
-};
+// Legend items — key + dot color. Labels pulled from WORKOUT_TYPE_LABELS at
+// render time so they can't drift from the canonical map. Types sharing a
+// dot color (e.g. tempo/fartlek both amber) are filtered by the legend so
+// only colors that need explaining appear.
+const LEGEND_ITEMS: { key: string; dot: string }[] = [
+  { key: "easy", dot: "bg-emerald-400" },
+  { key: "recovery", dot: "bg-emerald-400" },
+  { key: "long_run", dot: "bg-blue-400" },
+  { key: "tempo", dot: "bg-amber-400" },
+  { key: "interval", dot: "bg-red-400" },
+  { key: "hill", dot: "bg-orange-400" },
+  { key: "rest", dot: "bg-gray-300" },
+];
 
 const WORKOUT_COLORS: Record<string, { bg: string; border: string; text: string; dot: string }> = {
   easy: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-400" },
@@ -53,10 +42,6 @@ const PHASE_COLORS: Record<string, string> = {
   taper: "bg-blue-100 text-blue-800",
   recovery: "bg-gray-100 text-gray-600",
 };
-
-function formatWorkoutType(type: string): string {
-  return DISPLAY_NAMES[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 const WorkoutCell = memo(function WorkoutCell({ workout, onClick, units }: { workout: PlanWorkout | null; onClick?: () => void; units: PreferredUnits }) {
   if (!workout) {
@@ -161,9 +146,9 @@ function WorkoutDetail({ workout, onClose, units }: { workout: PlanWorkout; onCl
 }
 
 function Legend() {
-  // Deduplicate by dot color
+  // Deduplicate by dot color so users don't see 3 amber rows.
   const seen = new Set<string>();
-  const items = WORKOUT_TYPES.filter((t) => {
+  const items = LEGEND_ITEMS.filter((t) => {
     if (seen.has(t.dot)) return false;
     seen.add(t.dot);
     return true;
@@ -174,7 +159,9 @@ function Legend() {
       {items.map((t) => (
         <div key={t.key} className="flex items-center gap-1.5">
           <span className={`w-2.5 h-2.5 rounded-full ${t.dot}`} />
-          <span className="text-xs text-gray-500">{t.label}</span>
+          <span className="text-xs text-gray-500">
+            {WORKOUT_TYPE_LABELS[t.key] ?? t.key}
+          </span>
         </div>
       ))}
     </div>
