@@ -71,9 +71,12 @@ export function useUpsertProfile() {
     mutationFn: (data: ProfileUpdate) => profile.upsert(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      // Strength playbook depends on injury tags + acute flag; refetch
-      // so the page reflects the new profile in any open tab.
-      queryClient.invalidateQueries({ queryKey: ["strength-playbook"] });
+      // Drop the cached strength playbook entirely — next visit to
+      // /strength starts fresh (loading spinner → accurate data).
+      // invalidateQueries alone caused a visible flash of stale blocks
+      // because the 5-minute staleTime kept old data on screen while the
+      // background refetch ran.
+      queryClient.removeQueries({ queryKey: ["strength-playbook"] });
     },
   });
 }

@@ -374,9 +374,9 @@ export default function OnboardingPage() {
                     className="mt-1"
                   />
                   <span className="text-sm text-gray-700">
-                    I have a <strong>current</strong> injury right now (not just
-                    past history). We&apos;ll recommend seeing a PT before
-                    starting new strength work.
+                    I have an active injury right now (not just past history).
+                    We&apos;ll add a &ldquo;see a PT first&rdquo; reminder at the
+                    top of your strength playbook.
                   </span>
                 </label>
                 {form.current_acute_injury && (

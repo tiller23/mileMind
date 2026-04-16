@@ -60,6 +60,9 @@ const DIFFICULTY_LABEL: Record<StrengthExercise["difficulty"], string> = {
   advanced: "Advanced",
 };
 
+// How many exercises per block to show before the "Show N more" toggle.
+const DEFAULT_VISIBLE_EXERCISES = 2;
+
 export default function StrengthPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuthGuard();
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -183,8 +186,11 @@ export default function StrengthPage() {
                 </div>
                 {(() => {
                   const expanded = expandedBlocks[block.block_id] ?? false;
-                  const [primary, ...alternates] = block.exercises;
-                  const visible = expanded ? block.exercises : primary ? [primary] : [];
+                  const visible = expanded
+                    ? block.exercises
+                    : block.exercises.slice(0, DEFAULT_VISIBLE_EXERCISES);
+                  const hiddenCount =
+                    block.exercises.length - DEFAULT_VISIBLE_EXERCISES;
                   return (
                     <>
                       <ul className="grid sm:grid-cols-2 gap-3">
@@ -192,7 +198,7 @@ export default function StrengthPage() {
                           <ExerciseCard key={ex.id} ex={ex} />
                         ))}
                       </ul>
-                      {alternates.length > 0 && (
+                      {hiddenCount > 0 && (
                         <button
                           type="button"
                           onClick={() => toggleBlock(block.block_id)}
@@ -200,7 +206,7 @@ export default function StrengthPage() {
                         >
                           {expanded
                             ? "Hide alternates"
-                            : `Show ${alternates.length} more alternate${alternates.length === 1 ? "" : "s"}`}
+                            : `Show ${hiddenCount} more alternate${hiddenCount === 1 ? "" : "s"}`}
                         </button>
                       )}
                     </>
